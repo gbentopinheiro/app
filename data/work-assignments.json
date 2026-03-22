@@ -1,0 +1,92 @@
+[
+  {
+    "id": 1,
+    "workPlanId": 1,
+    "workId": 1,
+    "personId": 4,
+    "hours": 8,
+    "hourlyCost": 15,
+    "notes": "Trabalho de cofragem."
+  },
+  {
+    "id": 2,
+    "workPlanId": 1,
+    "workId": 2,
+    "personId": 10,
+    "hours": 8,
+    "hourlyCost": 16,
+    "notes": "Apoio em estrutura."
+  },
+  {
+    "id": 3,
+    "workPlanId": 2,
+    "workId": 1,
+    "personId": 28,
+    "hours": 6,
+    "hourlyCost": 18,
+    "notes": "Valor ajustado para preparacao da obra."
+  },
+  {
+    "id": 4,
+    "workPlanId": 3,
+    "workId": 2,
+    "personId": 1,
+    "hours": 10,
+    "hourlyCost": 16,
+    "notes": ""
+  },
+  {
+    "id": 5,
+    "workPlanId": 3,
+    "workId": 2,
+    "personId": 2,
+    "hours": 10,
+    "hourlyCost": 20,
+    "notes": ""
+  },
+  {
+    "id": 6,
+    "workPlanId": 7,
+    "workId": 2,
+    "personId": 1,
+    "hours": 10,
+    "hourlyCost": 16,
+    "notes": ""
+  },
+  {
+    "id": 7,
+    "workPlanId": 7,
+    "workId": 2,
+    "personId": 2,
+    "hours": 10,
+    "hourlyCost": 20,
+    "notes": ""
+  },
+  {
+    "id": 8,
+    "workPlanId": 8,
+    "workId": 1,
+    "personId": 1,
+    "hours": 8,
+    "hourlyCost": 18,
+    "notes": ""
+  },
+  {
+    "id": 9,
+    "workPlanId": 8,
+    "workId": 2,
+    "personId": 1,
+    "hours": 8,
+    "hourlyCost": 16,
+    "notes": ""
+  },
+  {
+    "id": 10,
+    "workPlanId": 9,
+    "workId": 2,
+    "personId": 1,
+    "hours": 0,
+    "hourlyCost": 16,
+    "notes": ""
+  }
+]

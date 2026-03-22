@@ -1,0 +1,41 @@
+[
+  {
+    "id": 1,
+    "number": 1001,
+    "name": "Reabilitacao Edificio Central",
+    "clientId": 1,
+    "location": "Porto",
+    "status": "in_progress",
+    "budget": 125000,
+    "defaultHourlyCost": 18,
+    "startDate": "2026-01-15",
+    "endDate": null,
+    "notes": "Obra com equipa de estruturas e acabamentos."
+  },
+  {
+    "id": 2,
+    "number": 1002,
+    "name": "Moradia Vale Verde",
+    "clientId": 2,
+    "location": "Braga",
+    "status": "planned",
+    "budget": 89000,
+    "defaultHourlyCost": 16,
+    "startDate": "2026-04-01",
+    "endDate": null,
+    "notes": "A aguardar aprovacao final do cliente."
+  },
+  {
+    "id": 3,
+    "number": 1003,
+    "name": "Armazem Industrial Sul",
+    "clientId": 3,
+    "location": "Setubal",
+    "status": "completed",
+    "budget": 210500,
+    "defaultHourlyCost": 22,
+    "startDate": "2025-06-10",
+    "endDate": "2026-02-28",
+    "notes": "Entrega concluida sem pendencias."
+  }
+]
