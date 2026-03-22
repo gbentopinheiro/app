@@ -88,5 +88,14 @@
     "hours": 0,
     "hourlyCost": 16,
     "notes": ""
+  },
+  {
+    "id": 11,
+    "workPlanId": 10,
+    "workId": 2,
+    "personId": 1,
+    "hours": 0,
+    "hourlyCost": 16,
+    "notes": ""
   }
 ]

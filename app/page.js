@@ -51,6 +51,16 @@ export default function Home() {
         </section>
 
         <section style={cardsStyle}>
+          <Link href="/daily-hours" style={cardStyle}>
+            <p style={{ margin: 0, fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.08em', color: '#5f6f66' }}>
+              Opcao 0
+            </p>
+            <h2 style={{ margin: 0, fontSize: '28px' }}>Registo diario de horas</h2>
+            <p style={{ margin: 0, color: '#506059' }}>
+              Abre a area de registo rapido para lancar as horas trabalhadas por obra e por trabalhador.
+            </p>
+          </Link>
+
           <Link href="/works" style={cardStyle}>
             <p style={{ margin: 0, fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.08em', color: '#5f6f66' }}>
               Opcao 1
