@@ -1,3 +1,5 @@
+
+
 # Excel Processor com Next.js
 
 Esta aplicação Next.js permite fazer upload de um arquivo Excel (.xlsx) e extrair os nomes da coluna C, verificando se há preços na coluna AJ (preço à hora) ou AK (preço mensal).
