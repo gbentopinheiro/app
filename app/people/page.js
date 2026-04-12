@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
+import * as XLSX from 'xlsx'
 
 const pageStyle = {
   minHeight: '100vh',
@@ -62,6 +63,24 @@ const panelStyle = {
   boxShadow: '0 16px 40px rgba(54, 72, 63, 0.08)',
 }
 
+const searchInputStyle = {
+  width: '100%',
+  padding: '12px 14px',
+  borderRadius: '14px',
+  border: '1px solid #bfc7bc',
+  background: '#fffdfa',
+  fontSize: '14px',
+  marginBottom: '16px',
+}
+
+const peopleListStyle = {
+  display: 'grid',
+  gap: '12px',
+  maxHeight: '560px',
+  overflowY: 'auto',
+  paddingRight: '6px',
+}
+
 const inputStyle = {
   width: '100%',
   marginTop: '8px',
@@ -108,6 +127,13 @@ const dangerButtonStyle = {
   cursor: 'pointer',
 }
 
+const buttonGroupStyle = {
+  display: 'flex',
+  gap: '10px',
+  flexWrap: 'wrap',
+  justifyContent: 'flex-end',
+}
+
 const emptyPersonForm = {
   id: null,
   name: '',
@@ -134,6 +160,10 @@ function formatDateLabel(dateString) {
   }).format(date)
 }
 
+function getExportDateLabel() {
+  return new Intl.DateTimeFormat('sv-SE').format(new Date())
+}
+
 export default function PeoplePage() {
   const [people, setPeople] = useState([])
   const [assignments, setAssignments] = useState([])
@@ -145,6 +175,8 @@ export default function PeoplePage() {
   const [form, setForm] = useState(emptyPersonForm)
   const [selectedPersonId, setSelectedPersonId] = useState(null)
   const [showForm, setShowForm] = useState(false)
+  const [searchTerm, setSearchTerm] = useState('')
+  const isMonthlyForm = Number(form.monthlyPrice) > 0
 
   useEffect(() => {
     loadPeople()
@@ -163,6 +195,13 @@ export default function PeoplePage() {
 
   const monthlyPeople = useMemo(() => people.filter(person => person.isMonthlyBilling), [people])
   const hourlyPeople = useMemo(() => people.filter(person => !person.isMonthlyBilling), [people])
+  const filteredPeople = useMemo(() => {
+    const normalizedSearch = searchTerm.trim().toLowerCase()
+
+    if (!normalizedSearch) return people
+
+    return people.filter(person => String(person.name || '').toLowerCase().includes(normalizedSearch))
+  }, [people, searchTerm])
   const monthlyAssignmentSummary = useMemo(() => {
     if (!selectedPerson) return []
 
@@ -256,8 +295,10 @@ export default function PeoplePage() {
     const nextErrors = {}
 
     if (!form.name.trim()) nextErrors.name = 'O nome e obrigatorio.'
-    if (form.price === '' || Number(form.price) < 0) nextErrors.price = 'O preco hora nao pode ser negativo.'
     if (form.monthlyPrice === '' || Number(form.monthlyPrice) < 0) nextErrors.monthlyPrice = 'O preco mensal nao pode ser negativo.'
+    if (!isMonthlyForm && (form.price === '' || Number(form.price) < 0)) {
+      nextErrors.price = 'O preco hora nao pode ser negativo.'
+    }
 
     setFormErrors(nextErrors)
     return Object.keys(nextErrors).length === 0
@@ -302,7 +343,7 @@ export default function PeoplePage() {
     try {
       const payload = {
         name: form.name,
-        price: Number(form.price),
+        price: isMonthlyForm ? 0 : Number(form.price),
         monthlyPrice: Number(form.monthlyPrice),
       }
 
@@ -352,6 +393,128 @@ export default function PeoplePage() {
     }
   }
 
+  function getPeopleExportRows() {
+    return filteredPeople.map(person => ({
+      ID: person.id,
+      Nome: person.name || '',
+      'Preco hora': Number(person.price) || 0,
+      'Preco mensal': Number(person.monthlyPrice) || 0,
+      Tipo: person.isMonthlyBilling ? 'Mensal' : 'Horaria',
+    }))
+  }
+
+  function handleExportExcel() {
+    const rows = getPeopleExportRows()
+
+    if (rows.length === 0) {
+      setError('Nao existem pessoas para exportar.')
+      setSuccess('')
+      return
+    }
+
+    setError('')
+    const workbook = XLSX.utils.book_new()
+    const worksheet = XLSX.utils.json_to_sheet(rows)
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Pessoas')
+    XLSX.writeFile(workbook, `pessoas-${getExportDateLabel()}.xlsx`)
+    setSuccess('Exportacao para Excel concluida.')
+  }
+
+  function handleExportPdf() {
+    const rows = getPeopleExportRows()
+
+    if (rows.length === 0) {
+      setError('Nao existem pessoas para exportar.')
+      setSuccess('')
+      return
+    }
+
+    const exportWindow = window.open('', '_blank', 'noopener,noreferrer,width=900,height=700')
+
+    if (!exportWindow) {
+      setError('Nao foi possivel abrir a janela de exportacao PDF.')
+      setSuccess('')
+      return
+    }
+
+    const tableRows = rows
+      .map(
+        row => `
+          <tr>
+            <td>${row.ID}</td>
+            <td>${row.Nome}</td>
+            <td>${row['Preco hora']}</td>
+            <td>${row['Preco mensal']}</td>
+            <td>${row.Tipo}</td>
+          </tr>`,
+      )
+      .join('')
+
+    exportWindow.document.write(`
+      <!DOCTYPE html>
+      <html lang="pt">
+        <head>
+          <meta charset="UTF-8" />
+          <title>Exportacao de pessoas</title>
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              padding: 32px;
+              color: #1d2a24;
+            }
+            h1 {
+              margin-bottom: 8px;
+            }
+            p {
+              margin-top: 0;
+              color: #4f5d56;
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-top: 24px;
+            }
+            th, td {
+              border: 1px solid #d7ddd6;
+              padding: 10px 12px;
+              text-align: left;
+            }
+            th {
+              background: #eef5f0;
+            }
+            @media print {
+              body {
+                padding: 0;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          <h1>Lista de pessoas</h1>
+          <p>Exportado em ${formatDateLabel(getExportDateLabel())}</p>
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Nome</th>
+                <th>Preco hora</th>
+                <th>Preco mensal</th>
+                <th>Tipo</th>
+              </tr>
+            </thead>
+            <tbody>${tableRows}</tbody>
+          </table>
+        </body>
+      </html>
+    `)
+
+    exportWindow.document.close()
+    exportWindow.focus()
+    exportWindow.print()
+    setError('')
+    setSuccess('Exportacao para PDF iniciada.')
+  }
+
   function renderPersonRow(person) {
     const selected = Number(selectedPerson?.id) === Number(person.id)
 
@@ -371,10 +534,11 @@ export default function PeoplePage() {
         }}
       >
         <strong>{person.name}</strong>
-        <p style={{ margin: '6px 0 0', color: '#4f5d56' }}>Preco hora: {person.price || 0}/h</p>
-        <p style={{ margin: '6px 0 0', color: '#4f5d56' }}>
-          {person.isMonthlyBilling ? `Mensal: ${person.monthlyPrice || 0}` : 'Faturacao horaria'}
-        </p>
+        {person.isMonthlyBilling ? (
+          <p style={{ margin: '6px 0 0', color: '#4f5d56' }}>Mensal: {person.monthlyPrice || 0}</p>
+        ) : (
+          <p style={{ margin: '6px 0 0', color: '#4f5d56' }}>Preco hora: {person.price || 0}/h</p>
+        )}
       </button>
     )
   }
@@ -414,10 +578,21 @@ export default function PeoplePage() {
             </article>
           </div>
 
-          <button type="button" onClick={startCreate} style={primaryButtonStyle}>
-            Adicionar pessoa
-          </button>
+          <div style={buttonGroupStyle}>
+            <button type="button" onClick={handleExportExcel} style={secondaryButtonStyle}>
+              Exportar Excel
+            </button>
+            <button type="button" onClick={handleExportPdf} style={secondaryButtonStyle}>
+              Exportar PDF
+            </button>
+            <button type="button" onClick={startCreate} style={primaryButtonStyle}>
+              Adicionar pessoa
+            </button>
+          </div>
         </section>
+
+        {!showForm && error && <p style={{ margin: 0, color: '#b42318' }}>{error}</p>}
+        {!showForm && success && <p style={{ margin: 0, color: '#1f7a45' }}>{success}</p>}
 
         {showForm && (
           <section style={panelStyle}>
@@ -442,12 +617,6 @@ export default function PeoplePage() {
                 </label>
 
                 <label style={labelStyle}>
-                  Preco hora
-                  <input type="number" name="price" min="0" step="0.01" value={form.price} onChange={handleChange} style={inputStyle} />
-                  {formErrors.price && <span style={{ color: '#b42318', fontSize: '13px' }}>{formErrors.price}</span>}
-                </label>
-
-                <label style={labelStyle}>
                   Preco mensal
                   <input
                     type="number"
@@ -460,6 +629,22 @@ export default function PeoplePage() {
                   />
                   {formErrors.monthlyPrice && <span style={{ color: '#b42318', fontSize: '13px' }}>{formErrors.monthlyPrice}</span>}
                 </label>
+
+                {!isMonthlyForm && (
+                  <label style={labelStyle}>
+                    Preco hora
+                    <input
+                      type="number"
+                      name="price"
+                      min="0"
+                      step="0.01"
+                      value={form.price}
+                      onChange={handleChange}
+                      style={inputStyle}
+                    />
+                    {formErrors.price && <span style={{ color: '#b42318', fontSize: '13px' }}>{formErrors.price}</span>}
+                  </label>
+                )}
               </div>
 
               {error && <p style={{ margin: 0, color: '#b42318' }}>{error}</p>}
@@ -486,9 +671,23 @@ export default function PeoplePage() {
             {!loading && error && <p style={{ color: '#b42318' }}>{error}</p>}
             {!loading && !error && people.length === 0 && <p>Sem pessoas registadas.</p>}
             {!loading && !error && people.length > 0 && (
-              <div style={{ display: 'grid', gap: '12px' }}>
-                {people.map(renderPersonRow)}
-              </div>
+              <>
+                <input
+                  type="search"
+                  value={searchTerm}
+                  onChange={event => setSearchTerm(event.target.value)}
+                  placeholder="Pesquisar pessoa pelo nome"
+                  style={searchInputStyle}
+                />
+
+                {filteredPeople.length === 0 ? (
+                  <p style={{ margin: 0, color: '#4f5d56' }}>Nenhuma pessoa encontrada com esse nome.</p>
+                ) : (
+                  <div style={peopleListStyle}>
+                    {filteredPeople.map(renderPersonRow)}
+                  </div>
+                )}
+              </>
             )}
           </section>
 
@@ -510,13 +709,17 @@ export default function PeoplePage() {
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
-                  <article style={statCardStyle}>
-                    <div style={{ fontSize: '12px', color: '#66756d', textTransform: 'uppercase' }}>Preco hora</div>
-                    <div style={{ marginTop: '8px', fontSize: '28px', fontWeight: 700 }}>{selectedPerson.price || 0}/h</div>
-                  </article>
+                  {!selectedPerson.isMonthlyBilling && (
+                    <article style={statCardStyle}>
+                      <div style={{ fontSize: '12px', color: '#66756d', textTransform: 'uppercase' }}>Preco hora</div>
+                      <div style={{ marginTop: '8px', fontSize: '28px', fontWeight: 700 }}>{selectedPerson.price || 0}/h</div>
+                    </article>
+                  )}
                   <article style={statCardStyle}>
                     <div style={{ fontSize: '12px', color: '#66756d', textTransform: 'uppercase' }}>Preco mensal</div>
-                    <div style={{ marginTop: '8px', fontSize: '28px', fontWeight: 700 }}>{selectedPerson.monthlyPrice || 0}</div>
+                    <div style={{ marginTop: '8px', fontSize: '28px', fontWeight: 700 }}>
+                      {selectedPerson.isMonthlyBilling ? selectedPerson.monthlyPrice || 0 : '-'}
+                    </div>
                   </article>
                   <article style={statCardStyle}>
                     <div style={{ fontSize: '12px', color: '#66756d', textTransform: 'uppercase' }}>Tipo</div>

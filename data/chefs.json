@@ -1,0 +1,20 @@
+[
+  {
+    "id": 1,
+    "username": "construtora.alfa",
+    "password": "alfa2026",
+    "works": [1]
+  },
+  {
+    "id": 2,
+    "username": "particular.valeverde",
+    "password": "vale2026",
+    "works": [2]
+  },
+  {
+    "id": 3,
+    "username": "logistica.horizonte",
+    "password": "horizonte2026",
+    "works": [3]
+  }
+]
