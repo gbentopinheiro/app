@@ -1,0 +1,59 @@
+import { NextResponse } from 'next/server'
+import { getWorkAssignmentById, updateWorkAssignment } from '../../../../../lib/work-assignments.js'
+import { canApproveHours, canManageEntireApp } from '../../../../../lib/auth.js'
+import { getServerSession } from '../../../../../lib/server-session.js'
+
+function canAccessAssignment(session, assignment) {
+  if (!session || !assignment) return false
+  if (canManageEntireApp(session.role)) return true
+  return false
+}
+
+export async function PUT(request, { params }) {
+  try {
+    const session = await getServerSession()
+
+    if (!session) {
+      return NextResponse.json({ error: 'Sessão obrigatória.' }, { status: 401 })
+    }
+
+    if (!canApproveHours(session.role)) {
+      return NextResponse.json(
+        { error: 'Apenas administradores e responsaveis podem aprovar horas.' },
+        { status: 403 },
+      )
+    }
+
+    const { id } = await params
+    const currentAssignment = getWorkAssignmentById(id)
+
+    if (!currentAssignment) {
+      return NextResponse.json({ error: 'Afetação não encontrada' }, { status: 404 })
+    }
+
+    if (!canAccessAssignment(session, currentAssignment)) {
+      return NextResponse.json({ error: 'Sem permissão para esta afetação.' }, { status: 403 })
+    }
+
+    const body = await request.json()
+    const { approvedHours } = body
+
+    if (approvedHours === undefined || Number(approvedHours) < 0) {
+      return NextResponse.json(
+        { error: 'approvedHours tem de ser 0 ou maior' },
+        { status: 400 },
+      )
+    }
+
+    const assignment = updateWorkAssignment(id, { approvedHours: Number(approvedHours) })
+
+    if (!assignment) {
+      return NextResponse.json({ error: 'Afetação não encontrada' }, { status: 404 })
+    }
+
+    return NextResponse.json(assignment)
+  } catch (error) {
+    const status = error.message.includes('não encontrado') ? 404 : 500
+    return NextResponse.json({ error: error.message || 'Erro ao aprovar horas' }, { status })
+  }
+}

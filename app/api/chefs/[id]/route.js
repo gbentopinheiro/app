@@ -7,7 +7,7 @@ export async function GET(request, { params }) {
     const identity = getChefById(id)
 
     if (!identity) {
-      return NextResponse.json({ error: 'Identidade nao encontrada' }, { status: 404 })
+      return NextResponse.json({ error: 'Identidade não encontrada' }, { status: 404 })
     }
 
     return NextResponse.json(identity)
@@ -20,20 +20,20 @@ export async function PUT(request, { params }) {
   try {
     const { id } = await params
     const body = await request.json()
-    const { username, password, works } = body
+    const { personId, username, password, works } = body
 
-    const identity = updateChef(id, { username, password, works })
+    const identity = updateChef(id, { personId, username, password, works })
 
     if (!identity) {
-      return NextResponse.json({ error: 'Identidade nao encontrada' }, { status: 404 })
+      return NextResponse.json({ error: 'Identidade não encontrada' }, { status: 404 })
     }
 
     return NextResponse.json(identity)
   } catch (error) {
     const status =
-      error.message?.includes('obrigatorio') || error.message?.includes('Ja existe')
+      error.message?.includes('obrigatório') || error.message?.includes('Já existe') || error.message?.includes('role')
         ? 400
-        : error.message?.includes('nao encontrada')
+        : error.message?.includes('não encontrada')
           ? 404
           : 500
 
@@ -47,7 +47,7 @@ export async function DELETE(request, { params }) {
     const deleted = deleteChef(id)
 
     if (!deleted) {
-      return NextResponse.json({ error: 'Identidade nao encontrada' }, { status: 404 })
+      return NextResponse.json({ error: 'Identidade não encontrada' }, { status: 404 })
     }
 
     return NextResponse.json({ message: 'Identidade removida com sucesso' })

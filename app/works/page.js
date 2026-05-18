@@ -1,14 +1,15 @@
 'use client'
 
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 
 const pageStyle = {
   minHeight: '100vh',
   padding: '40px 24px 60px',
-  background: 'linear-gradient(180deg, #f4efe5 0%, #e8f0eb 100%)',
-  color: '#1d2a24',
-  fontFamily: 'Georgia, serif',
+  background: 'var(--vp-page-background)',
+  color: 'var(--vp-text)',
+  fontFamily: '"Avenir Next", "Segoe UI", "-apple-system", "BlinkMacSystemFont", sans-serif',
 }
 
 const shellStyle = {
@@ -19,11 +20,18 @@ const shellStyle = {
 }
 
 const heroStyle = {
-  background: 'linear-gradient(135deg, rgba(255,251,245,0.95) 0%, rgba(231,240,235,0.95) 100%)',
-  border: '1px solid #d6d3ca',
-  borderRadius: '28px',
+  position: 'relative',
+  overflow: 'hidden',
+  background: 'var(--vp-module-hero)',
+  border: '1px solid var(--vp-module-hero-border)',
+  borderRadius: '32px',
   padding: '28px',
-  boxShadow: '0 24px 60px rgba(42, 63, 53, 0.10)',
+  boxShadow: 'var(--vp-hero-shadow-strong)',
+  color: '#ffffff',
+  '--vp-text-muted': 'var(--vp-hero-text-muted)',
+  '--vp-text-soft': 'var(--vp-hero-text-soft)',
+  '--vp-surface': 'var(--vp-hero-surface)',
+  '--vp-border': 'var(--vp-hero-border)',
 }
 
 const topBarStyle = {
@@ -42,24 +50,25 @@ const statGridStyle = {
 }
 
 const statCardStyle = {
-  borderRadius: '18px',
+  borderRadius: '20px',
   padding: '18px',
-  background: '#fff',
-  border: '1px solid #d7ddd6',
+  background: 'var(--vp-stat-surface)',
+  border: '1px solid var(--vp-stat-border)',
+  boxShadow: 'var(--vp-stat-shadow)',
 }
 
 const panelStyle = {
-  background: 'rgba(255, 252, 247, 0.9)',
-  border: '1px solid #d4d2c8',
+  background: 'var(--vp-surface-soft)',
+  border: '1px solid var(--vp-border)',
   borderRadius: '24px',
   padding: '24px',
-  boxShadow: '0 16px 40px rgba(54, 72, 63, 0.08)',
+  boxShadow: 'var(--vp-shadow-panel)',
 }
 
 const modalBackdropStyle = {
   position: 'fixed',
   inset: 0,
-  background: 'rgba(28, 36, 32, 0.38)',
+  background: 'var(--vp-overlay)',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
@@ -71,11 +80,11 @@ const modalCardStyle = {
   width: 'min(980px, 100%)',
   maxHeight: 'calc(100vh - 48px)',
   overflowY: 'auto',
-  background: 'rgba(255, 252, 247, 0.98)',
-  border: '1px solid #d4d2c8',
+  background: 'var(--vp-surface-soft-strong)',
+  border: '1px solid var(--vp-border)',
   borderRadius: '28px',
   padding: '24px',
-  boxShadow: '0 24px 70px rgba(28, 36, 32, 0.18)',
+  boxShadow: 'var(--vp-shadow-modal)',
 }
 
 const inputStyle = {
@@ -83,8 +92,8 @@ const inputStyle = {
   marginTop: '8px',
   padding: '12px 14px',
   borderRadius: '12px',
-  border: '1px solid #bfc7bc',
-  background: '#fffdfa',
+  border: '1px solid var(--vp-border)',
+  background: 'var(--vp-surface-muted)',
   fontSize: '14px',
 }
 
@@ -98,18 +107,18 @@ const primaryButtonStyle = {
   border: 'none',
   borderRadius: '999px',
   padding: '13px 20px',
-  background: '#285943',
+  background: 'var(--vp-accent)',
   color: '#fff',
   fontWeight: 700,
   cursor: 'pointer',
 }
 
 const secondaryButtonStyle = {
-  border: '1px solid #285943',
+  border: '1px solid var(--vp-accent)',
   borderRadius: '999px',
   padding: '13px 20px',
   background: 'transparent',
-  color: '#285943',
+  color: 'var(--vp-accent)',
   fontWeight: 700,
   cursor: 'pointer',
 }
@@ -122,6 +131,22 @@ const dangerButtonStyle = {
   color: '#b42318',
   fontWeight: 700,
   cursor: 'pointer',
+}
+
+const iconButtonStyle = {
+  ...secondaryButtonStyle,
+  width: '34px',
+  height: '34px',
+  padding: 0,
+  fontSize: '14px',
+}
+
+const iconDangerButtonStyle = {
+  ...dangerButtonStyle,
+  width: '34px',
+  height: '34px',
+  padding: 0,
+  fontSize: '14px',
 }
 
 const emptyWorkForm = {
@@ -139,6 +164,7 @@ const emptyWorkForm = {
 }
 
 export default function WorksPage() {
+  const router = useRouter()
   const [works, setWorks] = useState([])
   const [clients, setClients] = useState([])
   const [loading, setLoading] = useState(true)
@@ -190,15 +216,15 @@ export default function WorksPage() {
   function validateForm() {
     const nextErrors = {}
 
-    if (!form.name.trim()) nextErrors.name = 'O nome da obra e obrigatorio.'
+    if (!form.name.trim()) nextErrors.name = 'O nome da obra é obrigatório.'
     if (!form.clientId) nextErrors.clientId = 'Seleciona um cliente.'
-    if (form.defaultHourlyCost !== '' && Number(form.defaultHourlyCost) < 0) nextErrors.defaultHourlyCost = 'O preco hora nao pode ser negativo.'
-    if (form.budget !== '' && Number(form.budget) < 0) nextErrors.budget = 'O orcamento nao pode ser negativo.'
-    if (form.startDate && Number.isNaN(new Date(form.startDate).getTime())) nextErrors.startDate = 'A data de comeco e invalida.'
-    if (form.endDate && Number.isNaN(new Date(form.endDate).getTime())) nextErrors.endDate = 'A data de finalizacao e invalida.'
+    if (form.defaultHourlyCost !== '' && Number(form.defaultHourlyCost) < 0) nextErrors.defaultHourlyCost = 'O preço hora não pode ser negativo.'
+    if (form.budget !== '' && Number(form.budget) < 0) nextErrors.budget = 'O orçamento não pode ser negativo.'
+    if (form.startDate && Number.isNaN(new Date(form.startDate).getTime())) nextErrors.startDate = 'A data de começo é inválida.'
+    if (form.endDate && Number.isNaN(new Date(form.endDate).getTime())) nextErrors.endDate = 'A data de finalização é inválida.'
 
     if (form.startDate && form.endDate && new Date(form.endDate) < new Date(form.startDate)) {
-      nextErrors.endDate = 'A data de finalizacao nao pode ser anterior ao comeco.'
+      nextErrors.endDate = 'A data de finalização não pode ser anterior ao começo.'
     }
 
     setFormErrors(nextErrors)
@@ -310,28 +336,44 @@ export default function WorksPage() {
     return (
       <div
         key={work.id}
+        role="button"
+        tabIndex={0}
+        onClick={() => router.push(`/works/${work.id}`)}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault()
+            router.push(`/works/${work.id}`)
+          }
+        }}
         style={{
           padding: '16px',
           borderRadius: '16px',
-          border: '1px solid #d7ddd6',
-          background: '#fff',
+          border: '1px solid var(--vp-border)',
+          background: 'var(--vp-surface)',
           display: 'flex',
           justifyContent: 'space-between',
           gap: '16px',
           alignItems: 'center',
+          cursor: 'pointer',
         }}
       >
         <div>
           <strong>#{work.number} - {work.name}</strong>
-          <p style={{ margin: '6px 0 0', color: '#4f5d56' }}>{work.client?.name || 'Sem cliente'}</p>
-          <p style={{ margin: '6px 0 0', color: '#4f5d56' }}>Estado: {work.status}</p>
+          <p style={{ margin: '6px 0 0', color: 'var(--vp-text-muted)' }}>{work.client?.name || 'Sem cliente'}</p>
+          <p style={{ margin: '6px 0 0', color: 'var(--vp-text-muted)' }}>Estado: {work.status}</p>
         </div>
         <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-          <Link href={`/works/${work.id}`} style={{ ...secondaryButtonStyle, textDecoration: 'none' }}>
-            Ver obra
-          </Link>
-          <button type="button" onClick={() => startEdit(work)} style={secondaryButtonStyle}>
-            Editar
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation()
+              startEdit(work)
+            }}
+            style={iconButtonStyle}
+            title="Editar obra"
+            aria-label="Editar obra"
+          >
+            ✎
           </button>
         </div>
       </div>
@@ -342,33 +384,30 @@ export default function WorksPage() {
     <main style={pageStyle}>
       <div style={shellStyle}>
         <section style={heroStyle}>
-          <Link href="/" style={{ color: '#285943', textDecoration: 'none', fontWeight: 700 }}>
+          <Link href="/" style={{ color: 'var(--vp-accent)', textDecoration: 'none', fontWeight: 700 }}>
             Voltar ao menu
           </Link>
-          <p style={{ margin: '18px 0 0', textTransform: 'uppercase', letterSpacing: '0.12em', fontSize: '12px', color: '#5f6f66' }}>
-            Gestao de obra
+          <p style={{ margin: '18px 0 0', textTransform: 'uppercase', letterSpacing: '0.12em', fontSize: '12px', color: 'var(--vp-text-soft)' }}>
+            Gestão de obra
           </p>
           <h1 style={{ margin: '10px 0 12px', fontSize: '46px', lineHeight: 1.05 }}>
             Lista de obras
           </h1>
-          <p style={{ margin: 0, maxWidth: '780px', color: '#4d5c55', fontSize: '17px', lineHeight: 1.7 }}>
-            Cada obra fica agora associada a um unico cliente. Escolhe uma obra para abrir a pagina dedicada com o
-            detalhe e as afetacoes relacionadas.
-          </p>
+
         </section>
 
         <section style={topBarStyle}>
           <div style={statGridStyle}>
             <article style={statCardStyle}>
-              <div style={{ fontSize: '12px', color: '#66756d', textTransform: 'uppercase' }}>Obras totais</div>
+              <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>Obras totais</div>
               <div style={{ marginTop: '8px', fontSize: '32px', fontWeight: 700 }}>{works.length}</div>
             </article>
             <article style={statCardStyle}>
-              <div style={{ fontSize: '12px', color: '#66756d', textTransform: 'uppercase' }}>Obras ativas</div>
+              <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>Obras ativas</div>
               <div style={{ marginTop: '8px', fontSize: '32px', fontWeight: 700 }}>{activeWorks.length}</div>
             </article>
             <article style={statCardStyle}>
-              <div style={{ fontSize: '12px', color: '#66756d', textTransform: 'uppercase' }}>Obras antigas</div>
+              <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>Obras antigas</div>
               <div style={{ marginTop: '8px', fontSize: '32px', fontWeight: 700 }}>{archivedWorks.length}</div>
             </article>
           </div>
@@ -407,9 +446,7 @@ export default function WorksPage() {
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center' }}>
               <div>
                 <h2 style={{ margin: 0 }}>{form.id ? 'Editar obra' : 'Adicionar nova obra'}</h2>
-                <p style={{ margin: '8px 0 0', color: '#4d5c55' }}>
-                  Define os dados da obra, escolhe o cliente associado e o preco hora por defeito usado nos work assignments.
-                </p>
+
               </div>
               <button type="button" onClick={cancelCreate} style={secondaryButtonStyle}>
                 Fechar
@@ -440,7 +477,7 @@ export default function WorksPage() {
                   {formErrors.clientId && <span style={{ color: '#b42318', fontSize: '13px' }}>{formErrors.clientId}</span>}
                 </label>
                 <label style={labelStyle}>
-                  Localizacao
+                  Localização
                   <input type="text" name="location" value={form.location} onChange={handleChange} style={inputStyle} />
                 </label>
                 <label style={labelStyle}>
@@ -453,12 +490,12 @@ export default function WorksPage() {
                   </select>
                 </label>
                 <label style={labelStyle}>
-                  Orcamento
+                  Orçamento
                   <input type="number" name="budget" min="0" step="0.01" value={form.budget} onChange={handleChange} style={inputStyle} />
                   {formErrors.budget && <span style={{ color: '#b42318', fontSize: '13px' }}>{formErrors.budget}</span>}
                 </label>
                 <label style={labelStyle}>
-                  Preco hora por defeito
+                  Preço hora por defeito
                   <input
                     type="number"
                     name="defaultHourlyCost"
@@ -471,12 +508,12 @@ export default function WorksPage() {
                   {formErrors.defaultHourlyCost && <span style={{ color: '#b42318', fontSize: '13px' }}>{formErrors.defaultHourlyCost}</span>}
                 </label>
                 <label style={labelStyle}>
-                  Data de comeco
+                  Data de começo
                   <input type="date" name="startDate" value={form.startDate} onChange={handleChange} style={inputStyle} />
                   {formErrors.startDate && <span style={{ color: '#b42318', fontSize: '13px' }}>{formErrors.startDate}</span>}
                 </label>
                 <label style={labelStyle}>
-                  Data de finalizacao
+                  Data de finalização
                   <input type="date" name="endDate" value={form.endDate} onChange={handleChange} style={inputStyle} />
                   {formErrors.endDate && <span style={{ color: '#b42318', fontSize: '13px' }}>{formErrors.endDate}</span>}
                 </label>
@@ -492,11 +529,18 @@ export default function WorksPage() {
 
               <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                 <button type="submit" disabled={submitting} style={primaryButtonStyle}>
-                  {submitting ? 'A gravar...' : form.id ? 'Guardar alteracoes' : 'Criar obra'}
+                  {submitting ? 'A gravar...' : form.id ? 'Guardar alterações' : 'Criar obra'}
                 </button>
                 {form.id && (
-                  <button type="button" onClick={() => handleDelete(form.id)} disabled={submitting} style={dangerButtonStyle}>
-                    Eliminar obra
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(form.id)}
+                    disabled={submitting}
+                    style={iconDangerButtonStyle}
+                    title="Eliminar obra"
+                    aria-label="Eliminar obra"
+                  >
+                    🗑
                   </button>
                 )}
               </div>

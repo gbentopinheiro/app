@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
-import { createWorkPlan, getAllWorkPlans } from '../../../lib/work-plans.js'
-import { createWorkAssignment, getAllWorkAssignments } from '../../../lib/work-assignments.js'
+import { createWorkPlan, getAllWorkPlans, getWorkPlanByDate } from '../../../lib/work-plans.js'
+import { createWorkAssignment, deleteWorkAssignment, getAllWorkAssignments } from '../../../lib/work-assignments.js'
+import { getDefaultHoursForDate } from '../../../lib/default-hours.js'
 
 export async function GET() {
   try {
@@ -18,7 +19,7 @@ export async function POST(request) {
     let previousAssignments = []
 
     if (!date) {
-      return NextResponse.json({ error: 'date e obrigatorio' }, { status: 400 })
+      return NextResponse.json({ error: 'date é obrigatório' }, { status: 400 })
     }
 
     if (clonePreviousDay) {
@@ -26,7 +27,7 @@ export async function POST(request) {
 
       if (!sourceWorkPlan) {
         return NextResponse.json(
-          { error: 'Nao existe nenhum work plan anterior com work assignments para clonar' },
+          { error: 'Não existe nenhum work plan anterior com work assignments para copiar' },
           { status: 404 }
         )
       }
@@ -34,13 +35,23 @@ export async function POST(request) {
       previousAssignments = getAllWorkAssignments({ workPlanId: sourceWorkPlan.id })
     }
 
-    const workPlan = createWorkPlan({ date })
+    const existingWorkPlan = getWorkPlanByDate(date)
+    const workPlan = existingWorkPlan || createWorkPlan({ date })
 
     if (!clonePreviousDay) {
       return NextResponse.json({
         ...workPlan,
         clonedAssignments: 0,
+        reusedWorkPlan: Boolean(existingWorkPlan),
       }, { status: 201 })
+    }
+
+    if (existingWorkPlan) {
+      const currentAssignments = getAllWorkAssignments({ workPlanId: existingWorkPlan.id })
+
+      for (const assignment of currentAssignments) {
+        deleteWorkAssignment(assignment.id)
+      }
     }
 
     for (const assignment of previousAssignments) {
@@ -48,7 +59,7 @@ export async function POST(request) {
         workPlanId: workPlan.id,
         workId: assignment.workId,
         personId: assignment.personId,
-        hours: assignment.hours,
+        hours: getDefaultHoursForDate(workPlan.date),
         hourlyCost: assignment.hourlyCost,
         notes: assignment.notes,
       })
@@ -59,12 +70,14 @@ export async function POST(request) {
       clonedAssignments: previousAssignments.length,
       clonedFromDate: sourceWorkPlan?.date || null,
       clonedFromWorkPlanId: sourceWorkPlan?.id || null,
+      reusedWorkPlan: Boolean(existingWorkPlan),
     }, { status: 201 })
   } catch (error) {
+    const message = error.message || ''
     const status =
-      error.message?.includes('Ja existe') || error.message?.includes('data valida')
+      message.includes('Já existe') || message.includes('data válida')
         ? 400
-        : error.message?.includes('Nao existe')
+        : message.includes('Não existe')
           ? 404
           : 500
     return NextResponse.json({ error: error.message || 'Erro ao criar work plan' }, { status })

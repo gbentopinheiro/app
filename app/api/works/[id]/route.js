@@ -8,7 +8,7 @@ export async function GET(request, { params }) {
     const work = getWorkById(id)
 
     if (!work) {
-      return NextResponse.json({ error: 'Obra nao encontrada' }, { status: 404 })
+      return NextResponse.json({ error: 'Obra não encontrada' }, { status: 404 })
     }
 
     return NextResponse.json(work)
@@ -28,15 +28,15 @@ export async function PUT(request, { params }) {
     }
 
     if (defaultHourlyCost !== undefined && Number(defaultHourlyCost) < 0) {
-      return NextResponse.json({ error: 'defaultHourlyCost nao pode ser negativo' }, { status: 400 })
+      return NextResponse.json({ error: 'defaultHourlyCost não pode ser negativo' }, { status: 400 })
     }
 
     if (startDate && Number.isNaN(new Date(startDate).getTime())) {
-      return NextResponse.json({ error: 'startDate tem de ser uma data valida' }, { status: 400 })
+      return NextResponse.json({ error: 'startDate tem de ser uma data válida' }, { status: 400 })
     }
 
     if (endDate && Number.isNaN(new Date(endDate).getTime())) {
-      return NextResponse.json({ error: 'endDate tem de ser uma data valida' }, { status: 400 })
+      return NextResponse.json({ error: 'endDate tem de ser uma data válida' }, { status: 400 })
     }
 
     const updatedWork = updateWork(id, {
@@ -53,7 +53,7 @@ export async function PUT(request, { params }) {
     })
 
     if (!updatedWork) {
-      return NextResponse.json({ error: 'Obra nao encontrada' }, { status: 404 })
+      return NextResponse.json({ error: 'Obra não encontrada' }, { status: 404 })
     }
 
     return NextResponse.json(updatedWork)
@@ -68,7 +68,7 @@ export async function DELETE(request, { params }) {
     const deleted = deleteWork(id)
 
     if (!deleted) {
-      return NextResponse.json({ error: 'Obra nao encontrada' }, { status: 404 })
+      return NextResponse.json({ error: 'Obra não encontrada' }, { status: 404 })
     }
 
     return NextResponse.json({ message: 'Obra removida com sucesso' })

@@ -7,9 +7,9 @@ import { useEffect, useMemo, useState } from 'react'
 const pageStyle = {
   minHeight: '100vh',
   padding: '40px 24px 60px',
-  background: 'linear-gradient(180deg, #f4efe5 0%, #e8f0eb 100%)',
-  color: '#1d2a24',
-  fontFamily: 'Georgia, serif',
+  background: 'var(--vp-page-background)',
+  color: 'var(--vp-text)',
+  fontFamily: '"Avenir Next", "Segoe UI", "-apple-system", "BlinkMacSystemFont", sans-serif',
 }
 
 const shellStyle = {
@@ -19,12 +19,25 @@ const shellStyle = {
   gap: '24px',
 }
 
+const heroPanelStyle = {
+  position: 'relative',
+  overflow: 'hidden',
+  background: 'var(--vp-module-hero)',
+  border: '1px solid var(--vp-module-hero-border)',
+  borderRadius: '32px',
+  padding: '24px',
+  boxShadow: 'var(--vp-hero-shadow-strong)',
+  color: '#ffffff',
+  '--vp-text-muted': 'var(--vp-hero-text-muted)',
+  '--vp-text-soft': 'var(--vp-hero-text-soft)',
+}
+
 const panelStyle = {
-  background: 'rgba(255, 252, 247, 0.9)',
-  border: '1px solid #d4d2c8',
+  background: 'var(--vp-surface-soft)',
+  border: '1px solid var(--vp-border)',
   borderRadius: '24px',
   padding: '24px',
-  boxShadow: '0 16px 40px rgba(54, 72, 63, 0.08)',
+  boxShadow: 'var(--vp-shadow-panel)',
 }
 
 const statGridStyle = {
@@ -34,16 +47,17 @@ const statGridStyle = {
 }
 
 const statCardStyle = {
-  borderRadius: '18px',
+  borderRadius: '20px',
   padding: '18px',
-  background: '#fff',
-  border: '1px solid #d7ddd6',
+  background: 'var(--vp-stat-surface)',
+  border: '1px solid var(--vp-stat-border)',
+  boxShadow: 'var(--vp-stat-shadow)',
 }
 
 const modalBackdropStyle = {
   position: 'fixed',
   inset: 0,
-  background: 'rgba(28, 36, 32, 0.38)',
+  background: 'var(--vp-overlay)',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
@@ -55,19 +69,19 @@ const modalCardStyle = {
   width: 'min(680px, 100%)',
   maxHeight: 'calc(100vh - 48px)',
   overflowY: 'auto',
-  background: 'rgba(255, 252, 247, 0.98)',
-  border: '1px solid #d4d2c8',
+  background: 'var(--vp-surface-soft-strong)',
+  border: '1px solid var(--vp-border)',
   borderRadius: '28px',
   padding: '24px',
-  boxShadow: '0 24px 70px rgba(28, 36, 32, 0.18)',
+  boxShadow: 'var(--vp-shadow-modal)',
 }
 
 const secondaryButtonStyle = {
-  border: '1px solid #285943',
+  border: '1px solid var(--vp-accent)',
   borderRadius: '999px',
   padding: '12px 18px',
   background: 'transparent',
-  color: '#285943',
+  color: 'var(--vp-accent)',
   fontWeight: 700,
   cursor: 'pointer',
 }
@@ -76,7 +90,7 @@ const clientButtonStyle = {
   padding: 0,
   border: 'none',
   background: 'transparent',
-  color: '#285943',
+  color: 'var(--vp-accent)',
   fontSize: 'inherit',
   fontFamily: 'inherit',
   fontWeight: 700,
@@ -201,7 +215,7 @@ function buildExcelDocument(months, work, workId) {
 
         return `<Row>${cells}</Row>`
       }).join('')
-      : `<Row><Cell ss:StyleID="emptyCell"><Data ss:Type="String">Sem registos para este mes.</Data></Cell></Row>`
+      : `<Row><Cell ss:StyleID="emptyCell"><Data ss:Type="String">Sem registos para este mês.</Data></Cell></Row>`
 
     const summaryRows = `
       <Row ss:Height="8"/>
@@ -212,7 +226,7 @@ function buildExcelDocument(months, work, workId) {
       </Row>
       <Row>
         <Cell ss:MergeAcross="25"/>
-        <Cell ss:MergeAcross="3" ss:StyleID="summaryLabel"><Data ss:Type="String">Preco hora</Data></Cell>
+        <Cell ss:MergeAcross="3" ss:StyleID="summaryLabel"><Data ss:Type="String">Preço hora</Data></Cell>
         <Cell ss:StyleID="summaryValue"><Data ss:Type="Number">${summary.hourlyPrice}</Data></Cell>
       </Row>
       <Row>
@@ -365,7 +379,7 @@ function buildPrintDocument(months, work) {
       ? grid.rows
         .map(row => `<tr>${row.map(cell => `<td>${escapeHtml(cell)}</td>`).join('')}</tr>`)
         .join('')
-      : `<tr><td colspan="${grid.headers.length}">Sem registos para este mes.</td></tr>`
+      : `<tr><td colspan="${grid.headers.length}">Sem registos para este mês.</td></tr>`
 
     return `
       <section class="sheet">
@@ -388,7 +402,7 @@ function buildPrintDocument(months, work) {
             <strong>${escapeHtml(summary.totalHours)}</strong>
           </div>
           <div class="summary-row">
-            <span>Preco hora</span>
+            <span>Preço hora</span>
             <strong>${escapeHtml(summary.hourlyPrice)}</strong>
           </div>
           <div class="summary-row total">
@@ -521,7 +535,7 @@ export default function WorkDetailPage() {
         const assignmentsData = await assignmentsResponse.json()
 
         if (!workResponse.ok) throw new Error(workData.error || 'Erro ao carregar obra')
-        if (!assignmentsResponse.ok) throw new Error(assignmentsData.error || 'Erro ao carregar afetacoes')
+        if (!assignmentsResponse.ok) throw new Error(assignmentsData.error || 'Erro ao carregar afetações')
 
         setWork(workData)
         setAssignments(assignmentsData)
@@ -674,9 +688,9 @@ export default function WorkDetailPage() {
   return (
     <main style={pageStyle}>
       <div style={shellStyle}>
-        <section style={panelStyle}>
-          <Link href="/works" style={{ color: '#285943', textDecoration: 'none', fontWeight: 700 }}>
-            ← Voltar a gestao de obra
+        <section style={heroPanelStyle}>
+          <Link href="/works" style={{ color: 'var(--vp-accent)', textDecoration: 'none', fontWeight: 700 }}>
+            Voltar a gestão de obra
           </Link>
 
           {loading && <p style={{ marginTop: '18px' }}>A carregar obra...</p>}
@@ -684,15 +698,13 @@ export default function WorkDetailPage() {
 
           {!loading && !error && work && (
             <>
-              <p style={{ margin: '18px 0 0', textTransform: 'uppercase', letterSpacing: '0.12em', fontSize: '12px', color: '#5f6f66' }}>
+              <p style={{ margin: '18px 0 0', textTransform: 'uppercase', letterSpacing: '0.12em', fontSize: '12px', color: 'var(--vp-text-soft)' }}>
                 Obra #{work.number}
               </p>
               <h1 style={{ margin: '10px 0 12px', fontSize: '44px', lineHeight: 1.05 }}>
                 {work.name}
               </h1>
-              <p style={{ margin: 0, maxWidth: '760px', color: '#4d5c55', fontSize: '17px', lineHeight: 1.7 }}>
-                Consulta aqui o resumo completo da obra e todas as afetacoes relacionadas com esta obra.
-              </p>
+
             </>
           )}
         </section>
@@ -701,26 +713,26 @@ export default function WorkDetailPage() {
           <>
             <section style={statGridStyle}>
               <article style={statCardStyle}>
-                <div style={{ fontSize: '12px', color: '#66756d', textTransform: 'uppercase' }}>Estado</div>
+                <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>Estado</div>
                 <div style={{ marginTop: '8px', fontSize: '28px', fontWeight: 700 }}>{work.status}</div>
               </article>
               <article style={statCardStyle}>
-                <div style={{ fontSize: '12px', color: '#66756d', textTransform: 'uppercase' }}>Preco hora defeito</div>
+                <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>Preço hora por defeito</div>
                 <div style={{ marginTop: '8px', fontSize: '28px', fontWeight: 700 }}>{work.defaultHourlyCost || 0}/h</div>
               </article>
               <article style={statCardStyle}>
-                <div style={{ fontSize: '12px', color: '#66756d', textTransform: 'uppercase' }}>Horas totais</div>
+                <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>Horas totais</div>
                 <div style={{ marginTop: '8px', fontSize: '28px', fontWeight: 700 }}>{totals.totalHours}</div>
               </article>
               <article style={statCardStyle}>
-                <div style={{ fontSize: '12px', color: '#66756d', textTransform: 'uppercase' }}>Custo acumulado</div>
+                <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>Custo acumulado</div>
                 <div style={{ marginTop: '8px', fontSize: '28px', fontWeight: 700 }}>{totals.totalCost}</div>
               </article>
             </section>
 
             <section style={panelStyle}>
-              <h2 style={{ marginTop: 0 }}>Informacao da obra</h2>
-              <div style={{ display: 'grid', gap: '10px', color: '#4f5d56' }}>
+              <h2 style={{ marginTop: 0 }}>Informação da obra</h2>
+              <div style={{ display: 'grid', gap: '10px', color: 'var(--vp-text-muted)' }}>
                 <p style={{ margin: 0 }}>
                   <strong>Cliente:</strong>{' '}
                   {client ? (
@@ -731,17 +743,17 @@ export default function WorkDetailPage() {
                     'Sem cliente'
                   )}
                 </p>
-                <p style={{ margin: 0 }}><strong>Localizacao:</strong> {work.location || 'Sem localizacao'}</p>
-                <p style={{ margin: 0 }}><strong>Data de comeco:</strong> {work.startDate || 'Sem data'}</p>
-                <p style={{ margin: 0 }}><strong>Data de finalizacao:</strong> {work.endDate || 'Em aberto'}</p>
-                <p style={{ margin: 0 }}><strong>Orcamento:</strong> {work.budget || 0}</p>
+                <p style={{ margin: 0 }}><strong>Localização:</strong> {work.location || 'Sem localização'}</p>
+                <p style={{ margin: 0 }}><strong>Data de começo:</strong> {work.startDate || 'Sem data'}</p>
+                <p style={{ margin: 0 }}><strong>Data de finalização:</strong> {work.endDate || 'Em aberto'}</p>
+                <p style={{ margin: 0 }}><strong>Orçamento:</strong> {work.budget || 0}</p>
                 <p style={{ margin: 0 }}><strong>Notas:</strong> {work.notes || 'Sem notas'}</p>
               </div>
             </section>
 
             <section style={panelStyle}>
-              <h2 style={{ marginTop: 0 }}>Afetacoes desta obra por mes</h2>
-              {assignments.length === 0 && <p>Sem afetacoes registadas para esta obra.</p>}
+              <h2 style={{ marginTop: 0 }}>Afetações desta obra por mês</h2>
+              {assignments.length === 0 && <p>Sem afetações registadas para esta obra.</p>}
               {assignments.length > 0 && (
                 <div style={{ display: 'grid', gap: '12px' }}>
                   <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', flexWrap: 'wrap' }}>
@@ -758,10 +770,10 @@ export default function WorkDetailPage() {
                       key={month.monthKey}
                       open={assignmentsByMonth[0]?.monthKey === month.monthKey}
                       style={{
-                        border: '1px solid #d7ddd6',
+                        border: '1px solid var(--vp-border)',
                         borderRadius: '18px',
                         padding: '16px',
-                        background: '#fff',
+                        background: 'var(--vp-surface)',
                       }}
                     >
                       <summary style={{ cursor: 'pointer', fontWeight: 700 }}>
@@ -775,15 +787,15 @@ export default function WorkDetailPage() {
                           <article
                             key={day.date}
                             style={{
-                              border: '1px solid #e5e2d9',
+                              border: '1px solid var(--vp-border)',
                               borderRadius: '14px',
                               padding: '14px',
-                              background: '#fcfaf6',
+                              background: 'var(--vp-surface-muted)',
                             }}
                           >
                             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
                               <strong>{day.date === 'Sem data' ? day.date : formatDateLabel(day.date)}</strong>
-                              <span style={{ color: '#4f5d56' }}>
+                              <span style={{ color: 'var(--vp-text-muted)' }}>
                                 {day.totalHours}h | Total {day.totalCost}
                               </span>
                             </div>
@@ -793,20 +805,20 @@ export default function WorkDetailPage() {
                                 <div
                                   key={assignment.id}
                                   style={{
-                                    border: '1px solid #ebe7dd',
+                                    border: '1px solid var(--vp-border)',
                                     borderRadius: '12px',
                                     padding: '12px',
-                                    background: '#fff',
+                                    background: 'var(--vp-surface)',
                                   }}
                                 >
                                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
                                     <strong>{assignment.person?.name || `Pessoa ${assignment.personId}`}</strong>
                                     <strong>{assignment.hours}h</strong>
                                   </div>
-                                  <p style={{ margin: '6px 0 0', color: '#4f5d56' }}>
+                                  <p style={{ margin: '6px 0 0', color: 'var(--vp-text-muted)' }}>
                                     {assignment.hourlyCost}/h | Total {assignment.totalCost}
                                   </p>
-                                  {assignment.notes && <p style={{ margin: '6px 0 0', color: '#6a756f' }}>{assignment.notes}</p>}
+                                  {assignment.notes && <p style={{ margin: '6px 0 0', color: 'var(--vp-text-soft)' }}>{assignment.notes}</p>}
                                 </div>
                               ))}
                             </div>
@@ -827,7 +839,7 @@ export default function WorkDetailPage() {
           <section style={modalCardStyle} onClick={(event) => event.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
               <div>
-                <p style={{ margin: 0, textTransform: 'uppercase', letterSpacing: '0.12em', fontSize: '12px', color: '#5f6f66' }}>
+                <p style={{ margin: 0, textTransform: 'uppercase', letterSpacing: '0.12em', fontSize: '12px', color: 'var(--vp-text-soft)' }}>
                   Cliente associado
                 </p>
                 <h2 style={{ margin: '10px 0 0', fontSize: '34px', lineHeight: 1.1 }}>
@@ -839,7 +851,7 @@ export default function WorkDetailPage() {
               </button>
             </div>
 
-            <div style={{ display: 'grid', gap: '12px', marginTop: '22px', color: '#4f5d56' }}>
+            <div style={{ display: 'grid', gap: '12px', marginTop: '22px', color: 'var(--vp-text-muted)' }}>
               <p style={{ margin: 0 }}><strong>NIF:</strong> {client.vatNumber || 'Sem NIF'}</p>
               <p style={{ margin: 0 }}><strong>Contacto:</strong> {client.contactName || 'Sem contacto'}</p>
               <p style={{ margin: 0 }}><strong>Email:</strong> {client.email || 'Sem email'}</p>

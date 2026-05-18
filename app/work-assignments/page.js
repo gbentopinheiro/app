@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
+import { getDefaultHoursForDate } from '../../lib/default-hours.js'
 
 const DURATION_OPTIONS = [
   0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5, 6,
@@ -11,9 +12,9 @@ const DURATION_OPTIONS = [
 const pageStyle = {
   minHeight: '100vh',
   padding: '40px 24px 60px',
-  background: 'linear-gradient(180deg, #f4efe5 0%, #e8f0eb 100%)',
-  color: '#1d2a24',
-  fontFamily: 'Georgia, serif',
+  background: 'var(--vp-page-background)',
+  color: 'var(--vp-text)',
+  fontFamily: '"Avenir Next", "Segoe UI", "-apple-system", "BlinkMacSystemFont", sans-serif',
 }
 
 const shellStyle = {
@@ -24,11 +25,18 @@ const shellStyle = {
 }
 
 const heroStyle = {
-  background: 'linear-gradient(135deg, rgba(255,251,245,0.95) 0%, rgba(231,240,235,0.95) 100%)',
-  border: '1px solid #d6d3ca',
-  borderRadius: '28px',
+  position: 'relative',
+  overflow: 'hidden',
+  background: 'var(--vp-module-hero)',
+  border: '1px solid var(--vp-module-hero-border)',
+  borderRadius: '32px',
   padding: '28px',
-  boxShadow: '0 24px 60px rgba(42, 63, 53, 0.10)',
+  boxShadow: 'var(--vp-hero-shadow-strong)',
+  color: '#ffffff',
+  '--vp-text-muted': 'var(--vp-hero-text-muted)',
+  '--vp-text-soft': 'var(--vp-hero-text-soft)',
+  '--vp-surface': 'var(--vp-hero-surface)',
+  '--vp-border': 'var(--vp-hero-border)',
 }
 
 const topBarStyle = {
@@ -47,18 +55,19 @@ const statGridStyle = {
 }
 
 const statCardStyle = {
-  borderRadius: '18px',
+  borderRadius: '20px',
   padding: '18px',
-  background: '#fff',
-  border: '1px solid #d7ddd6',
+  background: 'var(--vp-stat-surface)',
+  border: '1px solid var(--vp-stat-border)',
+  boxShadow: 'var(--vp-stat-shadow)',
 }
 
 const panelStyle = {
-  background: 'rgba(255, 252, 247, 0.9)',
-  border: '1px solid #d4d2c8',
+  background: 'var(--vp-surface-soft)',
+  border: '1px solid var(--vp-border)',
   borderRadius: '24px',
   padding: '24px',
-  boxShadow: '0 16px 40px rgba(54, 72, 63, 0.08)',
+  boxShadow: 'var(--vp-shadow-panel)',
 }
 
 const formGridStyle = {
@@ -72,8 +81,8 @@ const inputStyle = {
   marginTop: '8px',
   padding: '12px 14px',
   borderRadius: '12px',
-  border: '1px solid #bfc7bc',
-  background: '#fffdfa',
+  border: '1px solid var(--vp-border)',
+  background: 'var(--vp-surface-muted)',
   fontSize: '14px',
 }
 
@@ -87,18 +96,18 @@ const primaryButtonStyle = {
   border: 'none',
   borderRadius: '999px',
   padding: '13px 20px',
-  background: '#285943',
+  background: 'var(--vp-accent)',
   color: '#fff',
   fontWeight: 700,
   cursor: 'pointer',
 }
 
 const secondaryButtonStyle = {
-  border: '1px solid #285943',
+  border: '1px solid var(--vp-accent)',
   borderRadius: '999px',
   padding: '10px 16px',
   background: 'transparent',
-  color: '#285943',
+  color: 'var(--vp-accent)',
   fontWeight: 700,
   cursor: 'pointer',
 }
@@ -113,12 +122,29 @@ const dangerButtonStyle = {
   cursor: 'pointer',
 }
 
+const iconButtonStyle = {
+  ...secondaryButtonStyle,
+  width: '34px',
+  height: '34px',
+  padding: 0,
+  fontSize: '14px',
+}
+
+const iconDangerButtonStyle = {
+  ...dangerButtonStyle,
+  width: '34px',
+  height: '34px',
+  padding: 0,
+  fontSize: '14px',
+}
+
+const today = new Date().toISOString().slice(0, 10)
 const emptyForm = {
   id: null,
   workId: '',
   personId: '',
-  date: new Date().toISOString().slice(0, 10),
-  hours: '8',
+  date: today,
+  hours: String(getDefaultHoursForDate(today)),
   hourlyCost: '',
   notes: '',
 }
@@ -244,10 +270,20 @@ export default function WorkAssignmentsPage() {
       setCustomRate(true)
     }
 
-    setForm(current => ({
-      ...current,
-      [name]: value,
-    }))
+    setForm(current => {
+      if (name === 'date' && !current.id) {
+        return {
+          ...current,
+          date: value,
+          hours: String(getDefaultHoursForDate(value)),
+        }
+      }
+
+      return {
+        ...current,
+        [name]: value,
+      }
+    })
 
     setFormErrors(current => ({
       ...current,
@@ -263,15 +299,15 @@ export default function WorkAssignmentsPage() {
     if (!form.date) {
       nextErrors.date = 'Seleciona uma data.'
     } else if (Number.isNaN(new Date(form.date).getTime())) {
-      nextErrors.date = 'Data invalida.'
+      nextErrors.date = 'Data inválida.'
     }
 
     if (!form.hours || Number(form.hours) <= 0) {
-      nextErrors.hours = 'A duracao tem de ser maior que 0.'
+      nextErrors.hours = 'A duração tem de ser maior que 0.'
     }
 
     if (form.hourlyCost === '' || Number(form.hourlyCost) < 0) {
-      nextErrors.hourlyCost = 'O preco hora nao pode ser negativo.'
+      nextErrors.hourlyCost = 'O preço hora não pode ser negativo.'
     }
 
     setFormErrors(nextErrors)
@@ -309,11 +345,11 @@ export default function WorkAssignmentsPage() {
       const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data.error || 'Erro ao gravar afetacao')
+        throw new Error(data.error || 'Erro ao gravar afetação')
       }
 
       await loadPageData()
-      setSuccess(form.id ? 'Afetacao atualizada com sucesso.' : `Afetacao criada para ${data.person?.name || 'pessoa'}.`)
+      setSuccess(form.id ? 'Afetação atualizada com sucesso.' : `Afetação criada para ${data.person?.name || 'pessoa'}.`)
       setForm(emptyForm)
       setCustomRate(false)
       setShowForm(false)
@@ -337,11 +373,11 @@ export default function WorkAssignmentsPage() {
       const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data.error || 'Erro ao remover afetacao')
+        throw new Error(data.error || 'Erro ao remover afetação')
       }
 
       await loadPageData()
-      setSuccess('Afetacao removida com sucesso.')
+      setSuccess('Afetação removida com sucesso.')
       setShowForm(false)
       setForm(emptyForm)
       setCustomRate(false)
@@ -380,11 +416,11 @@ export default function WorkAssignmentsPage() {
       const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data.error || 'Erro ao mover afetacao')
+        throw new Error(data.error || 'Erro ao mover afetação')
       }
 
       await loadPageData()
-      setSuccess(`Afetacao movida para a obra #${data.work?.number || targetWork.number}.`)
+      setSuccess(`Afetação movida para a obra #${data.work?.number || targetWork.number}.`)
     } catch (err) {
       setError(err.message)
     } finally {
@@ -404,39 +440,35 @@ export default function WorkAssignmentsPage() {
     <main style={pageStyle}>
       <div style={shellStyle}>
         <section style={heroStyle}>
-          <Link href="/" style={{ color: '#285943', textDecoration: 'none', fontWeight: 700 }}>
-            ← Voltar ao menu
+          <Link href="/" style={{ color: 'var(--vp-accent)', textDecoration: 'none', fontWeight: 700 }}>            {'<- '}Voltar ao menu
           </Link>
-          <p style={{ margin: '18px 0 0', textTransform: 'uppercase', letterSpacing: '0.12em', fontSize: '12px', color: '#5f6f66' }}>
-            Work assignment
+          <p style={{ margin: '18px 0 0', textTransform: 'uppercase', letterSpacing: '0.12em', fontSize: '12px', color: 'var(--vp-text-soft)' }}>
+            Afetações
           </p>
           <h1 style={{ margin: '10px 0 12px', fontSize: '46px', lineHeight: 1.05 }}>
             Pessoas afetas por obra
           </h1>
-          <p style={{ margin: 0, maxWidth: '780px', color: '#4d5c55', fontSize: '17px', lineHeight: 1.7 }}>
-            Cria novas afetacoes a partir do botao no topo, vê em cada obra quem está afeto e move pessoas de uma obra para outra
-            arrastando o nome entre as obras ativas.
-          </p>
+
         </section>
 
         <section style={topBarStyle}>
           <div style={statGridStyle}>
             <article style={statCardStyle}>
-              <div style={{ fontSize: '12px', color: '#66756d', textTransform: 'uppercase' }}>Afetacoes</div>
+              <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>Afetações</div>
               <div style={{ marginTop: '8px', fontSize: '32px', fontWeight: 700 }}>{totalAssignments}</div>
             </article>
             <article style={statCardStyle}>
-              <div style={{ fontSize: '12px', color: '#66756d', textTransform: 'uppercase' }}>Pessoas afetas</div>
+              <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>Pessoas afetas</div>
               <div style={{ marginTop: '8px', fontSize: '32px', fontWeight: 700 }}>{assignedPeople}</div>
             </article>
             <article style={statCardStyle}>
-              <div style={{ fontSize: '12px', color: '#66756d', textTransform: 'uppercase' }}>Obras com afetacoes</div>
+              <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>Obras com afetações</div>
               <div style={{ marginTop: '8px', fontSize: '32px', fontWeight: 700 }}>{worksInUse}</div>
             </article>
           </div>
 
           <button type="button" onClick={startCreate} style={primaryButtonStyle}>
-            Nova afetacao
+            Nova afetação
           </button>
         </section>
 
@@ -444,9 +476,9 @@ export default function WorkAssignmentsPage() {
           <section style={panelStyle}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center' }}>
               <div>
-                <h2 style={{ margin: 0 }}>{form.id ? 'Editar afetacao' : 'Nova afetacao'}</h2>
-                <p style={{ margin: '8px 0 0', color: '#4d5c55' }}>
-                  Ao mudar a obra numa afetacao existente, a pessoa passa a ficar associada a outra obra.
+                <h2 style={{ margin: 0 }}>{form.id ? 'Editar afetação' : 'Nova afetação'}</h2>
+                <p style={{ margin: '8px 0 0', color: 'var(--vp-text-muted)' }}>
+                  Ao mudar a obra numa afetação existente, a pessoa passa a ficar associada a outra obra.
                 </p>
               </div>
               <button type="button" onClick={cancelForm} style={secondaryButtonStyle}>
@@ -490,7 +522,7 @@ export default function WorkAssignmentsPage() {
                   </label>
 
                   <label style={labelStyle}>
-                    Duracao
+                    Duração
                     <select name="hours" value={form.hours} onChange={handleChange} style={inputStyle}>
                       {DURATION_OPTIONS.map(option => (
                         <option key={option} value={option}>
@@ -502,7 +534,7 @@ export default function WorkAssignmentsPage() {
                   </label>
 
                   <label style={labelStyle}>
-                    Preco hora nesta obra
+                    Preço hora nesta obra
                     <input
                       type="number"
                       name="hourlyCost"
@@ -525,7 +557,7 @@ export default function WorkAssignmentsPage() {
                           }}
                           disabled={!selectedPerson || !selectedWork}
                         >
-                          Alterar preco
+                          Alterar preço
                         </button>
                       )}
                       {customRate && (
@@ -540,7 +572,7 @@ export default function WorkAssignmentsPage() {
                             }))
                           }}
                         >
-                          Repor preco por defeito
+                          Repor preço por defeito
                         </button>
                       )}
                     </div>
@@ -553,14 +585,14 @@ export default function WorkAssignmentsPage() {
                 </div>
 
                 <div style={{ marginTop: '18px', display: 'grid', gap: '10px' }}>
-                  <div style={{ padding: '14px 16px', borderRadius: '14px', background: '#eef3ef', color: '#32443c' }}>
+                  <div style={{ padding: '14px 16px', borderRadius: '14px', background: 'var(--vp-highlight)', color: 'var(--vp-highlight-text)' }}>
                     <strong>Resumo:</strong>{' '}
                     {selectedWork ? `Obra #${selectedWork.number} - ${selectedWork.name}` : 'Escolhe uma obra'}
                     {' | '}
                     {selectedPerson ? `Pessoa: ${selectedPerson.name}` : 'Escolhe uma pessoa'}
                     {' | '}
                     {selectedWork && selectedPerson
-                      ? `Preco hora aplicado: ${form.hourlyCost || 0}/h`
+                      ? `Preço hora aplicado: ${form.hourlyCost || 0}/h`
                       : 'Seleciona obra e pessoa'}
                   </div>
 
@@ -569,11 +601,11 @@ export default function WorkAssignmentsPage() {
 
                   <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                     <button type="submit" disabled={submitting} style={primaryButtonStyle}>
-                      {submitting ? 'A gravar...' : form.id ? 'Guardar alteracoes' : 'Gravar afetacao'}
+                      {submitting ? 'A gravar...' : form.id ? 'Guardar alterações' : 'Gravar afetação'}
                     </button>
                     {form.id && (
-                      <button type="button" onClick={() => handleDelete(form.id)} disabled={submitting} style={dangerButtonStyle}>
-                        Eliminar afetacao
+                      <button type="button" onClick={() => handleDelete(form.id)} disabled={submitting} style={iconDangerButtonStyle} title="Eliminar afetação" aria-label="Eliminar afetação">
+                        🗑
                       </button>
                     )}
                   </div>
@@ -585,7 +617,7 @@ export default function WorkAssignmentsPage() {
 
         <section style={panelStyle}>
           <h2 style={{ marginTop: 0 }}>Obras ativas com pessoas afetas</h2>
-          {loading && <p>A carregar obras, pessoas e afetacoes...</p>}
+          {loading && <p>A carregar obras, pessoas e afetações...</p>}
           {!loading && worksWithAssignments.length === 0 && <p>Sem obras registadas.</p>}
           {!loading && worksWithAssignments.length > 0 && (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
@@ -593,10 +625,10 @@ export default function WorkAssignmentsPage() {
                 <article
                   key={work.id}
                   style={{
-                    border: '1px solid #d7ddd6',
+                    border: '1px solid var(--vp-border)',
                     borderRadius: '18px',
                     padding: '18px',
-                    background: '#fff',
+                    background: 'var(--vp-surface)',
                     display: 'grid',
                     gap: '14px',
                     minHeight: '220px',
@@ -614,12 +646,12 @@ export default function WorkAssignmentsPage() {
                 >
                   <div>
                     <strong>#{work.number} - {work.name}</strong>
-                    <p style={{ margin: '6px 0 0', color: '#4f5d56' }}>
-                      Preco hora por defeito: {work.defaultHourlyCost || 0}/h
+                    <p style={{ margin: '6px 0 0', color: 'var(--vp-text-muted)' }}>
+                      Preço hora por defeito: {work.defaultHourlyCost || 0}/h
                     </p>
                   </div>
 
-                  {work.assignments.length === 0 && <p style={{ margin: 0, color: '#6a756f' }}>Sem pessoas afetas nesta obra.</p>}
+                  {work.assignments.length === 0 && <p style={{ margin: 0, color: 'var(--vp-text-soft)' }}>Sem pessoas afetas nesta obra.</p>}
 
                   {work.assignments.length > 0 && (
                     <div style={{ display: 'grid', gap: '10px' }}>
@@ -640,24 +672,24 @@ export default function WorkAssignmentsPage() {
                             justifyContent: 'space-between',
                             gap: '12px',
                             alignItems: 'center',
-                            border: '1px solid #e0e4de',
+                            border: '1px solid var(--vp-border)',
                             borderRadius: '14px',
                             padding: '14px',
-                            background: draggedAssignmentId === assignment.id ? '#eef5f0' : '#fcfcfa',
+                            background: draggedAssignmentId === assignment.id ? 'var(--vp-highlight)' : 'var(--vp-surface-alt)',
                             cursor: 'grab',
                           }}
                         >
                           <div>
                             <strong>{assignment.person?.name || `Pessoa ${assignment.personId}`}</strong>
-                            <p style={{ margin: '6px 0 0', color: '#4f5d56' }}>
+                            <p style={{ margin: '6px 0 0', color: 'var(--vp-text-muted)' }}>
                               {assignment.date} | {assignment.hours}h | {assignment.hourlyCost}/h | Total {assignment.totalCost}
                             </p>
-                            {assignment.notes && <p style={{ margin: '6px 0 0', color: '#6a756f' }}>{assignment.notes}</p>}
+                            {assignment.notes && <p style={{ margin: '6px 0 0', color: 'var(--vp-text-soft)' }}>{assignment.notes}</p>}
                           </div>
 
                           <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                            <button type="button" onClick={() => startEdit(assignment)} style={secondaryButtonStyle}>
-                              Editar
+                            <button type="button" onClick={() => startEdit(assignment)} style={iconButtonStyle} title="Editar afetação" aria-label="Editar afetação">
+                              ✎
                             </button>
                           </div>
                         </div>

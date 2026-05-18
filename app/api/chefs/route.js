@@ -22,15 +22,15 @@ export async function GET(request) {
 export async function POST(request) {
   try {
     const body = await request.json()
-    const { username, password, works } = body
+    const { personId, username, password, works } = body
 
-    const identity = createChef({ username, password, works })
+    const identity = createChef({ personId, username, password, works })
     return NextResponse.json(identity, { status: 201 })
   } catch (error) {
     const status =
-      error.message?.includes('obrigatorio') || error.message?.includes('Ja existe')
+      error.message?.includes('obrigatório') || error.message?.includes('Já existe') || error.message?.includes('role')
         ? 400
-        : error.message?.includes('nao encontrada')
+        : error.message?.includes('não encontrada')
           ? 404
           : 500
 

@@ -3,6 +3,7 @@ import * as xlsx from 'xlsx'
 import { existsSync } from 'fs'
 import { join } from 'path'
 import { replaceAllPeople } from '../../../lib/people.js'
+import { pruneAccessIdentitiesByValidPersonIds } from '../../../lib/access-identities.js'
 
 const { read, readFile, utils } = xlsx
 
@@ -47,7 +48,7 @@ export async function GET() {
     const filePath = join(process.cwd(), 'data', 'pessoas.xlsx')
 
     if (!existsSync(filePath)) {
-      return NextResponse.json({ error: 'Arquivo data/pessoas.xlsx nao encontrado' }, { status: 404 })
+      return NextResponse.json({ error: 'Arquivo data/pessoas.xlsx não encontrado' }, { status: 404 })
     }
 
     const workbook = readFile(filePath)
@@ -76,12 +77,13 @@ export async function POST(request) {
       file.type !== 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' &&
       file.type !== 'application/vnd.ms-excel'
     ) {
-      return NextResponse.json({ error: 'Tipo de arquivo nao suportado' }, { status: 400 })
+      return NextResponse.json({ error: 'Tipo de arquivo não suportado' }, { status: 400 })
     }
 
     const workbook = read(buffer, { type: 'buffer' })
     const result = parsePeopleSheet(workbook)
     const updatedPeople = replaceAllPeople(result.people)
+    pruneAccessIdentitiesByValidPersonIds(updatedPeople.map(person => person.id))
 
     return NextResponse.json({
       message: 'Dados atualizados com sucesso',

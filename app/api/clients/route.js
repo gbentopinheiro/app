@@ -15,7 +15,7 @@ export async function POST(request) {
     const { name, vatNumber, contactName, email, phone, notes } = body
 
     if (!name) {
-      return NextResponse.json({ error: 'Nome do cliente e obrigatorio' }, { status: 400 })
+      return NextResponse.json({ error: 'Nome do cliente é obrigatório' }, { status: 400 })
     }
 
     const client = createClient({ name, vatNumber, contactName, email, phone, notes })

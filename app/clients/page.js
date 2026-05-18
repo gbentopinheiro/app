@@ -6,9 +6,9 @@ import { useEffect, useState } from 'react'
 const pageStyle = {
   minHeight: '100vh',
   padding: '40px 24px 60px',
-  background: 'linear-gradient(180deg, #f4efe5 0%, #e8f0eb 100%)',
-  color: '#1d2a24',
-  fontFamily: 'Georgia, serif',
+  background: 'var(--vp-page-background)',
+  color: 'var(--vp-text)',
+  fontFamily: '"Avenir Next", "Segoe UI", "-apple-system", "BlinkMacSystemFont", sans-serif',
 }
 
 const shellStyle = {
@@ -19,19 +19,26 @@ const shellStyle = {
 }
 
 const heroStyle = {
-  background: 'linear-gradient(135deg, rgba(255,251,245,0.95) 0%, rgba(231,240,235,0.95) 100%)',
-  border: '1px solid #d6d3ca',
-  borderRadius: '28px',
+  position: 'relative',
+  overflow: 'hidden',
+  background: 'var(--vp-module-hero)',
+  border: '1px solid var(--vp-module-hero-border)',
+  borderRadius: '32px',
   padding: '28px',
-  boxShadow: '0 24px 60px rgba(42, 63, 53, 0.10)',
+  boxShadow: 'var(--vp-hero-shadow-strong)',
+  color: '#ffffff',
+  '--vp-text-muted': 'var(--vp-hero-text-muted)',
+  '--vp-text-soft': 'var(--vp-hero-text-soft)',
+  '--vp-surface': 'var(--vp-hero-surface)',
+  '--vp-border': 'var(--vp-hero-border)',
 }
 
 const panelStyle = {
-  background: 'rgba(255, 252, 247, 0.9)',
-  border: '1px solid #d4d2c8',
+  background: 'var(--vp-surface-soft)',
+  border: '1px solid var(--vp-border)',
   borderRadius: '24px',
   padding: '24px',
-  boxShadow: '0 16px 40px rgba(54, 72, 63, 0.08)',
+  boxShadow: 'var(--vp-shadow-panel)',
 }
 
 const inputStyle = {
@@ -39,8 +46,8 @@ const inputStyle = {
   marginTop: '8px',
   padding: '12px 14px',
   borderRadius: '12px',
-  border: '1px solid #bfc7bc',
-  background: '#fffdfa',
+  border: '1px solid var(--vp-border)',
+  background: 'var(--vp-surface-muted)',
   fontSize: '14px',
 }
 
@@ -54,18 +61,18 @@ const primaryButtonStyle = {
   border: 'none',
   borderRadius: '999px',
   padding: '13px 20px',
-  background: '#285943',
+  background: 'var(--vp-accent)',
   color: '#fff',
   fontWeight: 700,
   cursor: 'pointer',
 }
 
 const secondaryButtonStyle = {
-  border: '1px solid #285943',
+  border: '1px solid var(--vp-accent)',
   borderRadius: '999px',
   padding: '13px 20px',
   background: 'transparent',
-  color: '#285943',
+  color: 'var(--vp-accent)',
   fontWeight: 700,
   cursor: 'pointer',
 }
@@ -78,6 +85,22 @@ const dangerButtonStyle = {
   color: '#b42318',
   fontWeight: 700,
   cursor: 'pointer',
+}
+
+const iconButtonStyle = {
+  ...secondaryButtonStyle,
+  width: '34px',
+  height: '34px',
+  padding: 0,
+  fontSize: '14px',
+}
+
+const iconDangerButtonStyle = {
+  ...dangerButtonStyle,
+  width: '34px',
+  height: '34px',
+  padding: 0,
+  fontSize: '14px',
 }
 
 const emptyClientForm = {
@@ -127,7 +150,7 @@ export default function ClientsPage() {
   function validateForm() {
     const nextErrors = {}
 
-    if (!form.name.trim()) nextErrors.name = 'O nome do cliente e obrigatorio.'
+    if (!form.name.trim()) nextErrors.name = 'O nome do cliente é obrigatório.'
 
     setFormErrors(nextErrors)
     return Object.keys(nextErrors).length === 0
@@ -242,23 +265,21 @@ export default function ClientsPage() {
     <main style={pageStyle}>
       <div style={shellStyle}>
         <section style={heroStyle}>
-          <Link href="/" style={{ color: '#285943', textDecoration: 'none', fontWeight: 700 }}>
+          <Link href="/" style={{ color: 'var(--vp-accent)', textDecoration: 'none', fontWeight: 700 }}>
             Voltar ao menu
           </Link>
-          <p style={{ margin: '18px 0 0', textTransform: 'uppercase', letterSpacing: '0.12em', fontSize: '12px', color: '#5f6f66' }}>
-            Gestao de clientes
+          <p style={{ margin: '18px 0 0', textTransform: 'uppercase', letterSpacing: '0.12em', fontSize: '12px', color: 'var(--vp-text-soft)' }}>
+            Gestão de clientes
           </p>
           <h1 style={{ margin: '10px 0 12px', fontSize: '46px', lineHeight: 1.05 }}>
             Clientes
           </h1>
-          <p style={{ margin: 0, maxWidth: '760px', color: '#4d5c55', fontSize: '17px', lineHeight: 1.7 }}>
-            Cria e edita os clientes da aplicacao. Cada obra passa agora a estar ligada a um unico cliente.
-          </p>
+
         </section>
 
         <section style={{ display: 'flex', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' }}>
           <div style={panelStyle}>
-            <div style={{ fontSize: '12px', color: '#66756d', textTransform: 'uppercase' }}>Clientes totais</div>
+            <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>Clientes totais</div>
             <div style={{ marginTop: '8px', fontSize: '32px', fontWeight: 700 }}>{clients.length}</div>
           </div>
           <button type="button" onClick={startCreate} style={primaryButtonStyle}>
@@ -271,8 +292,8 @@ export default function ClientsPage() {
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center' }}>
               <div>
                 <h2 style={{ margin: 0 }}>{form.id ? 'Editar cliente' : 'Adicionar cliente'}</h2>
-                <p style={{ margin: '8px 0 0', color: '#4d5c55' }}>
-                  Mantem a ficha de cliente usada depois na relacao N para 1 com as obras.
+                <p style={{ margin: '8px 0 0', color: 'var(--vp-text-muted)' }}>
+                  Mantém a ficha de cliente usada depois na relação N para 1 com as obras.
                 </p>
               </div>
               <button type="button" onClick={cancelForm} style={secondaryButtonStyle}>
@@ -315,11 +336,18 @@ export default function ClientsPage() {
 
               <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                 <button type="submit" disabled={submitting} style={primaryButtonStyle}>
-                  {submitting ? 'A gravar...' : form.id ? 'Guardar alteracoes' : 'Criar cliente'}
+                  {submitting ? 'A gravar...' : form.id ? 'Guardar alterações' : 'Criar cliente'}
                 </button>
                 {form.id && (
-                  <button type="button" onClick={() => handleDelete(form.id)} disabled={submitting} style={dangerButtonStyle}>
-                    Eliminar cliente
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(form.id)}
+                    disabled={submitting}
+                    style={iconDangerButtonStyle}
+                    title="Eliminar cliente"
+                    aria-label="Eliminar cliente"
+                  >
+                    🗑
                   </button>
                 )}
               </div>
@@ -346,13 +374,13 @@ export default function ClientsPage() {
                         textAlign: 'left',
                         padding: '16px',
                         borderRadius: '16px',
-                        border: isSelected ? '1px solid #285943' : '1px solid #d7ddd6',
-                        background: isSelected ? '#eef5f1' : '#fff',
+                        border: isSelected ? '1px solid var(--vp-accent)' : '1px solid var(--vp-border)',
+                        background: isSelected ? 'var(--vp-highlight)' : 'var(--vp-surface)',
                         cursor: 'pointer',
                       }}
                     >
                       <strong>{client.name}</strong>
-                      <p style={{ margin: '6px 0 0', color: '#4f5d56' }}>{client.contactName || 'Sem contacto definido'}</p>
+                      <p style={{ margin: '6px 0 0', color: 'var(--vp-text-muted)' }}>{client.contactName || 'Sem contacto definido'}</p>
                     </button>
                   )
                 })}
@@ -364,8 +392,14 @@ export default function ClientsPage() {
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
               <h2 style={{ margin: 0 }}>Detalhe do cliente</h2>
               {selectedClient && (
-                <button type="button" onClick={() => startEdit(selectedClient)} style={secondaryButtonStyle}>
-                  Editar cliente
+                <button
+                  type="button"
+                  onClick={() => startEdit(selectedClient)}
+                  style={iconButtonStyle}
+                  title="Editar cliente"
+                  aria-label="Editar cliente"
+                >
+                  ✎
                 </button>
               )}
             </div>
@@ -373,7 +407,7 @@ export default function ClientsPage() {
             {!selectedClient && <p style={{ marginTop: '18px' }}>Seleciona um cliente para ver os detalhes.</p>}
 
             {selectedClient && (
-              <div style={{ display: 'grid', gap: '12px', marginTop: '18px', color: '#4f5d56' }}>
+              <div style={{ display: 'grid', gap: '12px', marginTop: '18px', color: 'var(--vp-text-muted)' }}>
                 <p style={{ margin: 0 }}><strong>Nome:</strong> {selectedClient.name}</p>
                 <p style={{ margin: 0 }}><strong>NIF:</strong> {selectedClient.vatNumber || 'Sem NIF'}</p>
                 <p style={{ margin: 0 }}><strong>Contacto:</strong> {selectedClient.contactName || 'Sem contacto'}</p>

@@ -8,7 +8,7 @@ export async function GET(request, { params }) {
     const client = getClientById(id)
 
     if (!client) {
-      return NextResponse.json({ error: 'Cliente nao encontrado' }, { status: 404 })
+      return NextResponse.json({ error: 'Cliente não encontrado' }, { status: 404 })
     }
 
     return NextResponse.json(client)
@@ -26,7 +26,7 @@ export async function PUT(request, { params }) {
     const client = updateClient(id, { name, vatNumber, contactName, email, phone, notes })
 
     if (!client) {
-      return NextResponse.json({ error: 'Cliente nao encontrado' }, { status: 404 })
+      return NextResponse.json({ error: 'Cliente não encontrado' }, { status: 404 })
     }
 
     return NextResponse.json(client)
@@ -42,7 +42,7 @@ export async function DELETE(request, { params }) {
 
     if (linkedWorks.length > 0) {
       return NextResponse.json(
-        { error: 'Nao e possivel remover um cliente associado a obras existentes' },
+        { error: 'Não é possível remover um cliente associado a obras existentes' },
         { status: 409 }
       )
     }
@@ -50,7 +50,7 @@ export async function DELETE(request, { params }) {
     const deleted = deleteClient(id)
 
     if (!deleted) {
-      return NextResponse.json({ error: 'Cliente nao encontrado' }, { status: 404 })
+      return NextResponse.json({ error: 'Cliente não encontrado' }, { status: 404 })
     }
 
     return NextResponse.json({ message: 'Cliente removido com sucesso' })

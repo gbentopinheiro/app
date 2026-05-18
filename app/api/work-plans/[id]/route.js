@@ -8,7 +8,7 @@ export async function GET(request, { params }) {
     const workPlan = getWorkPlanById(id)
 
     if (!workPlan) {
-      return NextResponse.json({ error: 'Work plan nao encontrado' }, { status: 404 })
+      return NextResponse.json({ error: 'Work plan não encontrado' }, { status: 404 })
     }
 
     return NextResponse.json(workPlan)
@@ -26,12 +26,12 @@ export async function PUT(request, { params }) {
     const workPlan = updateWorkPlan(id, { date })
 
     if (!workPlan) {
-      return NextResponse.json({ error: 'Work plan nao encontrado' }, { status: 404 })
+      return NextResponse.json({ error: 'Work plan não encontrado' }, { status: 404 })
     }
 
     return NextResponse.json(workPlan)
   } catch (error) {
-    const status = error.message?.includes('Ja existe') || error.message?.includes('data valida') ? 400 : 500
+    const status = error.message?.includes('Já existe') || error.message?.includes('data válida') ? 400 : 500
     return NextResponse.json({ error: error.message || 'Erro ao atualizar work plan' }, { status })
   }
 }
@@ -43,7 +43,7 @@ export async function DELETE(request, { params }) {
 
     if (linkedAssignments.length > 0) {
       return NextResponse.json(
-        { error: 'Nao e possivel remover um work plan com work assignments associados' },
+        { error: 'Não é possível remover um work plan com work assignments associados' },
         { status: 409 }
       )
     }
@@ -51,7 +51,7 @@ export async function DELETE(request, { params }) {
     const deleted = deleteWorkPlan(id)
 
     if (!deleted) {
-      return NextResponse.json({ error: 'Work plan nao encontrado' }, { status: 404 })
+      return NextResponse.json({ error: 'Work plan não encontrado' }, { status: 404 })
     }
 
     return NextResponse.json({ message: 'Work plan removido com sucesso' })

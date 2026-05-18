@@ -1,0 +1,17 @@
+
+> app@1.0.0 dev
+> next dev
+
+▲ Next.js 16.2.0 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://10.5.0.2:3000
+✓ Ready in 365ms
+Creating turbopack project {
+  dir: 'C:\\Users\\gbent\\OneDrive\\Ambiente de Trabalho\\VILAPLANO\\app',
+  testMode: true
+}
+
+ GET /people 200 in 1299ms (next.js: 1028ms, proxy.ts: 106ms, application-code: 165ms)
+ GET /api/people 200 in 387ms (next.js: 368ms, proxy.ts: 9ms, application-code: 10ms)
+ GET /api/access-identities?includeWorks=true 200 in 447ms (next.js: 433ms, proxy.ts: 8ms, application-code: 7ms)
+ GET /api/work-assignments 200 in 491ms (next.js: 410ms, proxy.ts: 8ms, application-code: 72ms)

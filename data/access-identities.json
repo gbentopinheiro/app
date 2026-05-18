@@ -1,0 +1,139 @@
+[
+  {
+    "id": 1,
+    "personId": null,
+    "role": "chef",
+    "username": "construtora.alfa",
+    "password": "alfa2026",
+    "works": [
+      1
+    ]
+  },
+  {
+    "id": 2,
+    "personId": null,
+    "role": "chef",
+    "username": "particular.valeverde",
+    "password": "vale2026",
+    "works": [
+      2
+    ]
+  },
+  {
+    "id": 3,
+    "personId": null,
+    "role": "chef",
+    "username": "logistica.horizonte",
+    "password": "horizonte2026",
+    "works": [
+      3
+    ]
+  },
+  {
+    "id": 4,
+    "personId": 1,
+    "role": "admin",
+    "username": "Abel_Pinheiro",
+    "password": "Abel123",
+    "works": []
+  },
+  {
+    "id": 5,
+    "personId": 3,
+    "role": "chef",
+    "username": "Agostinho_Fernandes",
+    "password": "Agostinho123",
+    "works": []
+  },
+  {
+    "id": 6,
+    "personId": 2,
+    "role": "responsavel",
+    "username": "Helena_Bento",
+    "password": "Helena123",
+    "works": []
+  },
+  {
+    "id": 7,
+    "personId": 18,
+    "role": "chef",
+    "username": "David_Cunha",
+    "password": "David123",
+    "works": [
+      1,
+      2
+    ]
+  },
+  {
+    "id": 8,
+    "personId": 14,
+    "role": "responsavel",
+    "username": "Carlos_Silva",
+    "password": "Carlos123",
+    "works": []
+  },
+  {
+    "id": 9,
+    "personId": 16,
+    "role": "chef",
+    "username": "Cristiano_Silva",
+    "password": "Cristiano123",
+    "works": []
+  },
+  {
+    "id": 10,
+    "personId": 22,
+    "role": "chef",
+    "username": "Ernesto_Monteiro",
+    "password": "Ernesto123",
+    "works": []
+  },
+  {
+    "id": 11,
+    "personId": 28,
+    "role": "chef",
+    "username": "Ivo_Campos",
+    "password": "Ivo123",
+    "works": []
+  },
+  {
+    "id": 12,
+    "personId": 36,
+    "role": "chef",
+    "username": "Jose_Sa",
+    "password": "Jose123",
+    "works": []
+  },
+  {
+    "id": 13,
+    "personId": 41,
+    "role": "chef",
+    "username": "Lucas_Pacheco",
+    "password": "Lucas123",
+    "works": []
+  },
+  {
+    "id": 14,
+    "personId": 64,
+    "role": "chef",
+    "username": "Vasile_Buburuzan",
+    "password": "Vasile123",
+    "works": []
+  },
+  {
+    "id": 15,
+    "personId": 61,
+    "role": "chef",
+    "username": "Simion_Buburuzan",
+    "password": "Simion123",
+    "works": []
+  },
+  {
+    "id": 16,
+    "personId": 44,
+    "role": "carpinteiro",
+    "username": "Luis_Relvas",
+    "password": "Luis123",
+    "works": []
+  }
+]

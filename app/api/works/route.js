@@ -17,7 +17,7 @@ export async function POST(request) {
     const { name, clientId, location, status, budget, defaultHourlyCost, startDate, endDate, notes, number } = body
 
     if (!name) {
-      return NextResponse.json({ error: 'Nome da obra e obrigatorio' }, { status: 400 })
+      return NextResponse.json({ error: 'Nome da obra é obrigatório' }, { status: 400 })
     }
 
     if (!clientId || !getClientById(clientId)) {
@@ -25,15 +25,15 @@ export async function POST(request) {
     }
 
     if (defaultHourlyCost !== undefined && Number(defaultHourlyCost) < 0) {
-      return NextResponse.json({ error: 'defaultHourlyCost nao pode ser negativo' }, { status: 400 })
+      return NextResponse.json({ error: 'defaultHourlyCost não pode ser negativo' }, { status: 400 })
     }
 
     if (startDate && Number.isNaN(new Date(startDate).getTime())) {
-      return NextResponse.json({ error: 'startDate tem de ser uma data valida' }, { status: 400 })
+      return NextResponse.json({ error: 'startDate tem de ser uma data válida' }, { status: 400 })
     }
 
     if (endDate && Number.isNaN(new Date(endDate).getTime())) {
-      return NextResponse.json({ error: 'endDate tem de ser uma data valida' }, { status: 400 })
+      return NextResponse.json({ error: 'endDate tem de ser uma data válida' }, { status: 400 })
     }
 
     const newWork = createWork({
