@@ -1,8 +1,26 @@
 import { NextResponse } from 'next/server'
 import { canAccessPath, getDefaultPathForRole, readSessionToken, SESSION_COOKIE_NAME } from './lib/auth.js'
+import { isChefRole, isDeveloperRole } from './lib/roles.js'
 
 function isPublicPath(pathname) {
   return pathname === '/login' || pathname.startsWith('/api/auth/')
+}
+
+function redirectToHttpsInProduction(request) {
+  if (process.env.NODE_ENV !== 'production') {
+    return null
+  }
+
+  const forwardedProtocol = request.headers.get('x-forwarded-proto')?.split(',')[0]?.trim()
+  const protocol = forwardedProtocol || request.nextUrl.protocol.replace(':', '')
+
+  if (protocol === 'https') {
+    return null
+  }
+
+  const secureUrl = request.nextUrl.clone()
+  secureUrl.protocol = 'https:'
+  return NextResponse.redirect(secureUrl, 308)
 }
 
 function clearSessionCookie(response) {
@@ -37,6 +55,12 @@ function buildForbiddenResponse(request, session) {
 }
 
 export async function proxy(request) {
+  const httpsRedirect = redirectToHttpsInProduction(request)
+
+  if (httpsRedirect) {
+    return httpsRedirect
+  }
+
   const { pathname } = request.nextUrl
 
   if (isPublicPath(pathname)) {
@@ -62,8 +86,12 @@ export async function proxy(request) {
     return buildUnauthorizedResponse(request, true)
   }
 
-  if (session.role === 'chef' && pathname === '/') {
+  if (isChefRole(session.role) && pathname === '/') {
     return NextResponse.redirect(new URL('/daily-hours', request.url))
+  }
+
+  if (isDeveloperRole(session.role) && pathname === '/') {
+    return NextResponse.redirect(new URL('/developer', request.url))
   }
 
   if (!canAccessPath(session, pathname)) {

@@ -1,5 +1,11 @@
 import { NextResponse } from 'next/server'
 import { deleteChef, getChefById, updateChef } from '../../../../lib/chefs.js'
+import { readProtectedRequestJson } from '../../../../lib/login-transport.js'
+
+function hidePassword(identity) {
+  const { password, ...safeIdentity } = identity
+  return safeIdentity
+}
 
 export async function GET(request, { params }) {
   try {
@@ -10,7 +16,7 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: 'Identidade não encontrada' }, { status: 404 })
     }
 
-    return NextResponse.json(identity)
+    return NextResponse.json(hidePassword(identity))
   } catch (error) {
     return NextResponse.json({ error: 'Erro ao obter identidade' }, { status: 500 })
   }
@@ -19,7 +25,7 @@ export async function GET(request, { params }) {
 export async function PUT(request, { params }) {
   try {
     const { id } = await params
-    const body = await request.json()
+    const body = await readProtectedRequestJson(request)
     const { personId, username, password, works } = body
 
     const identity = updateChef(id, { personId, username, password, works })
@@ -28,10 +34,19 @@ export async function PUT(request, { params }) {
       return NextResponse.json({ error: 'Identidade não encontrada' }, { status: 404 })
     }
 
-    return NextResponse.json(identity)
+    return NextResponse.json(hidePassword(identity))
   } catch (error) {
+    if (error.message?.includes('protecao') || error.message?.includes('protegido')) {
+      return NextResponse.json({ error: 'Pedido sensível não protegido.' }, { status: 400 })
+    }
+
     const status =
-      error.message?.includes('obrigatório') || error.message?.includes('Já existe') || error.message?.includes('role')
+      error.message?.includes('obrigatório') ||
+      error.message?.includes('palavra-passe') ||
+      error.message?.includes('carácter') ||
+      error.message?.includes('bytes') ||
+      error.message?.includes('Já existe') ||
+      error.message?.includes('role')
         ? 400
         : error.message?.includes('não encontrada')
           ? 404

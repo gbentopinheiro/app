@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server'
 import { getWorkAssignmentById, submitWorkAssignment } from '../../../../../lib/work-assignments.js'
 import { canManageEntireApp } from '../../../../../lib/auth.js'
+import { isFeatureEnabled } from '../../../../../lib/feature-flags.js'
 import { getServerSession } from '../../../../../lib/server-session.js'
-import { ROLE_CHEF } from '../../../../../lib/roles.js'
+import { isChefRole } from '../../../../../lib/roles.js'
 
 function canAccessAssignment(session, assignment) {
   if (!session || !assignment) return false
@@ -12,6 +13,10 @@ function canAccessAssignment(session, assignment) {
 
 export async function PATCH(request, { params }) {
   try {
+    if (!isFeatureEnabled('hoursSubmission')) {
+      return NextResponse.json({ error: 'A submissao de horas esta desativada.' }, { status: 503 })
+    }
+
     const session = await getServerSession()
 
     if (!session) {
@@ -29,7 +34,7 @@ export async function PATCH(request, { params }) {
       return NextResponse.json({ error: 'Sem permissão para esta afetação.' }, { status: 403 })
     }
 
-    if (session.role !== ROLE_CHEF) {
+    if (!isChefRole(session.role)) {
       return NextResponse.json(
         { error: 'Apenas chefes podem submeter horas.' },
         { status: 403 },

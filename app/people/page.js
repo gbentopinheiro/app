@@ -4,10 +4,14 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 import * as XLSX from 'xlsx'
+import EditPencilIcon, { editPencilButtonStyle } from '../components/EditPencilIcon'
+import { createProtectedPayload } from '../../lib/browser-protected-payload.js'
+import { getApprovedAssignmentHours } from '../../lib/work-assignment-approval.js'
 import {
   ROLE_ADMIN,
   ROLE_CARPINTEIRO,
-  ROLE_CHEF,
+  ROLE_CHEF_PRIMEIRA,
+  ROLE_CHEF_SEGUNDA,
   ROLE_FERRAJEIRO,
   ROLE_GRUISTA,
   ROLE_RESPONSAVEL,
@@ -212,13 +216,7 @@ const dangerButtonStyle = {
   cursor: 'pointer',
 }
 
-const iconButtonStyle = {
-  ...secondaryButtonStyle,
-  width: '34px',
-  height: '34px',
-  padding: 0,
-  fontSize: '14px',
-}
+const iconButtonStyle = editPencilButtonStyle
 
 const iconDangerButtonStyle = {
   ...dangerButtonStyle,
@@ -302,6 +300,16 @@ function getCurrentMonthKey() {
   return `${year}-${month}`
 }
 
+function openNativeMonthPicker(event) {
+  try {
+    if (typeof event?.currentTarget?.showPicker === 'function') {
+      event.currentTarget.showPicker()
+    }
+  } catch (error) {
+    return
+  }
+}
+
 function getDaysInMonth(monthKey) {
   const [year, month] = String(monthKey || '').split('-').map(Number)
   if (!year || !month) return 31
@@ -375,15 +383,18 @@ function buildPeopleHoursGrid(monthKey, people, assignments) {
         return
       }
 
-      const nextHours = (Number(values[dayNumber - 1]) || 0) + (Number(assignment.hours) || 0)
+      const approvedHours = getApprovedAssignmentHours(assignment)
+      const nextHours = (Number(values[dayNumber - 1]) || 0) + approvedHours
       values[dayNumber - 1] = Number(nextHours.toFixed(2))
-      totalHours += Number(assignment.hours) || 0
+      totalHours += approvedHours
     })
 
     const normalizedTotalHours = Number(totalHours.toFixed(2))
     const unitPrice = person.isMonthlyBilling ? Number(person.monthlyPrice) || 0 : Number(person.price) || 0
     const totalValue = person.isMonthlyBilling
-      ? unitPrice
+      ? normalizedTotalHours > 0
+        ? unitPrice
+        : 0
       : Number((normalizedTotalHours * unitPrice).toFixed(2))
 
     return {
@@ -392,12 +403,11 @@ function buildPeopleHoursGrid(monthKey, people, assignments) {
       values,
       totalHours: normalizedTotalHours,
       priceDisplay: person.isMonthlyBilling ? '' : formatCurrency(unitPrice),
-      totalDisplay: person.isMonthlyBilling
-        ? formatCurrency(totalValue)
-        : normalizedTotalHours > 0
+      totalDisplay:
+        normalizedTotalHours > 0
           ? formatCurrency(totalValue)
           : '-',
-      totalStyle: person.isMonthlyBilling ? 'monthly' : '',
+      totalStyle: person.isMonthlyBilling && normalizedTotalHours > 0 ? 'monthly' : '',
     }
   })
 
@@ -594,7 +604,7 @@ function buildPeoplePrintDocument(rows, summary, exportDateLabel, hoursGrid) {
                 <th>ID</th>
                 <th>Nome</th>
                 <th>Tipo</th>
-                <th>Role</th>
+                <th>Função</th>
                 <th>Preço hora</th>
                 <th>Preço mensal</th>
               </tr>
@@ -646,13 +656,15 @@ function buildPeoplePrintDocument(rows, summary, exportDateLabel, hoursGrid) {
 }
 
 function buildPeopleHoursWorksheet(hoursGrid) {
-  const titleColumnIndex = 2
+  // Estrutura do Excel independente do PDF congelado abaixo.
+  const titleColumnIndex = 0
   const firstDayColumnIndex = 2
   const hoursColumnIndex = firstDayColumnIndex + hoursGrid.dayColumns.length
   const priceColumnIndex = hoursColumnIndex + 1
   const totalColumnIndex = priceColumnIndex + 1
   const aoa = [
-    ['', '', `ANO : ${hoursGrid.yearLabel}`],
+    ['Folha de horas'],
+    [hoursGrid.monthLabel],
     [
       '',
       '',
@@ -672,7 +684,7 @@ function buildPeopleHoursWorksheet(hoursGrid) {
     ...hoursGrid.rows.map(row => [
       row.id,
       row.name,
-      ...row.values.map(value => formatHourCell(value)),
+      ...row.values.map((value, index) => (hoursGrid.dayColumns[index]?.isSunday ? 'X' : formatHourCell(value))),
       formatTotalHours(row.totalHours),
       row.priceDisplay,
       row.totalDisplay,
@@ -682,11 +694,12 @@ function buildPeopleHoursWorksheet(hoursGrid) {
   const worksheet = XLSX.utils.aoa_to_sheet(aoa)
   worksheet['!merges'] = [
     { s: { r: 0, c: titleColumnIndex }, e: { r: 0, c: totalColumnIndex } },
-    { s: { r: 1, c: 0 }, e: { r: 2, c: 0 } },
-    { s: { r: 1, c: 1 }, e: { r: 2, c: 1 } },
-    { s: { r: 1, c: hoursColumnIndex }, e: { r: 2, c: hoursColumnIndex } },
-    { s: { r: 1, c: priceColumnIndex }, e: { r: 2, c: priceColumnIndex } },
-    { s: { r: 1, c: totalColumnIndex }, e: { r: 2, c: totalColumnIndex } },
+    { s: { r: 1, c: titleColumnIndex }, e: { r: 1, c: totalColumnIndex } },
+    { s: { r: 2, c: 0 }, e: { r: 3, c: 0 } },
+    { s: { r: 2, c: 1 }, e: { r: 3, c: 1 } },
+    { s: { r: 2, c: hoursColumnIndex }, e: { r: 3, c: hoursColumnIndex } },
+    { s: { r: 2, c: priceColumnIndex }, e: { r: 3, c: priceColumnIndex } },
+    { s: { r: 2, c: totalColumnIndex }, e: { r: 3, c: totalColumnIndex } },
   ]
   worksheet['!cols'] = [
     { wch: 10 },
@@ -700,9 +713,14 @@ function buildPeopleHoursWorksheet(hoursGrid) {
   return worksheet
 }
 
-function buildPeopleListWorksheet(rows) {
+function buildPeopleListWorksheet(rows, summary, exportDateLabel) {
+  // Estrutura do Excel independente do PDF congelado abaixo.
   const aoa = [
-    ['ID', 'Nome', 'Tipo', 'Role', 'Preço hora', 'Preço mensal'],
+    ['Lista de pessoas'],
+    [`Exportado em ${exportDateLabel}`],
+    [`Total ${summary.total} | Mensais ${summary.monthly} | Horarias ${summary.hourly}`],
+    [],
+    ['ID', 'Nome', 'Tipo', 'Função', 'Preço hora', 'Preço mensal'],
     ...rows.map(row => [
       row.id,
       row.name,
@@ -714,6 +732,11 @@ function buildPeopleListWorksheet(rows) {
   ]
 
   const worksheet = XLSX.utils.aoa_to_sheet(aoa)
+  worksheet['!merges'] = [
+    { s: { r: 0, c: 0 }, e: { r: 0, c: 5 } },
+    { s: { r: 1, c: 0 }, e: { r: 1, c: 5 } },
+    { s: { r: 2, c: 0 }, e: { r: 2, c: 5 } },
+  ]
   worksheet['!cols'] = [
     { wch: 10 },
     { wch: 34 },
@@ -724,6 +747,17 @@ function buildPeopleListWorksheet(rows) {
   ]
 
   return worksheet
+}
+
+function buildPeopleExcelWorkbook(rows, summary, exportDateLabel, hoursGrid) {
+  const workbook = XLSX.utils.book_new()
+  const peopleWorksheet = buildPeopleListWorksheet(rows, summary, exportDateLabel)
+  const hoursWorksheet = buildPeopleHoursWorksheet(hoursGrid)
+
+  XLSX.utils.book_append_sheet(workbook, peopleWorksheet, 'Pessoas')
+  XLSX.utils.book_append_sheet(workbook, hoursWorksheet, `Horas-${hoursGrid.monthKey}`.slice(0, 31))
+
+  return workbook
 }
 
 function sanitizePdfText(value) {
@@ -780,6 +814,7 @@ function stringToPdfBytes(value) {
 function buildPeoplePdfDocument(rows, summary, exportDateLabel, hoursGrid) {
   // Layout do PDF da Gestão de pessoas congelado por pedido do cliente em 18/05/2026.
   // Evitar alterações visuais aqui sem validação explícita.
+  // Mudanças futuras no Excel não devem alterar esta composição do PDF.
   const pageWidth = 841.89
   const pageHeight = 595.28
   const marginLeft = 16
@@ -870,6 +905,14 @@ function buildPeoplePdfDocument(rows, summary, exportDateLabel, hoursGrid) {
     }
   }
 
+  function drawPageNumber(commands, pageNumber, totalPages) {
+    drawText(commands, `Pagina ${pageNumber} de ${totalPages}`, marginLeft, pageHeight - marginBottom + 4, {
+      fontSize: 8,
+      maxWidth: pageWidth - marginLeft - marginRight,
+      align: 'center',
+    })
+  }
+
   function addPage(commands) {
     const stream = commands.join('\n')
     const streamBytes = stringToPdfBytes(stream)
@@ -890,8 +933,13 @@ function buildPeoplePdfDocument(rows, summary, exportDateLabel, hoursGrid) {
   const listHeaderHeight = 20
   const listRowHeight = 18
   const listRowsPerPage = 23
+  const hoursRowsPerPage = 24
+  const listPageCount = Math.max(1, Math.ceil(rows.length / listRowsPerPage))
+  const hoursPageCount = Math.max(1, Math.ceil(hoursGrid.rows.length / hoursRowsPerPage))
+  const totalPages = listPageCount + hoursPageCount
 
   for (let start = 0; start < rows.length || start === 0; start += listRowsPerPage) {
+    const pageNumber = Math.floor(start / listRowsPerPage) + 1
     const pageRows = rows.slice(start, start + listRowsPerPage)
     const commands = []
     let cursorX = listTableStartX
@@ -928,7 +976,7 @@ function buildPeoplePdfDocument(rows, summary, exportDateLabel, hoursGrid) {
     )
 
     cursorY += 52
-    const headers = ['ID', 'Nome', 'Tipo', 'Role', 'Preço hora', 'Preço mensal']
+    const headers = ['ID', 'Nome', 'Tipo', 'Função', 'Preço hora', 'Preço mensal']
     headers.forEach((header, index) => {
       const align = index === 1 ? 'left' : 'center'
       drawCell(commands, cursorX, cursorY, listColumns[index], listHeaderHeight, header, {
@@ -955,6 +1003,7 @@ function buildPeoplePdfDocument(rows, summary, exportDateLabel, hoursGrid) {
       cursorY += listRowHeight
     })
 
+    drawPageNumber(commands, pageNumber, totalPages)
     addPage(commands)
   }
 
@@ -966,9 +1015,9 @@ function buildPeoplePdfDocument(rows, summary, exportDateLabel, hoursGrid) {
   const dayWidth = (pageWidth - marginLeft - marginRight - hoursNumberWidth - hoursNameWidth - hoursHoursWidth - hoursPriceWidth - hoursTotalWidth) / hoursGrid.dayColumns.length
   const hoursHeaderHeight = 16
   const hoursRowHeight = 17
-  const hoursRowsPerPage = 24
 
   for (let start = 0; start < hoursGrid.rows.length || start === 0; start += hoursRowsPerPage) {
+    const pageNumber = listPageCount + Math.floor(start / hoursRowsPerPage) + 1
     const pageRows = hoursGrid.rows.slice(start, start + hoursRowsPerPage)
     const commands = []
     let cursorY = marginTop
@@ -979,18 +1028,6 @@ function buildPeoplePdfDocument(rows, summary, exportDateLabel, hoursGrid) {
       maxWidth: pageWidth - marginLeft - marginRight,
       align: 'center',
     })
-    drawText(
-      commands,
-      `ANO : ${hoursGrid.yearLabel}`,
-      marginLeft,
-      cursorY + 22,
-      {
-        font: 'F2',
-        fontSize: 10,
-        maxWidth: pageWidth - marginLeft - marginRight,
-        align: 'center',
-      },
-    )
     drawText(commands, hoursGrid.monthLabel, marginLeft, cursorY + 36, {
       fontSize: 9,
       maxWidth: pageWidth - marginLeft - marginRight,
@@ -1103,6 +1140,7 @@ function buildPeoplePdfDocument(rows, summary, exportDateLabel, hoursGrid) {
       cursorY += hoursRowHeight
     })
 
+    drawPageNumber(commands, pageNumber, totalPages)
     addPage(commands)
   }
 
@@ -1138,8 +1176,9 @@ function escapeXml(value) {
     .replaceAll("'", '&apos;')
 }
 
-function buildExcelCell(value, styleId, type = 'String') {
-  return `<Cell ss:StyleID="${styleId}"><Data ss:Type="${type}">${escapeXml(value)}</Data></Cell>`
+function buildExcelCell(value, styleId, type = 'String', index = null) {
+  const indexAttribute = index ? ` ss:Index="${index}"` : ''
+  return `<Cell${indexAttribute} ss:StyleID="${styleId}"><Data ss:Type="${type}">${escapeXml(value)}</Data></Cell>`
 }
 
 function buildPeopleExcelDocument(rows, summary, exportDateLabel, hoursGrid) {
@@ -1161,7 +1200,9 @@ function buildPeopleExcelDocument(rows, summary, exportDateLabel, hoursGrid) {
     .map(day => buildExcelCell(day.weekdayLabel, day.isSunday ? 'sundayHeader' : 'header'))
     .join('')
   const hoursDays = hoursGrid.dayColumns
-    .map(day => buildExcelCell(day.dayNumber, day.isSunday ? 'sundayHeader' : 'header'))
+    .map((day, index) =>
+      buildExcelCell(day.dayNumber, day.isSunday ? 'sundayHeader' : 'header', 'String', index === 0 ? 3 : null),
+    )
     .join('')
   const hoursRows = hoursGrid.rows
     .map(row => {
@@ -1187,13 +1228,22 @@ function buildPeopleExcelDocument(rows, summary, exportDateLabel, hoursGrid) {
     .join('')
 
   return `<?xml version="1.0"?>
+<?mso-application progid="Excel.Sheet"?>
 <Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
  xmlns:o="urn:schemas-microsoft-com:office:office"
  xmlns:x="urn:schemas-microsoft-com:office:excel"
  xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
   <Styles>
     <Style ss:ID="title">
-      <Font ss:Bold="1" ss:Size="14"/>
+      <Font ss:Bold="1" ss:Size="16"/>
+      <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
+    </Style>
+    <Style ss:ID="metaCenter">
+      <Font ss:Bold="1" ss:Size="10"/>
+      <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
+    </Style>
+    <Style ss:ID="summaryCenter">
+      <Font ss:Bold="1" ss:Size="10"/>
       <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
     </Style>
     <Style ss:ID="subtitle">
@@ -1205,10 +1255,10 @@ function buildPeopleExcelDocument(rows, summary, exportDateLabel, hoursGrid) {
       <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
       <Interior ss:Color="#E4E7E2" ss:Pattern="Solid"/>
       <Borders>
-        <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1"/>
-        <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1"/>
-        <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1"/>
-        <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1"/>
+        <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="#738178"/>
+        <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="#738178"/>
+        <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="#738178"/>
+        <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="#738178"/>
       </Borders>
     </Style>
     <Style ss:ID="sundayHeader">
@@ -1216,37 +1266,40 @@ function buildPeopleExcelDocument(rows, summary, exportDateLabel, hoursGrid) {
       <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
       <Interior ss:Color="#F3DCCF" ss:Pattern="Solid"/>
       <Borders>
-        <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1"/>
-        <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1"/>
-        <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1"/>
-        <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1"/>
+        <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="#738178"/>
+        <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="#738178"/>
+        <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="#738178"/>
+        <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="#738178"/>
       </Borders>
     </Style>
     <Style ss:ID="idCell">
+      <Font ss:Bold="1"/>
       <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
       <Borders>
-        <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1"/>
-        <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1"/>
-        <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1"/>
-        <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1"/>
+        <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="#738178"/>
+        <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="#738178"/>
+        <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="#738178"/>
+        <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="#738178"/>
       </Borders>
     </Style>
     <Style ss:ID="nameCell">
+      <Font ss:Bold="1"/>
       <Alignment ss:Vertical="Center"/>
       <Borders>
-        <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1"/>
-        <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1"/>
-        <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1"/>
-        <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1"/>
+        <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="#738178"/>
+        <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="#738178"/>
+        <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="#738178"/>
+        <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="#738178"/>
       </Borders>
     </Style>
     <Style ss:ID="valueCell">
+      <Font ss:Bold="1"/>
       <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
       <Borders>
-        <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1"/>
-        <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1"/>
-        <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1"/>
-        <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1"/>
+        <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="#738178"/>
+        <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="#738178"/>
+        <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="#738178"/>
+        <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="#738178"/>
       </Borders>
     </Style>
     <Style ss:ID="sundayCell">
@@ -1254,30 +1307,30 @@ function buildPeopleExcelDocument(rows, summary, exportDateLabel, hoursGrid) {
       <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
       <Interior ss:Color="#F3DCCF" ss:Pattern="Solid"/>
       <Borders>
-        <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1"/>
-        <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1"/>
-        <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1"/>
-        <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1"/>
+        <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="#738178"/>
+        <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="#738178"/>
+        <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="#738178"/>
+        <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="#738178"/>
       </Borders>
     </Style>
     <Style ss:ID="totalCell">
       <Font ss:Bold="1"/>
       <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
       <Borders>
-        <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1"/>
-        <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1"/>
-        <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1"/>
-        <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1"/>
+        <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="#738178"/>
+        <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="#738178"/>
+        <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="#738178"/>
+        <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="#738178"/>
       </Borders>
     </Style>
     <Style ss:ID="monthlyTotalCell">
       <Font ss:Bold="1" ss:Color="#C81E1E"/>
       <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
       <Borders>
-        <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1"/>
-        <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1"/>
-        <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1"/>
-        <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1"/>
+        <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="#738178"/>
+        <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="#738178"/>
+        <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="#738178"/>
+        <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="#738178"/>
       </Borders>
     </Style>
     <Style ss:ID="summaryLabel">
@@ -1285,88 +1338,77 @@ function buildPeopleExcelDocument(rows, summary, exportDateLabel, hoursGrid) {
       <Alignment ss:Horizontal="Right" ss:Vertical="Center"/>
       <Interior ss:Color="#EEF3EF" ss:Pattern="Solid"/>
       <Borders>
-        <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1"/>
-        <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1"/>
-        <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1"/>
-        <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1"/>
+        <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="#738178"/>
+        <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="#738178"/>
+        <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="#738178"/>
+        <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="#738178"/>
       </Borders>
     </Style>
     <Style ss:ID="summaryValue">
       <Font ss:Bold="1"/>
       <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
       <Borders>
-        <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1"/>
-        <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1"/>
-        <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1"/>
-        <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1"/>
+        <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="#738178"/>
+        <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="#738178"/>
+        <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="#738178"/>
+        <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="#738178"/>
       </Borders>
     </Style>
   </Styles>
   <Worksheet ss:Name="Pessoas">
-    <Table>
+    <Table ss:ExpandedColumnCount="6" ss:ExpandedRowCount="${rows.length + 5}">
       <Column ss:Width="60"/>
-      <Column ss:Width="240"/>
+      <Column ss:Width="230"/>
       <Column ss:Width="90"/>
       <Column ss:Width="110"/>
       <Column ss:Width="90"/>
       <Column ss:Width="100"/>
-      <Row ss:Height="26">
+      <Row ss:Height="28">
         <Cell ss:MergeAcross="5" ss:StyleID="title"><Data ss:Type="String">Lista de pessoas</Data></Cell>
       </Row>
       <Row>
-        <Cell ss:MergeAcross="5" ss:StyleID="subtitle"><Data ss:Type="String">${escapeXml(`Exportado em ${exportDateLabel}`)}</Data></Cell>
+        <Cell ss:MergeAcross="5" ss:StyleID="metaCenter"><Data ss:Type="String">${escapeXml(`Exportado em ${exportDateLabel}`)}</Data></Cell>
       </Row>
-      <Row ss:Height="8"/>
+      <Row>
+        <Cell ss:MergeAcross="5" ss:StyleID="summaryCenter"><Data ss:Type="String">${escapeXml(`Total ${summary.total} | Mensais ${summary.monthly} | Horarias ${summary.hourly}`)}</Data></Cell>
+      </Row>
+      <Row ss:Height="10"/>
       <Row>
         ${buildExcelCell('ID', 'header')}
         ${buildExcelCell('Nome', 'header')}
         ${buildExcelCell('Tipo', 'header')}
-        ${buildExcelCell('Role', 'header')}
+        ${buildExcelCell('Função', 'header')}
         ${buildExcelCell('Preço hora', 'header')}
         ${buildExcelCell('Preço mensal', 'header')}
       </Row>
       ${listRows}
-      <Row ss:Height="8"/>
-      <Row>
-        <Cell ss:MergeAcross="4" ss:StyleID="summaryLabel"><Data ss:Type="String">Pessoas totais</Data></Cell>
-        <Cell ss:StyleID="summaryValue"><Data ss:Type="String">${escapeXml(summary.total)}</Data></Cell>
-      </Row>
-      <Row>
-        <Cell ss:MergeAcross="4" ss:StyleID="summaryLabel"><Data ss:Type="String">Mensais</Data></Cell>
-        <Cell ss:StyleID="summaryValue"><Data ss:Type="String">${escapeXml(summary.monthly)}</Data></Cell>
-      </Row>
-      <Row>
-        <Cell ss:MergeAcross="4" ss:StyleID="summaryLabel"><Data ss:Type="String">Horárias</Data></Cell>
-        <Cell ss:StyleID="summaryValue"><Data ss:Type="String">${escapeXml(summary.hourly)}</Data></Cell>
-      </Row>
     </Table>
   </Worksheet>
   <Worksheet ss:Name="${escapeXml(`Horas-${hoursGrid.monthKey}`.slice(0, 31))}">
-    <Table>
+    <Table ss:ExpandedColumnCount="${hoursGrid.dayColumns.length + 5}" ss:ExpandedRowCount="${hoursGrid.rows.length + 4}">
       <Column ss:Width="60"/>
-      <Column ss:Width="260"/>
-      ${hoursGrid.dayColumns.map(() => '<Column ss:Width="26"/>').join('')}
-      <Column ss:Width="55"/>
-      <Column ss:Width="80"/>
-      <Column ss:Width="90"/>
-      <Row ss:Height="26">
-        <Cell ss:MergeAcross="${hoursGrid.dayColumns.length + 4}" ss:StyleID="title"><Data ss:Type="String">${escapeXml(`ANO : ${hoursGrid.yearLabel}`)}</Data></Cell>
+      <Column ss:Width="170"/>
+      ${hoursGrid.dayColumns.map(() => '<Column ss:Width="28"/>').join('')}
+      <Column ss:Width="44"/>
+      <Column ss:Width="66"/>
+      <Column ss:Width="70"/>
+      <Row ss:Height="28">
+        <Cell ss:MergeAcross="${hoursGrid.dayColumns.length + 4}" ss:StyleID="title"><Data ss:Type="String">Folha de horas</Data></Cell>
       </Row>
       <Row>
-        ${buildExcelCell('NUMERO', 'header')}
-        ${buildExcelCell('NOME', 'header')}
+        <Cell ss:MergeAcross="${hoursGrid.dayColumns.length + 4}" ss:StyleID="summaryCenter"><Data ss:Type="String">${escapeXml(hoursGrid.monthLabel)}</Data></Cell>
+      </Row>
+      <Row ss:Height="10"/>
+      <Row>
+        <Cell ss:MergeDown="1" ss:StyleID="header"><Data ss:Type="String">NUMERO</Data></Cell>
+        <Cell ss:MergeDown="1" ss:StyleID="header"><Data ss:Type="String">NOME</Data></Cell>
         ${hoursWeekdays}
-        ${buildExcelCell('HORAS', 'header')}
-        ${buildExcelCell('PREÇO', 'header')}
-        ${buildExcelCell('TOTAL', 'header')}
+        <Cell ss:MergeDown="1" ss:StyleID="header"><Data ss:Type="String">HORAS</Data></Cell>
+        <Cell ss:MergeDown="1" ss:StyleID="header"><Data ss:Type="String">PREÇO</Data></Cell>
+        <Cell ss:MergeDown="1" ss:StyleID="header"><Data ss:Type="String">TOTAL</Data></Cell>
       </Row>
       <Row>
-        ${buildExcelCell('', 'header')}
-        ${buildExcelCell('', 'header')}
         ${hoursDays}
-        ${buildExcelCell('', 'header')}
-        ${buildExcelCell('', 'header')}
-        ${buildExcelCell('', 'header')}
       </Row>
       ${hoursRows}
     </Table>
@@ -1582,18 +1624,12 @@ export default function PeoplePage() {
     if (form.price === '' || Number(form.price) < 0) {
       nextErrors.price = 'O preço hora não pode ser negativo.'
     }
-    const wantsAccessConfiguration =
-      roleNeedsAccess ||
-      Boolean(form.accessIdentityId) ||
-      Boolean(reusableAccessIdentity) ||
-      Boolean(String(form.accessUsername || '').trim()) ||
-      Boolean(String(form.accessPassword || '').trim()) ||
-      form.accessWorkIds.length > 0
+    const wantsAccessConfiguration = roleNeedsAccess
 
     if (!form.role) nextErrors.role = 'Seleciona o role.'
-    if (wantsAccessConfiguration && !form.accessUsername.trim()) nextErrors.accessUsername = 'O username de acesso é obrigatório.'
+    if (wantsAccessConfiguration && !form.accessUsername.trim()) nextErrors.accessUsername = 'O nome de utilizador é obrigatório.'
     if (wantsAccessConfiguration && !form.accessIdentityId && !reusableAccessIdentity && !form.accessPassword.trim()) {
-      nextErrors.accessPassword = 'A password de acesso é obrigatória.'
+      nextErrors.accessPassword = 'A palavra-passe é obrigatória.'
     }
 
     setFormErrors(nextErrors)
@@ -1681,21 +1717,24 @@ export default function PeoplePage() {
         price: Number(form.price),
         monthlyPrice: Number(form.monthlyPrice),
         role: form.role,
-        accessIdentity: {
-          id: form.accessIdentityId,
-          username: form.accessUsername,
-          password: form.accessPassword,
-          works: form.accessWorkIds.map(workId => Number(workId)),
-        },
+        accessIdentity: roleNeedsAccess
+          ? {
+              id: form.accessIdentityId,
+              username: form.accessUsername,
+              password: form.accessPassword,
+              works: form.accessWorkIds.map(workId => Number(workId)),
+            }
+          : null,
       }
 
       const url = form.id ? `/api/people/${form.id}` : '/api/people'
       const method = form.id ? 'PUT' : 'POST'
+      const protectedPayload = await createProtectedPayload(payload)
 
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ protectedPayload }),
       })
 
       const data = await response.json()
@@ -1750,7 +1789,7 @@ export default function PeoplePage() {
     const rows = getPeopleExportRows(exportPeople)
 
     if (exportSelectionMode === 'selected' && exportPeople.length === 0) {
-      setError('Seleciona pelo menos um funcionário para exportar.')
+      setError('Seleciona pelo menos uma pessoa para exportar.')
       setSuccess('')
       return
     }
@@ -1767,17 +1806,17 @@ export default function PeoplePage() {
 
     try {
       const hoursGrid = buildPeopleHoursGrid(exportMonthKey, exportPeople, assignments)
-      const workbook = XLSX.utils.book_new()
-      const listWorksheet = buildPeopleListWorksheet(rows)
-      const hoursWorksheet = buildPeopleHoursWorksheet(hoursGrid)
-      XLSX.utils.book_append_sheet(workbook, listWorksheet, 'Pessoas')
-      XLSX.utils.book_append_sheet(workbook, hoursWorksheet, `Horas-${exportMonthKey}`.slice(0, 31))
-
-      const workbookBuffer = XLSX.write(workbook, {
+      const workbook = buildPeopleExcelWorkbook(
+        rows,
+        exportSummary,
+        formatDateLabel(getExportDateLabel()),
+        hoursGrid,
+      )
+      const workbookBytes = XLSX.write(workbook, {
         bookType: 'xlsx',
         type: 'array',
       })
-      const blob = new Blob([workbookBuffer], {
+      const blob = new Blob([workbookBytes], {
         type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       })
       const url = URL.createObjectURL(blob)
@@ -1802,7 +1841,7 @@ export default function PeoplePage() {
     const rows = getPeopleExportRows(exportPeople)
 
     if (exportSelectionMode === 'selected' && exportPeople.length === 0) {
-      setError('Seleciona pelo menos um funcionário para exportar.')
+      setError('Seleciona pelo menos uma pessoa para exportar.')
       setSuccess('')
       return
     }
@@ -1903,7 +1942,7 @@ export default function PeoplePage() {
             Gestão de pessoas
           </p>
           <h1 style={{ margin: '10px 0 12px', fontSize: '46px', lineHeight: 1.05 }}>
-            Lista e manutenção de pessoas
+            Gestão e manutenção de pessoas
           </h1>
 
         </section>
@@ -1926,11 +1965,12 @@ export default function PeoplePage() {
 
           <div style={buttonGroupStyle}>
             <label style={{ display: 'none', gap: '6px', fontSize: '12px', color: 'var(--vp-text-soft)' }}>
-              Mês exportação
+              Mês da exportação
               <input
                 type="month"
                 value={exportMonthKey}
                 onChange={event => setExportMonthKey(event.target.value || getCurrentMonthKey())}
+                onClick={openNativeMonthPicker}
                 style={{ ...inputStyle, marginTop: 0, minWidth: '170px' }}
               />
             </label>
@@ -1987,11 +2027,12 @@ export default function PeoplePage() {
                 </label>
 
                 <label style={compactFieldStyle}>
-                  Role
+                  Função
                   <select name="role" value={form.role} onChange={handleChange} style={inputStyle}>
                     <option value={ROLE_ADMIN}>Administrador</option>
                     <option value={ROLE_RESPONSAVEL}>Responsável</option>
-                    <option value={ROLE_CHEF}>Chefe</option>
+                    <option value={ROLE_CHEF_PRIMEIRA}>Chefe de primeira</option>
+                    <option value={ROLE_CHEF_SEGUNDA}>Chefe de segunda</option>
                     <option value={ROLE_CARPINTEIRO}>Carpinteiro</option>
                     <option value={ROLE_FERRAJEIRO}>Ferrajeiro</option>
                     <option value={ROLE_TROLHA}>Trolha</option>
@@ -2016,46 +2057,48 @@ export default function PeoplePage() {
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gap: '12px' }}>
-                <p style={formSectionTitleStyle}>Acesso à aplicação</p>
-                <div style={{ ...personFormGridStyle, columnGap: '32px' }}>
-                <label style={mediumFieldStyle}>
-                  Username de acesso
-                  <input type="text" name="accessUsername" value={form.accessUsername} onChange={handleChange} style={inputStyle} />
-                  {formErrors.accessUsername && <span style={{ color: '#b42318', fontSize: '13px' }}>{formErrors.accessUsername}</span>}
-                </label>
+              {roleNeedsAccess && (
+                <div style={{ display: 'grid', gap: '12px' }}>
+                  <p style={formSectionTitleStyle}>Acesso à aplicação</p>
+                  <div style={{ ...personFormGridStyle, columnGap: '32px' }}>
+                    <label style={mediumFieldStyle}>
+                      Nome de utilizador
+                      <input type="text" name="accessUsername" value={form.accessUsername} onChange={handleChange} style={inputStyle} />
+                      {formErrors.accessUsername && <span style={{ color: '#b42318', fontSize: '13px' }}>{formErrors.accessUsername}</span>}
+                    </label>
 
-                <label style={mediumFieldStyle}>
-                  Password de acesso
-                  <input type="text" name="accessPassword" value={form.accessPassword} onChange={handleChange} style={inputStyle} />
-                  {(form.accessIdentityId || reusableAccessIdentity) && (
-                    <span style={{ display: 'block', marginTop: '6px', color: 'var(--vp-text-muted)', fontSize: '13px' }}>
-                      Deixa em branco para manter a password atual.
-                    </span>
-                  )}
-                  {formErrors.accessPassword && <span style={{ color: '#b42318', fontSize: '13px' }}>{formErrors.accessPassword}</span>}
-                </label>
+                    <label style={mediumFieldStyle}>
+                      Palavra-passe
+                      <input type="text" name="accessPassword" value={form.accessPassword} onChange={handleChange} style={inputStyle} />
+                      {(form.accessIdentityId || reusableAccessIdentity) && (
+                        <span style={{ display: 'block', marginTop: '6px', color: 'var(--vp-text-muted)', fontSize: '13px' }}>
+                          Deixa em branco para manter a password atual.
+                        </span>
+                      )}
+                      {formErrors.accessPassword && <span style={{ color: '#b42318', fontSize: '13px' }}>{formErrors.accessPassword}</span>}
+                    </label>
 
-                {formUsesWorkScope && (
-                  <label style={{ ...labelStyle, ...wideFieldStyle }}>
-                    Obras permitidas
-                    <select
-                      multiple
-                      name="accessWorkIds"
-                      value={form.accessWorkIds}
-                      onChange={handleChange}
-                      style={{ ...inputStyle, minHeight: '180px' }}
-                    >
-                      {accessWorks.map(work => (
-                        <option key={work.id} value={work.id}>
-                          #{work.number} - {work.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                )}
+                    {formUsesWorkScope && (
+                      <label style={{ ...labelStyle, ...wideFieldStyle }}>
+                        Obras permitidas
+                        <select
+                          multiple
+                          name="accessWorkIds"
+                          value={form.accessWorkIds}
+                          onChange={handleChange}
+                          style={{ ...inputStyle, minHeight: '180px' }}
+                        >
+                          {accessWorks.map(work => (
+                            <option key={work.id} value={work.id}>
+                              #{work.number} - {work.name}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {error && <p style={{ margin: 0, color: '#b42318' }}>{error}</p>}
               {success && <p style={{ margin: 0, color: '#1f7a45' }}>{success}</p>}
@@ -2122,7 +2165,7 @@ export default function PeoplePage() {
                     title="Editar pessoa"
                     aria-label="Editar pessoa"
                   >
-                    ✎
+                    <EditPencilIcon />
                   </button>
                 </div>
 
@@ -2148,7 +2191,7 @@ export default function PeoplePage() {
                     </article>
                   )}
                   <article style={statCardStyle}>
-                    <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>Role</div>
+                    <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>Função</div>
                     <div style={{ marginTop: '8px', fontSize: '28px', fontWeight: 700 }}>
                       {getRoleLabel(selectedPerson.role)}
                     </div>
@@ -2160,7 +2203,7 @@ export default function PeoplePage() {
                     <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>Acesso à aplicação</div>
                     <div style={{ marginTop: '8px', display: 'grid', gap: '8px' }}>
                       <div>
-                        <strong>Username:</strong> {selectedAccessIdentity?.username || 'Sem acesso configurado'}
+                        <strong>Nome de utilizador:</strong> {selectedAccessIdentity?.username || 'Sem acesso configurado'}
                       </div>
                       {roleUsesWorkScope(selectedPerson.role) && (
                         <div>
@@ -2176,7 +2219,7 @@ export default function PeoplePage() {
 
                 <div style={{ display: 'grid', gap: '12px' }}>
                   <div>
-                    <h3 style={{ margin: 0, fontSize: '24px' }}>Acesso mensal</h3>
+                    <h3 style={{ margin: 0, fontSize: '24px' }}>Histórico mensal</h3>
                   </div>
 
                   {monthlyAssignmentSummary.length === 0 && (
@@ -2264,6 +2307,7 @@ export default function PeoplePage() {
                   type="month"
                   value={exportMonthKey}
                   onChange={event => setExportMonthKey(event.target.value || getCurrentMonthKey())}
+                  onClick={openNativeMonthPicker}
                   style={{ ...inputStyle, minHeight: '52px', fontSize: '16px', width: '200px' }}
                 />
               </label>
@@ -2272,7 +2316,7 @@ export default function PeoplePage() {
                 <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>Resumo</div>
                 <div style={{ marginTop: '8px', fontSize: '28px', fontWeight: 700 }}>{exportSummary.total}</div>
                 <div style={{ marginTop: '4px', color: 'var(--vp-text-muted)' }}>
-                  {exportSelectionMode === 'all' ? 'todos os funcionários' : 'funcionários selecionados'}
+                  {exportSelectionMode === 'all' ? 'todas as pessoas' : 'pessoas selecionadas'}
                 </div>
                 <div style={{ marginTop: '8px', fontSize: '13px', color: 'var(--vp-text-muted)' }}>
                   {formatMonthLabel(exportMonthKey)}
@@ -2297,7 +2341,7 @@ export default function PeoplePage() {
                   checked={exportSelectionMode === 'selected'}
                   onChange={() => setExportSelectionMode('selected')}
                 />
-                Só alguns
+                Selecionar pessoas
               </label>
             </div>
 
@@ -2305,7 +2349,7 @@ export default function PeoplePage() {
               <div style={{ display: 'grid', gap: '14px', marginTop: '18px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
                   <div>
-                    <h3 style={{ margin: 0 }}>Selecionar funcionários</h3>
+                    <h3 style={{ margin: 0 }}>Selecionar pessoas</h3>
                     <p style={{ margin: '8px 0 0', color: 'var(--vp-text-muted)' }}>
                       Marca apenas as pessoas que queres incluir nesta exportação.
                     </p>
@@ -2325,7 +2369,7 @@ export default function PeoplePage() {
                   type="search"
                   value={exportSearchTerm}
                   onChange={event => setExportSearchTerm(event.target.value)}
-                  placeholder="Pesquisar funcionário pelo nome"
+                  placeholder="Pesquisar pessoa pelo nome"
                   style={{ ...inputStyle, marginTop: 0 }}
                 />
 
@@ -2369,7 +2413,7 @@ export default function PeoplePage() {
                   })}
 
                   {filteredExportPeople.length === 0 && (
-                    <p style={{ margin: 0, color: 'var(--vp-text-muted)' }}>Nenhum funcionário encontrado com esse nome.</p>
+                    <p style={{ margin: 0, color: 'var(--vp-text-muted)' }}>Nenhuma pessoa encontrada com esse nome.</p>
                   )}
                 </div>
               </div>
@@ -2396,4 +2440,6 @@ export default function PeoplePage() {
     </main>
   )
 }
+
+
 

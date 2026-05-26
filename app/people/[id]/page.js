@@ -1,7 +1,9 @@
-import Link from 'next/link'
+﻿import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { getAccessIdentityByPersonId } from '../../../lib/access-identities.js'
+import { getAllDailyWorkNotes } from '../../../lib/daily-work-notes.js'
 import { getPersonById } from '../../../lib/people.js'
+import { getApprovedAssignmentTotalCost, isAssignmentApproved } from '../../../lib/work-assignment-approval.js'
 import { getRoleLabel, roleRequiresAppAccess, roleUsesWorkScope } from '../../../lib/roles.js'
 import { getAllWorkAssignments } from '../../../lib/work-assignments.js'
 
@@ -59,6 +61,61 @@ const statCardStyle = {
   boxShadow: 'var(--vp-stat-shadow)',
 }
 
+const activityGridStyle = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+  gap: '12px',
+}
+
+const activityListStyle = {
+  display: 'grid',
+  gap: '8px',
+  marginTop: '12px',
+  maxHeight: '220px',
+  overflowY: 'auto',
+  paddingRight: '4px',
+}
+
+const activityItemStyle = {
+  display: 'grid',
+  gap: '4px',
+  padding: '10px 12px',
+  borderRadius: '14px',
+  background: 'var(--vp-surface)',
+  border: '1px solid var(--vp-border)',
+}
+
+const activityMetaStyle = {
+  margin: 0,
+  color: 'var(--vp-text-soft)',
+  fontSize: '11px',
+  fontWeight: 900,
+  letterSpacing: '0.08em',
+  textTransform: 'uppercase',
+}
+
+const activityTextStyle = {
+  margin: 0,
+  color: '#10233e',
+  fontSize: '13px',
+  lineHeight: 1.45,
+  fontWeight: 800,
+}
+
+const exportButtonStyle = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  minHeight: '42px',
+  padding: '0 18px',
+  borderRadius: '999px',
+  background: 'linear-gradient(135deg, #2563eb 0%, #ff8c00 100%)',
+  color: '#ffffff',
+  fontWeight: 900,
+  textDecoration: 'none',
+  boxShadow: '0 14px 30px rgba(37, 99, 235, 0.18)',
+}
+
 function formatMonthLabel(monthKey) {
   const [year, month] = monthKey.split('-').map(Number)
   return new Intl.DateTimeFormat('pt-PT', {
@@ -76,6 +133,26 @@ function formatDateLabel(dateString) {
     month: '2-digit',
     year: 'numeric',
   }).format(date)
+}
+
+function formatDateTime(value) {
+  const date = new Date(value)
+
+  if (Number.isNaN(date.getTime())) {
+    return 'Sem data'
+  }
+
+  return new Intl.DateTimeFormat('pt-PT', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date)
+}
+
+function sortActivityEvents(events) {
+  return events.sort((left, right) => new Date(right.date).getTime() - new Date(left.date).getTime())
 }
 
 function buildMonthlyAssignmentSummary(assignments) {
@@ -137,6 +214,69 @@ function buildMonthlyAssignmentSummary(assignments) {
     }))
 }
 
+function buildPersonActivityGroups(person, assignments) {
+  const notes = getAllDailyWorkNotes({ authorId: person.id })
+
+  const submittedEvents = sortActivityEvents(
+    assignments
+      .filter(assignment => assignment.submitted && assignment.submittedAt)
+      .map(assignment => ({
+        id: `submitted-${assignment.id}`,
+        date: assignment.submittedAt,
+        actor: assignment.submittedBy || person.name,
+        text: `${assignment.work?.name || `Obra ${assignment.workId}`} - ${assignment.hours}h submetidas`,
+      })),
+  ).slice(0, 20)
+
+  const approvedEvents = sortActivityEvents(
+    assignments
+      .filter(assignment => isAssignmentApproved(assignment))
+      .map(assignment => ({
+        id: `approved-${assignment.id}`,
+        date: assignment.submittedAt || assignment.date,
+        actor: 'Administrador',
+        text: `${assignment.work?.name || `Obra ${assignment.workId}`} - ${assignment.approvedHours}h aprovadas`,
+      })),
+  ).slice(0, 20)
+
+  const noteEvents = sortActivityEvents(
+    notes
+      .filter(note => note.note)
+      .map(note => ({
+        id: `note-${note.id}`,
+        date: note.updatedAt,
+        actor: note.authorName || person.name,
+        text: `${note.work?.name || `Obra ${note.workId}`} - ${note.note}`,
+      })),
+  ).slice(0, 20)
+
+  return { submittedEvents, approvedEvents, noteEvents }
+}
+
+function ActivitySection({ title, events = [], emptyText }) {
+  return (
+    <article style={statCardStyle}>
+      <h3 style={{ margin: 0, fontSize: '18px' }}>{title}</h3>
+      <div style={activityListStyle}>
+        {events.length > 0 ? (
+          events.map(event => (
+            <div key={event.id} style={activityItemStyle}>
+              <p style={activityMetaStyle}>
+                {event.actor} - {formatDateTime(event.date)}
+              </p>
+              <p style={activityTextStyle}>{event.text}</p>
+            </div>
+          ))
+        ) : (
+          <div style={activityItemStyle}>
+            <p style={activityTextStyle}>{emptyText}</p>
+          </div>
+        )}
+      </div>
+    </article>
+  )
+}
+
 export default async function PersonDetailPage({ params }) {
   const { id } = await params
   const person = getPersonById(id)
@@ -148,8 +288,9 @@ export default async function PersonDetailPage({ params }) {
   const accessIdentity = getAccessIdentityByPersonId(id)
   const assignments = getAllWorkAssignments({ personId: id })
   const monthlyAssignmentSummary = buildMonthlyAssignmentSummary(assignments)
+  const activityGroups = buildPersonActivityGroups(person, assignments)
   const totalHours = Number(assignments.reduce((sum, assignment) => sum + (Number(assignment.hours) || 0), 0).toFixed(2))
-  const totalCost = Number(assignments.reduce((sum, assignment) => sum + (Number(assignment.totalCost) || 0), 0).toFixed(2))
+  const totalCost = Number(assignments.reduce((sum, assignment) => sum + getApprovedAssignmentTotalCost(assignment), 0).toFixed(2))
   const workedDays = new Set(assignments.map(assignment => assignment.date).filter(Boolean)).size
 
   return (
@@ -159,13 +300,10 @@ export default async function PersonDetailPage({ params }) {
           <Link href="/people" style={{ color: 'var(--vp-accent)', textDecoration: 'none', fontWeight: 700 }}>
             Voltar à gestão de pessoas
           </Link>
-          <p style={{ margin: '18px 0 0', textTransform: 'uppercase', letterSpacing: '0.12em', fontSize: '12px', color: 'var(--vp-text-soft)' }}>
-            Pessoa #{person.id}
-          </p>
           <h1 style={{ margin: '10px 0 12px', fontSize: '46px', lineHeight: 1.05 }}>{person.name}</h1>
-          <p style={{ margin: 0, color: 'var(--vp-text-muted)' }}>
+          {false && <p style={{ margin: 0, color: 'var(--vp-text-muted)' }}>
             Página independente com os dados principais, acesso à aplicação e histórico mensal.
-          </p>
+          </p>}
         </section>
 
         <section style={statGridStyle}>
@@ -184,7 +322,7 @@ export default async function PersonDetailPage({ params }) {
             </div>
           </article>
           <article style={statCardStyle}>
-            <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>Role</div>
+            <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>Função</div>
             <div style={{ marginTop: '8px', fontSize: '28px', fontWeight: 700 }}>{getRoleLabel(person.role)}</div>
           </article>
           <article style={statCardStyle}>
@@ -237,7 +375,7 @@ export default async function PersonDetailPage({ params }) {
                 <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>Acesso à aplicação</div>
                 <div style={{ marginTop: '8px', display: 'grid', gap: '8px' }}>
                   <div>
-                    <strong>Username:</strong> {accessIdentity?.username || 'Sem acesso configurado'}
+                    <strong>Nome de utilizador:</strong> {accessIdentity?.username || 'Sem acesso configurado'}
                   </div>
                   {roleUsesWorkScope(person.role) && (
                     <div>
@@ -256,7 +394,7 @@ export default async function PersonDetailPage({ params }) {
         <section style={panelStyle}>
           <div style={{ display: 'grid', gap: '12px' }}>
             <div>
-              <h2 style={{ margin: 0, fontSize: '24px' }}>Acesso mensal</h2>
+              <h2 style={{ margin: 0, fontSize: '24px' }}>Histórico mensal</h2>
               <p style={{ margin: '6px 0 0', color: 'var(--vp-text-muted)' }}>
                 Horas agrupadas por mês, com detalhe por dia e por obra.
               </p>
@@ -322,7 +460,48 @@ export default async function PersonDetailPage({ params }) {
             ))}
           </div>
         </section>
+
+        {(
+          <section style={{ ...panelStyle, padding: '18px' }}>
+            <div style={{ display: 'grid', gap: '16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                <div>
+                  <h2 style={{ margin: 0, fontSize: '24px' }}>Histórico de atividades</h2>
+                  <p style={{ margin: '6px 0 0', color: 'var(--vp-text-muted)' }}>
+                    Alterações registadas nas horas desta pessoa.
+                  </p>
+                </div>
+                <Link href={`/api/people/${person.id}/activity-history?format=pdf`} style={exportButtonStyle}>
+                  Exportar PDF
+                </Link>
+              </div>
+
+              <div style={{ ...activityGridStyle, alignItems: 'start' }}>
+                <ActivitySection
+                  title="Horas submetidas"
+                  events={activityGroups.submittedEvents}
+                  emptyText="Ainda não existem horas submetidas."
+                />
+                <ActivitySection
+                  title="Horas aprovadas"
+                  events={activityGroups.approvedEvents}
+                  emptyText="Ainda não existem horas aprovadas."
+                />
+                <ActivitySection
+                  title="Notas da obra"
+                  events={activityGroups.noteEvents}
+                  emptyText="Ainda não existem notas registadas."
+                />
+              </div>
+            </div>
+          </section>
+        )}
       </div>
     </main>
   )
 }
+
+
+
+
+

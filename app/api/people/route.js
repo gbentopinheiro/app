@@ -7,6 +7,7 @@ import {
   updateAccessIdentity,
 } from '../../../lib/access-identities.js'
 import { roleRequiresAppAccess, roleUsesWorkScope } from '../../../lib/roles.js'
+import { readProtectedRequestJson } from '../../../lib/login-transport.js'
 
 function hasAccessConfiguration(accessIdentity) {
   return Boolean(
@@ -28,7 +29,7 @@ function getIdentityWorks(accessIdentity, existingAccessIdentity, role) {
 
 function getAccessPayload(personId, role, accessIdentity, existingAccessIdentity = null) {
   const username = String(accessIdentity?.username || existingAccessIdentity?.username || '').trim()
-  const password = String(accessIdentity?.password || '').trim()
+  const password = String(accessIdentity?.password || '')
 
   if (!username) {
     throw new Error('username de acesso é obrigatório para o role selecionado')
@@ -48,6 +49,10 @@ function getAccessPayload(personId, role, accessIdentity, existingAccessIdentity
 }
 
 function syncAccessIdentityForPerson(personId, role, accessIdentity) {
+  if (!roleRequiresAppAccess(role)) {
+    return null
+  }
+
   const currentAccessIdentity = getAccessIdentityByPersonId(personId)
   const unlinkedIdentityWithUsername = accessIdentity?.username
     ? getAccessIdentityByUsername(accessIdentity.username)
@@ -56,7 +61,7 @@ function syncAccessIdentityForPerson(personId, role, accessIdentity) {
     currentAccessIdentity ||
     (unlinkedIdentityWithUsername && !unlinkedIdentityWithUsername.personId ? unlinkedIdentityWithUsername : null)
   const shouldPersistAccessIdentity =
-    roleRequiresAppAccess(role) || Boolean(reusableAccessIdentity) || hasAccessConfiguration(accessIdentity)
+    Boolean(reusableAccessIdentity) || hasAccessConfiguration(accessIdentity)
 
   if (!shouldPersistAccessIdentity) {
     return null
@@ -75,6 +80,9 @@ function getErrorStatus(error) {
   if (
     message.includes('obrigatório') ||
     message.includes('obrigatória') ||
+    message.includes('palavra-passe') ||
+    message.includes('carácter') ||
+    message.includes('bytes') ||
     message.includes('Já existe') ||
     message.includes('role')
   ) {
@@ -99,7 +107,7 @@ export async function GET() {
 
 export async function POST(request) {
   try {
-    const body = await request.json()
+    const body = await readProtectedRequestJson(request)
     const { name, price, monthlyPrice, role, accessIdentity } = body
 
     if (!name || price === undefined || monthlyPrice === undefined) {
@@ -121,6 +129,10 @@ export async function POST(request) {
 
     return NextResponse.json(newPerson, { status: 201 })
   } catch (error) {
+    if (error.message?.includes('protecao') || error.message?.includes('protegido')) {
+      return NextResponse.json({ error: 'Pedido sensível não protegido.' }, { status: 400 })
+    }
+
     return NextResponse.json({ error: error.message || 'Erro ao criar pessoa' }, { status: getErrorStatus(error) })
   }
 }

@@ -1,0 +1,8 @@
+{
+  "activityHistory": true,
+  "notificationsCenter": true,
+  "calendarManagement": true,
+  "dailyWorkNotes": true,
+  "hoursSubmission": true,
+  "hoursApproval": true
+}

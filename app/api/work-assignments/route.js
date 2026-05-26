@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server'
-import { createWorkAssignment, getAllWorkAssignments, getAssignmentDefaults } from '../../../lib/work-assignments.js'
-import { canManageEntireApp } from '../../../lib/auth.js'
+import { canAccessAssignmentsOverview, canManageEntireApp } from '../../../lib/auth.js'
+import { isDailyPlanLocked } from '../../../lib/daily-plan-lock.js'
+import { isChefRole } from '../../../lib/roles.js'
 import { getServerSession } from '../../../lib/server-session.js'
-import { ROLE_CHEF } from '../../../lib/roles.js'
+import { createWorkAssignment, getAllWorkAssignments, getAssignmentDefaults } from '../../../lib/work-assignments.js'
+import { getWorkPlanById } from '../../../lib/work-plans.js'
 
 function canAccessWork(session, workId) {
   if (!session) return false
@@ -11,7 +13,7 @@ function canAccessWork(session, workId) {
 }
 
 function filterAssignmentsForSession(assignments, session) {
-  if (!session || canManageEntireApp(session.role)) {
+  if (!session || canAccessAssignmentsOverview(session.role)) {
     return assignments
   }
 
@@ -19,7 +21,7 @@ function filterAssignmentsForSession(assignments, session) {
 }
 
 function filterDefaultsForSession(defaults, session) {
-  if (!session || canManageEntireApp(session.role)) {
+  if (!session || canAccessAssignmentsOverview(session.role)) {
     return defaults
   }
 
@@ -30,7 +32,7 @@ function filterDefaultsForSession(defaults, session) {
 }
 
 function getChefReferenceAssignments(session, filters = {}) {
-  if (!session || session.role !== ROLE_CHEF) {
+  if (!session || !isChefRole(session.role)) {
     return []
   }
 
@@ -100,7 +102,7 @@ function extendDefaultsForChef(defaults, session, filters = {}) {
 }
 
 function isChefPersonAllowedForWork(session, { workPlanId, date, workId, personId }) {
-  if (!session || session.role !== ROLE_CHEF) {
+  if (!session || !isChefRole(session.role)) {
     return true
   }
 
@@ -113,12 +115,24 @@ function isChefPersonAllowedForWork(session, { workPlanId, date, workId, personI
   )
 }
 
+function resolveDailyPlanDate({ workPlanId, date }) {
+  if (date) {
+    return date
+  }
+
+  if (!workPlanId) {
+    return null
+  }
+
+  return getWorkPlanById(workPlanId)?.date || null
+}
+
 export async function GET(request) {
   try {
     const session = await getServerSession()
 
     if (!session) {
-      return NextResponse.json({ error: 'Sessão obrigatória.' }, { status: 401 })
+      return NextResponse.json({ error: 'Sessao obrigatoria.' }, { status: 401 })
     }
 
     const { searchParams } = new URL(request.url)
@@ -130,8 +144,8 @@ export async function GET(request) {
       date: searchParams.get('date'),
     }
 
-    if (session.role === ROLE_CHEF && filters.workId && !canAccessWork(session, filters.workId)) {
-      return NextResponse.json({ error: 'Sem permissão para esta obra.' }, { status: 403 })
+    if (isChefRole(session.role) && filters.workId && !canAccessWork(session, filters.workId)) {
+      return NextResponse.json({ error: 'Sem permissao para esta obra.' }, { status: 403 })
     }
 
     const assignments = filterAssignmentsForSession(getAllWorkAssignments(filters), session)
@@ -140,7 +154,7 @@ export async function GET(request) {
       return NextResponse.json({
         items: assignments,
         defaults:
-          session.role === ROLE_CHEF
+          isChefRole(session.role)
             ? extendDefaultsForChef(getAssignmentDefaults(), session, filters)
             : filterDefaultsForSession(getAssignmentDefaults(), session),
       })
@@ -148,7 +162,7 @@ export async function GET(request) {
 
     return NextResponse.json(assignments)
   } catch (error) {
-    return NextResponse.json({ error: 'Erro ao obter afetações' }, { status: 500 })
+    return NextResponse.json({ error: 'Erro ao obter afetacoes' }, { status: 500 })
   }
 }
 
@@ -157,29 +171,37 @@ export async function POST(request) {
     const session = await getServerSession()
 
     if (!session) {
-      return NextResponse.json({ error: 'Sessão obrigatória.' }, { status: 401 })
+      return NextResponse.json({ error: 'Sessao obrigatoria.' }, { status: 401 })
     }
 
     const body = await request.json()
-    const { workPlanId, workId, personId, date, hours, hourlyCost, notes } = body
+    const { workPlanId, workId, personId, date, hours, hourlyCost, manualHourlyCost, notes, hasWorkAccess } = body
+    const targetDate = resolveDailyPlanDate({ workPlanId, date })
 
     if (!workId || !personId || (!workPlanId && !date)) {
-      return NextResponse.json({ error: 'workPlanId, workId e personId são obrigatórios' }, { status: 400 })
+      return NextResponse.json({ error: 'workPlanId, workId e personId sao obrigatorios' }, { status: 400 })
+    }
+
+    if (isDailyPlanLocked(targetDate)) {
+      return NextResponse.json(
+        { error: 'Depois das 08:00 ja nao e possivel alterar o plano diario deste dia.' },
+        { status: 403 },
+      )
     }
 
     if (!canAccessWork(session, workId)) {
-      return NextResponse.json({ error: 'Sem permissão para registar horas nesta obra.' }, { status: 403 })
+      return NextResponse.json({ error: 'Sem permissao para registar horas nesta obra.' }, { status: 403 })
     }
 
     if (!isChefPersonAllowedForWork(session, { workPlanId, date, workId, personId })) {
       return NextResponse.json(
-        { error: 'O chefe só pode registar pessoas colocadas pelo administrador no plano diário dessa obra.' },
+        { error: 'O chefe so pode registar pessoas colocadas pelo administrador no plano diario dessa obra.' },
         { status: 403 },
       )
     }
 
     if (date && Number.isNaN(new Date(date).getTime())) {
-      return NextResponse.json({ error: 'date tem de ser uma data válida' }, { status: 400 })
+      return NextResponse.json({ error: 'date tem de ser uma data valida' }, { status: 400 })
     }
 
     if (hours === undefined || Number(hours) < 0) {
@@ -187,13 +209,13 @@ export async function POST(request) {
     }
 
     if (hourlyCost !== undefined && Number(hourlyCost) < 0) {
-      return NextResponse.json({ error: 'hourlyCost não pode ser negativo' }, { status: 400 })
+      return NextResponse.json({ error: 'hourlyCost nao pode ser negativo' }, { status: 400 })
     }
 
-    const assignment = createWorkAssignment({ workPlanId, workId, personId, date, hours, hourlyCost, notes })
+    const assignment = createWorkAssignment({ workPlanId, workId, personId, date, hours, hourlyCost, manualHourlyCost, notes, hasWorkAccess })
     return NextResponse.json(assignment, { status: 201 })
   } catch (error) {
-    const status = error.message.includes('não encontrado') ? 404 : 500
-    return NextResponse.json({ error: error.message || 'Erro ao criar afetação' }, { status })
+    const status = String(error.message || '').includes('nao encontrado') ? 404 : 500
+    return NextResponse.json({ error: error.message || 'Erro ao criar afetacao' }, { status })
   }
 }

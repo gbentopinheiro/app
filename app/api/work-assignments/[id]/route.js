@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server'
-import { deleteWorkAssignment, getAllWorkAssignments, getWorkAssignmentById, updateWorkAssignment } from '../../../../lib/work-assignments.js'
 import { canManageEntireApp } from '../../../../lib/auth.js'
+import { isDailyPlanLocked } from '../../../../lib/daily-plan-lock.js'
+import { isChefRole } from '../../../../lib/roles.js'
 import { getServerSession } from '../../../../lib/server-session.js'
-import { ROLE_CHEF } from '../../../../lib/roles.js'
+import { deleteWorkAssignment, getAllWorkAssignments, getWorkAssignmentById, updateWorkAssignment } from '../../../../lib/work-assignments.js'
 
 function canAccessAssignment(session, assignment) {
   if (!session || !assignment) return false
@@ -11,7 +12,7 @@ function canAccessAssignment(session, assignment) {
 }
 
 function getChefReferenceAssignments(session, filters = {}) {
-  if (!session || session.role !== ROLE_CHEF) {
+  if (!session || !isChefRole(session.role)) {
     return []
   }
 
@@ -33,7 +34,7 @@ function getChefReferenceAssignments(session, filters = {}) {
 }
 
 function isChefPersonAllowedForWork(session, { workPlanId, date, workId, personId }) {
-  if (!session || session.role !== ROLE_CHEF) {
+  if (!session || !isChefRole(session.role)) {
     return true
   }
 
@@ -46,28 +47,41 @@ function isChefPersonAllowedForWork(session, { workPlanId, date, workId, personI
   )
 }
 
+function isDailyPlanStructureUpdate(body) {
+  return (
+    body.workPlanId !== undefined ||
+    body.workId !== undefined ||
+    body.personId !== undefined ||
+    body.date !== undefined ||
+    body.hourlyCost !== undefined ||
+    body.notes !== undefined ||
+    body.manualHourlyCost !== undefined ||
+    body.hasWorkAccess !== undefined
+  )
+}
+
 export async function GET(request, { params }) {
   try {
     const session = await getServerSession()
 
     if (!session) {
-      return NextResponse.json({ error: 'Sessão obrigatória.' }, { status: 401 })
+      return NextResponse.json({ error: 'Sessao obrigatoria.' }, { status: 401 })
     }
 
     const { id } = await params
     const assignment = getWorkAssignmentById(id)
 
     if (!assignment) {
-      return NextResponse.json({ error: 'Afetação não encontrada' }, { status: 404 })
+      return NextResponse.json({ error: 'Afetacao nao encontrada' }, { status: 404 })
     }
 
     if (!canAccessAssignment(session, assignment)) {
-      return NextResponse.json({ error: 'Sem permissão para esta afetação.' }, { status: 403 })
+      return NextResponse.json({ error: 'Sem permissao para esta afetacao.' }, { status: 403 })
     }
 
     return NextResponse.json(assignment)
   } catch (error) {
-    return NextResponse.json({ error: 'Erro ao obter afetação' }, { status: 500 })
+    return NextResponse.json({ error: 'Erro ao obter afetacao' }, { status: 500 })
   }
 }
 
@@ -76,29 +90,37 @@ export async function PUT(request, { params }) {
     const session = await getServerSession()
 
     if (!session) {
-      return NextResponse.json({ error: 'Sessão obrigatória.' }, { status: 401 })
+      return NextResponse.json({ error: 'Sessao obrigatoria.' }, { status: 401 })
     }
 
     const { id } = await params
     const currentAssignment = getWorkAssignmentById(id)
 
     if (!currentAssignment) {
-      return NextResponse.json({ error: 'Afetação não encontrada' }, { status: 404 })
+      return NextResponse.json({ error: 'Afetacao nao encontrada' }, { status: 404 })
     }
 
     if (!canAccessAssignment(session, currentAssignment)) {
-      return NextResponse.json({ error: 'Sem permissão para esta afetação.' }, { status: 403 })
+      return NextResponse.json({ error: 'Sem permissao para esta afetacao.' }, { status: 403 })
     }
 
     const body = await request.json()
-    const { workPlanId, workId, personId, date, hours, hourlyCost, notes, submitted } = body
+    const { workPlanId, workId, personId, date, hours, hourlyCost, manualHourlyCost, notes, hasWorkAccess, submitted } = body
+    
+    if (isDailyPlanLocked(currentAssignment.date) && isDailyPlanStructureUpdate(body)) {
+      return NextResponse.json(
+        { error: 'Depois das 08:00 ja nao e possivel alterar o plano diario deste dia.' },
+        { status: 403 },
+      )
+    }
+
     const targetWorkId = workId !== undefined ? Number(workId) : Number(currentAssignment.workId)
     const targetPersonId = personId !== undefined ? Number(personId) : Number(currentAssignment.personId)
     const targetWorkPlanId = workPlanId !== undefined ? workPlanId : currentAssignment.workPlan?.id
     const targetDate = date !== undefined ? date : currentAssignment.date
 
-    if (session.role === ROLE_CHEF && workId !== undefined && !session.workIds.includes(Number(workId))) {
-      return NextResponse.json({ error: 'Sem permissão para mover a afetação para essa obra.' }, { status: 403 })
+    if (isChefRole(session.role) && workId !== undefined && !session.workIds.includes(Number(workId))) {
+      return NextResponse.json({ error: 'Sem permissao para mover a afetacao para essa obra.' }, { status: 403 })
     }
 
     if (!isChefPersonAllowedForWork(session, {
@@ -108,13 +130,13 @@ export async function PUT(request, { params }) {
       personId: targetPersonId,
     })) {
       return NextResponse.json(
-        { error: 'O chefe só pode registar pessoas colocadas pelo administrador no plano diário dessa obra.' },
+        { error: 'O chefe so pode registar pessoas colocadas pelo administrador no plano diario dessa obra.' },
         { status: 403 },
       )
     }
 
     if (date && Number.isNaN(new Date(date).getTime())) {
-      return NextResponse.json({ error: 'date tem de ser uma data válida' }, { status: 400 })
+      return NextResponse.json({ error: 'date tem de ser uma data valida' }, { status: 400 })
     }
 
     if (hours !== undefined && Number(hours) < 0) {
@@ -122,15 +144,24 @@ export async function PUT(request, { params }) {
     }
 
     if (hourlyCost !== undefined && Number(hourlyCost) < 0) {
-      return NextResponse.json({ error: 'hourlyCost não pode ser negativo' }, { status: 400 })
+      return NextResponse.json({ error: 'hourlyCost nao pode ser negativo' }, { status: 400 })
     }
 
-    if (submitted !== undefined) {
+    const shouldAutoSubmitFromAdmin = canManageEntireApp(session.role) && hours !== undefined
+
+    if (submitted !== undefined && !shouldAutoSubmitFromAdmin) {
       return NextResponse.json(
-        { error: 'O status só pode ser alterado pelo fluxo de submissão do chefe.' },
+        { error: 'O status so pode ser alterado pelo fluxo de submissao do chefe.' },
         { status: 403 },
       )
     }
+
+    const submittedAt = shouldAutoSubmitFromAdmin
+      ? currentAssignment.submittedAt || new Date().toISOString()
+      : undefined
+    const submittedBy = shouldAutoSubmitFromAdmin
+      ? currentAssignment.submittedBy || session.name || session.id || 'Administrador'
+      : undefined
 
     const assignment = updateWorkAssignment(id, {
       workPlanId,
@@ -139,17 +170,22 @@ export async function PUT(request, { params }) {
       date,
       hours,
       hourlyCost,
+      manualHourlyCost,
       notes,
+      hasWorkAccess,
+      submitted: shouldAutoSubmitFromAdmin ? true : undefined,
+      submittedAt,
+      submittedBy,
     })
 
     if (!assignment) {
-      return NextResponse.json({ error: 'Afetação não encontrada' }, { status: 404 })
+      return NextResponse.json({ error: 'Afetacao nao encontrada' }, { status: 404 })
     }
 
     return NextResponse.json(assignment)
   } catch (error) {
-    const status = error.message.includes('não encontrado') ? 404 : 500
-    return NextResponse.json({ error: error.message || 'Erro ao atualizar afetação' }, { status })
+    const status = String(error.message || '').includes('nao encontrado') ? 404 : 500
+    return NextResponse.json({ error: error.message || 'Erro ao atualizar afetacao' }, { status })
   }
 }
 
@@ -158,28 +194,35 @@ export async function DELETE(request, { params }) {
     const session = await getServerSession()
 
     if (!session) {
-      return NextResponse.json({ error: 'Sessão obrigatória.' }, { status: 401 })
+      return NextResponse.json({ error: 'Sessao obrigatoria.' }, { status: 401 })
     }
 
     const { id } = await params
     const assignment = getWorkAssignmentById(id)
 
     if (!assignment) {
-      return NextResponse.json({ error: 'Afetação não encontrada' }, { status: 404 })
+      return NextResponse.json({ error: 'Afetacao nao encontrada' }, { status: 404 })
     }
 
     if (!canAccessAssignment(session, assignment)) {
-      return NextResponse.json({ error: 'Sem permissão para esta afetação.' }, { status: 403 })
+      return NextResponse.json({ error: 'Sem permissao para esta afetacao.' }, { status: 403 })
+    }
+
+    if (isDailyPlanLocked(assignment.date)) {
+      return NextResponse.json(
+        { error: 'Depois das 08:00 ja nao e possivel alterar o plano diario deste dia.' },
+        { status: 403 },
+      )
     }
 
     const deleted = deleteWorkAssignment(id)
 
     if (!deleted) {
-      return NextResponse.json({ error: 'Afetação não encontrada' }, { status: 404 })
+      return NextResponse.json({ error: 'Afetacao nao encontrada' }, { status: 404 })
     }
 
-    return NextResponse.json({ message: 'Afetação removida com sucesso' })
+    return NextResponse.json({ message: 'Afetacao removida com sucesso' })
   } catch (error) {
-    return NextResponse.json({ error: 'Erro ao remover afetação' }, { status: 500 })
+    return NextResponse.json({ error: 'Erro ao remover afetacao' }, { status: 500 })
   }
 }

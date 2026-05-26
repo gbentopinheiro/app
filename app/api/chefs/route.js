@@ -1,5 +1,11 @@
 import { NextResponse } from 'next/server'
 import { createChef, getAllChefs, getChefWorkOptions } from '../../../lib/chefs.js'
+import { readProtectedRequestJson } from '../../../lib/login-transport.js'
+
+function hidePassword(identity) {
+  const { password, ...safeIdentity } = identity
+  return safeIdentity
+}
 
 export async function GET(request) {
   try {
@@ -8,12 +14,12 @@ export async function GET(request) {
 
     if (includeWorks) {
       return NextResponse.json({
-        items: getAllChefs(),
+        items: getAllChefs().map(hidePassword),
         works: getChefWorkOptions(),
       })
     }
 
-    return NextResponse.json(getAllChefs())
+    return NextResponse.json(getAllChefs().map(hidePassword))
   } catch (error) {
     return NextResponse.json({ error: 'Erro ao obter identidades' }, { status: 500 })
   }
@@ -21,14 +27,23 @@ export async function GET(request) {
 
 export async function POST(request) {
   try {
-    const body = await request.json()
+    const body = await readProtectedRequestJson(request)
     const { personId, username, password, works } = body
 
     const identity = createChef({ personId, username, password, works })
-    return NextResponse.json(identity, { status: 201 })
+    return NextResponse.json(hidePassword(identity), { status: 201 })
   } catch (error) {
+    if (error.message?.includes('protecao') || error.message?.includes('protegido')) {
+      return NextResponse.json({ error: 'Pedido sensível não protegido.' }, { status: 400 })
+    }
+
     const status =
-      error.message?.includes('obrigatório') || error.message?.includes('Já existe') || error.message?.includes('role')
+      error.message?.includes('obrigatório') ||
+      error.message?.includes('palavra-passe') ||
+      error.message?.includes('carácter') ||
+      error.message?.includes('bytes') ||
+      error.message?.includes('Já existe') ||
+      error.message?.includes('role')
         ? 400
         : error.message?.includes('não encontrada')
           ? 404

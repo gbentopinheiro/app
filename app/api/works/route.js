@@ -14,7 +14,7 @@ export async function GET() {
 export async function POST(request) {
   try {
     const body = await request.json()
-    const { name, clientId, location, status, budget, defaultHourlyCost, startDate, endDate, notes, number } = body
+    const { name, clientId, location, status, budget, defaultHourlyCost, roleHourlyCosts, specialPersonHourlyCosts, startDate, endDate, workingDays, notes, number } = body
 
     if (!name) {
       return NextResponse.json({ error: 'Nome da obra é obrigatório' }, { status: 400 })
@@ -43,8 +43,11 @@ export async function POST(request) {
       status,
       budget,
       defaultHourlyCost,
+      roleHourlyCosts,
+      specialPersonHourlyCosts,
       startDate,
       endDate,
+      workingDays,
       notes,
       number,
     })

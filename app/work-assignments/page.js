@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
+import EditPencilIcon, { editPencilButtonStyle } from '../components/EditPencilIcon'
 import { getDefaultHoursForDate } from '../../lib/default-hours.js'
 
 const DURATION_OPTIONS = [
@@ -122,13 +123,7 @@ const dangerButtonStyle = {
   cursor: 'pointer',
 }
 
-const iconButtonStyle = {
-  ...secondaryButtonStyle,
-  width: '34px',
-  height: '34px',
-  padding: 0,
-  fontSize: '14px',
-}
+const iconButtonStyle = editPencilButtonStyle
 
 const iconDangerButtonStyle = {
   ...dangerButtonStyle,
@@ -689,7 +684,7 @@ export default function WorkAssignmentsPage() {
 
                           <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                             <button type="button" onClick={() => startEdit(assignment)} style={iconButtonStyle} title="Editar afetação" aria-label="Editar afetação">
-                              ✎
+                              <EditPencilIcon />
                             </button>
                           </div>
                         </div>

@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
+import EditPencilIcon, { editPencilButtonStyle } from '../components/EditPencilIcon'
 
 const pageStyle = {
   minHeight: '100vh',
@@ -87,13 +88,7 @@ const dangerButtonStyle = {
   cursor: 'pointer',
 }
 
-const iconButtonStyle = {
-  ...secondaryButtonStyle,
-  width: '34px',
-  height: '34px',
-  padding: 0,
-  fontSize: '14px',
-}
+const iconButtonStyle = editPencilButtonStyle
 
 const iconDangerButtonStyle = {
   ...dangerButtonStyle,
@@ -328,7 +323,7 @@ export default function ClientsPage() {
 
               <label style={labelStyle}>
                 Notas
-                <textarea name="notes" value={form.notes} onChange={handleChange} rows={4} style={inputStyle} />
+                <textárea name="notes" value={form.notes} onChange={handleChange} rows={4} style={inputStyle} />
               </label>
 
               {error && <p style={{ margin: 0, color: '#b42318' }}>{error}</p>}
@@ -399,7 +394,7 @@ export default function ClientsPage() {
                   title="Editar cliente"
                   aria-label="Editar cliente"
                 >
-                  ✎
+                  <EditPencilIcon />
                 </button>
               )}
             </div>

@@ -2,19 +2,25 @@
   {
     "id": 1,
     "username": "construtora.alfa",
-    "password": "alfa2026",
-    "works": [1]
+    "password": "scrypt$v1$73fc3ed51636c5c8272ef61a69e68828$3c4e7a8bb1838fb898ffc6f113d3605c81e243243e0a333456c9c44d660520dad7ffef72fc1bd19a7923d7017ee08d40fcf48342513450088296aee32e7a4a7d",
+    "works": [
+      1
+    ]
   },
   {
     "id": 2,
     "username": "particular.valeverde",
-    "password": "vale2026",
-    "works": [2]
+    "password": "scrypt$v1$31c292ab3ed0f77685224c42487979b1$fec7ae980014f3b3c3993ccc1583e6dddec100bb1b7fd83b9f913d815e844886672f0222f74bea821e585f5d357943f78b8831d5c0acb798f0f8034d9239c792",
+    "works": [
+      2
+    ]
   },
   {
     "id": 3,
     "username": "logistica.horizonte",
-    "password": "horizonte2026",
-    "works": [3]
+    "password": "scrypt$v1$77361c25112ec9c488dd455a2e09c77d$4d5f5c6f4db7ac729b037da2c7c423d1ab4238d5e49cd64ce5f1f35ffeb3debdb0a2137da3076de91b3f4572c61e2832daca1bd012460c56b3021a4e6f943661",
+    "works": [
+      3
+    ]
   }
 ]

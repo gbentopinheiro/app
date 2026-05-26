@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
-import { createWorkPlan, getAllWorkPlans, getWorkPlanByDate } from '../../../lib/work-plans.js'
-import { createWorkAssignment, deleteWorkAssignment, getAllWorkAssignments } from '../../../lib/work-assignments.js'
 import { getDefaultHoursForDate } from '../../../lib/default-hours.js'
+import { isDailyPlanLocked } from '../../../lib/daily-plan-lock.js'
+import { createWorkAssignment, deleteWorkAssignment, getAllWorkAssignments } from '../../../lib/work-assignments.js'
+import { createWorkPlan, getAllWorkPlans, getWorkPlanByDate } from '../../../lib/work-plans.js'
 
 export async function GET() {
   try {
@@ -19,7 +20,14 @@ export async function POST(request) {
     let previousAssignments = []
 
     if (!date) {
-      return NextResponse.json({ error: 'date é obrigatório' }, { status: 400 })
+      return NextResponse.json({ error: 'date e obrigatorio' }, { status: 400 })
+    }
+
+    if (isDailyPlanLocked(date)) {
+      return NextResponse.json(
+        { error: 'Depois das 08:00 ja nao e possivel alterar o plano diario deste dia.' },
+        { status: 403 },
+      )
     }
 
     if (clonePreviousDay) {
@@ -27,8 +35,8 @@ export async function POST(request) {
 
       if (!sourceWorkPlan) {
         return NextResponse.json(
-          { error: 'Não existe nenhum work plan anterior com work assignments para copiar' },
-          { status: 404 }
+          { error: 'Nao existe nenhum work plan anterior com work assignments para copiar' },
+          { status: 404 },
         )
       }
 
@@ -39,11 +47,26 @@ export async function POST(request) {
     const workPlan = existingWorkPlan || createWorkPlan({ date })
 
     if (!clonePreviousDay) {
-      return NextResponse.json({
-        ...workPlan,
-        clonedAssignments: 0,
-        reusedWorkPlan: Boolean(existingWorkPlan),
-      }, { status: 201 })
+      let clearedAssignments = 0
+
+      if (existingWorkPlan) {
+        const currentAssignments = getAllWorkAssignments({ workPlanId: existingWorkPlan.id })
+        clearedAssignments = currentAssignments.length
+
+        for (const assignment of currentAssignments) {
+          deleteWorkAssignment(assignment.id)
+        }
+      }
+
+      return NextResponse.json(
+        {
+          ...workPlan,
+          clonedAssignments: 0,
+          clearedAssignments,
+          reusedWorkPlan: Boolean(existingWorkPlan),
+        },
+        { status: 201 },
+      )
     }
 
     if (existingWorkPlan) {
@@ -61,25 +84,30 @@ export async function POST(request) {
         personId: assignment.personId,
         hours: getDefaultHoursForDate(workPlan.date),
         hourlyCost: assignment.hourlyCost,
+        manualHourlyCost: assignment.manualHourlyCost === true,
         notes: assignment.notes,
       })
     }
 
-    return NextResponse.json({
-      ...workPlan,
-      clonedAssignments: previousAssignments.length,
-      clonedFromDate: sourceWorkPlan?.date || null,
-      clonedFromWorkPlanId: sourceWorkPlan?.id || null,
-      reusedWorkPlan: Boolean(existingWorkPlan),
-    }, { status: 201 })
+    return NextResponse.json(
+      {
+        ...workPlan,
+        clonedAssignments: previousAssignments.length,
+        clonedFromDate: sourceWorkPlan?.date || null,
+        clonedFromWorkPlanId: sourceWorkPlan?.id || null,
+        reusedWorkPlan: Boolean(existingWorkPlan),
+      },
+      { status: 201 },
+    )
   } catch (error) {
     const message = error.message || ''
     const status =
-      message.includes('Já existe') || message.includes('data válida')
+      message.includes('Ja existe') || message.includes('data valida')
         ? 400
-        : message.includes('Não existe')
+        : message.includes('Nao existe')
           ? 404
           : 500
+
     return NextResponse.json({ error: error.message || 'Erro ao criar work plan' }, { status })
   }
 }
@@ -87,8 +115,10 @@ export async function POST(request) {
 function getLatestPreviousWorkPlanWithAssignments(date) {
   const targetDate = new Date(date)
 
-  return getAllWorkPlans()
-    .filter(workPlan => new Date(workPlan.date) < targetDate)
-    .sort((left, right) => new Date(right.date).getTime() - new Date(left.date).getTime())
-    .find(workPlan => getAllWorkAssignments({ workPlanId: workPlan.id }).length > 0) || null
+  return (
+    getAllWorkPlans()
+      .filter(workPlan => new Date(workPlan.date) < targetDate)
+      .sort((left, right) => new Date(right.date).getTime() - new Date(left.date).getTime())
+      .find(workPlan => getAllWorkAssignments({ workPlanId: workPlan.id }).length > 0) || null
+  )
 }

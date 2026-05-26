@@ -1,0 +1,38 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  @apply bg-bentix-navy text-bentix-dark;
+}
+
+/* Animações customizadas */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@layer utilities {
+  .fade-in {
+    animation: fade-in 0.3s ease-out;
+  }
+
+  .input-focus {
+    @apply focus:ring-2 focus:ring-bentix-blue focus:border-transparent focus:outline-none;
+  }
+}

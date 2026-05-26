@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
+import { isAssignmentApproved } from '../../lib/work-assignment-approval.js'
 
 const pageStyle = {
   minHeight: '100vh',
@@ -115,11 +116,11 @@ export default function HoursApprovalPage() {
   }, [])
 
   const pendingApprovals = useMemo(() => {
-    return assignments.filter(a => a.approvedHours === null)
+    return assignments.filter(a => !isAssignmentApproved(a))
   }, [assignments])
 
   const approvedAssignments = useMemo(() => {
-    return assignments.filter(a => a.approvedHours !== null)
+    return assignments.filter(a => isAssignmentApproved(a))
   }, [assignments])
 
   async function loadAssignments() {

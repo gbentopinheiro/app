@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getWorkAssignmentById, updateWorkAssignment } from '../../../../../lib/work-assignments.js'
 import { canApproveHours, canManageEntireApp } from '../../../../../lib/auth.js'
+import { isFeatureEnabled } from '../../../../../lib/feature-flags.js'
 import { getServerSession } from '../../../../../lib/server-session.js'
 
 function canAccessAssignment(session, assignment) {
@@ -11,6 +12,10 @@ function canAccessAssignment(session, assignment) {
 
 export async function PUT(request, { params }) {
   try {
+    if (!isFeatureEnabled('hoursApproval')) {
+      return NextResponse.json({ error: 'A aprovacao de horas esta desativada.' }, { status: 503 })
+    }
+
     const session = await getServerSession()
 
     if (!session) {
@@ -45,7 +50,11 @@ export async function PUT(request, { params }) {
       )
     }
 
-    const assignment = updateWorkAssignment(id, { approvedHours: Number(approvedHours) })
+    const assignment = updateWorkAssignment(id, {
+      approvedHours: Number(approvedHours),
+      adminApprovedAt: new Date().toISOString(),
+      adminApprovedBy: session.name || session.username || session.userId,
+    })
 
     if (!assignment) {
       return NextResponse.json({ error: 'Afetação não encontrada' }, { status: 404 })

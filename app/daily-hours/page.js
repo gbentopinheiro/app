@@ -1,7 +1,10 @@
-'use client'
+﻿'use client'
 
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
+import EditPencilIcon, { editPencilButtonStyle } from '../components/EditPencilIcon'
+import { isChefRole } from '../../lib/roles.js'
+import { isAssignmentApproved } from '../../lib/work-assignment-approval.js'
 import LogoutButton from '../components/LogoutButton'
 
 const pageStyle = {
@@ -21,7 +24,7 @@ const shellStyle = {
 
 const heroStyle = {
   position: 'relative',
-  overflow: 'hidden',
+  overflow: 'visible',
   background: 'var(--vp-module-hero)',
   border: '1px solid var(--vp-module-hero-border)',
   borderRadius: '32px',
@@ -123,7 +126,134 @@ const reminderCardStyle = {
   gap: '10px',
 }
 
+const accountClusterStyle = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: '10px',
+  padding: '6px',
+  borderRadius: '20px',
+  background: 'rgba(255,255,255,0.08)',
+  border: '1px solid rgba(255,255,255,0.12)',
+  backdropFilter: 'blur(12px)',
+}
+
+const accountNamePillStyle = {
+  minHeight: '44px',
+  display: 'inline-flex',
+  alignItems: 'center',
+  padding: '0 14px',
+  borderRadius: '16px',
+  color: '#ffffff',
+  fontSize: '14px',
+  fontWeight: 800,
+  background: 'rgba(255,255,255,0.08)',
+}
+
+const accountMenuStyle = {
+  position: 'relative',
+  display: 'inline-flex',
+  justifyContent: 'flex-end',
+}
+
+const accountMenuButtonStyle = {
+  width: '44px',
+  height: '44px',
+  borderRadius: '16px',
+  border: '1px solid rgba(255,255,255,0.16)',
+  background: 'rgba(255,255,255,0.1)',
+  color: '#ffffff',
+  display: 'inline-grid',
+  placeItems: 'center',
+  cursor: 'pointer',
+  backdropFilter: 'blur(12px)',
+  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06)',
+  listStyle: 'none',
+}
+
+const dotsStyle = {
+  display: 'grid',
+  gap: '4px',
+}
+
+const dotStyle = {
+  width: '4px',
+  height: '4px',
+  borderRadius: '999px',
+  background: '#ffffff',
+  boxShadow: '0 0 12px rgba(255,255,255,0.35)',
+}
+
+const accountMenuPanelStyle = {
+  position: 'absolute',
+  top: 'calc(100% + 10px)',
+  right: 0,
+  zIndex: 5,
+  width: '260px',
+  padding: '10px',
+  borderRadius: '20px',
+  background: 'rgba(255, 255, 255, 0.98)',
+  border: '1px solid rgba(203, 213, 225, 0.9)',
+  boxShadow: '0 24px 70px rgba(8, 22, 45, 0.26)',
+  color: '#10233e',
+}
+
+const accountMenuHeaderStyle = {
+  padding: '10px 12px 12px',
+  borderBottom: '1px solid rgba(216, 225, 238, 0.9)',
+  marginBottom: '8px',
+}
+
+const accountMenuLabelStyle = {
+  margin: 0,
+  color: '#64748b',
+  fontSize: '11px',
+  fontWeight: 800,
+  letterSpacing: '0.12em',
+  textTransform: 'uppercase',
+}
+
+const accountMenuNameStyle = {
+  margin: '6px 0 0',
+  color: '#10233e',
+  fontSize: '15px',
+  fontWeight: 800,
+}
+
+const accountMenuLinkStyle = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'flex-start',
+  gap: '12px',
+  width: '100%',
+  boxSizing: 'border-box',
+  padding: '12px',
+  borderRadius: '14px',
+  border: 'none',
+  color: '#10233e',
+  textDecoration: 'none',
+  fontFamily: 'inherit',
+  fontSize: '14px',
+  fontWeight: 800,
+  background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.08) 0%, rgba(255, 140, 0, 0.08) 100%)',
+  cursor: 'pointer',
+}
+
 const adminEntryGridTemplate = 'minmax(180px, 1.4fr) minmax(170px, 1fr) minmax(150px, 0.9fr) minmax(170px, 1fr)'
+const REMINDER_SETTINGS_STORAGE_KEY = 'benpin:daily-hours-reminder-settings'
+const DEFAULT_REMINDER_SETTINGS = {
+  weekday: '17:25',
+  saturday: '15:25',
+}
+
+function openNativeDatePicker(event) {
+  try {
+    if (typeof event?.currentTarget?.showPicker === 'function') {
+      event.currentTarget.showPicker()
+    }
+  } catch (error) {
+    return
+  }
+}
 
 function getTodayDate() {
   return new Intl.DateTimeFormat('sv-SE').format(new Date())
@@ -140,20 +270,51 @@ function formatDateLabel(dateString) {
   }).format(date)
 }
 
-function getReminderCutoffLabel(date = new Date()) {
-  return date.getDay() === 6 ? '15:25' : '17:25'
+function normalizeReminderTime(value, fallback) {
+  const normalizedValue = String(value || '').trim()
+  return /^\d{2}:\d{2}$/.test(normalizedValue) ? normalizedValue : fallback
 }
 
-function isReminderAfterCutoff(date = new Date()) {
+function normalizeReminderSettings(settings = {}) {
+  return {
+    weekday: normalizeReminderTime(settings.weekday, DEFAULT_REMINDER_SETTINGS.weekday),
+    saturday: normalizeReminderTime(settings.saturday, DEFAULT_REMINDER_SETTINGS.saturday),
+  }
+}
+
+function getReminderTimeForDate(date = new Date(), settings = DEFAULT_REMINDER_SETTINGS) {
+  const normalizedSettings = normalizeReminderSettings(settings)
+  return date.getDay() === 6 ? normalizedSettings.saturday : normalizedSettings.weekday
+}
+
+function getReminderCutoffLabel(date = new Date(), settings = DEFAULT_REMINDER_SETTINGS) {
+  return getReminderTimeForDate(date, settings)
+}
+
+function isReminderAfterCutoff(date = new Date(), settings = DEFAULT_REMINDER_SETTINGS) {
   const hours = date.getHours()
   const minutes = date.getMinutes()
-  const isSaturday = date.getDay() === 6
-  const targetHour = isSaturday ? 15 : 17
-  return hours > targetHour || (hours === targetHour && minutes >= 25)
+  const [targetHour, targetMinute] = getReminderTimeForDate(date, settings).split(':').map(Number)
+  return hours > targetHour || (hours === targetHour && minutes >= targetMinute)
 }
 
 function getReminderStorageKey(personId, dateString) {
   return `vp-daily-hours-reminder:${personId || 'chef'}:${dateString}`
+}
+
+function formatSubmittedTime(submittedAt) {
+  if (!submittedAt) return ''
+
+  const date = new Date(submittedAt)
+
+  if (Number.isNaN(date.getTime())) {
+    return ''
+  }
+
+  return new Intl.DateTimeFormat('pt-PT', {
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date)
 }
 
 export default function DailyHoursPage() {
@@ -176,10 +337,15 @@ export default function DailyHoursPage() {
   const [editedApprovedHours, setEditedApprovedHours] = useState({})
   const [approvingAll, setApprovingAll] = useState(false)
   const [notificationPermission, setNotificationPermission] = useState('default')
-  const isChef = session?.role === 'chef'
+  const [reminderSettings, setReminderSettings] = useState(DEFAULT_REMINDER_SETTINGS)
+  const [workNotes, setWorkNotes] = useState({})
+  const [openWorkNoteId, setOpenWorkNoteId] = useState(null)
+  const [savingWorkNoteId, setSavingWorkNoteId] = useState(null)
+  const isChef = isChefRole(session?.role)
 
   useEffect(() => {
     loadPageData(selectedDate)
+    loadWorkNotes(selectedDate)
   }, [selectedDate])
 
   useEffect(() => {
@@ -193,6 +359,19 @@ export default function DailyHoursPage() {
     }
 
     setNotificationPermission(window.Notification.permission)
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return
+    }
+
+    try {
+      const storedSettings = JSON.parse(window.localStorage.getItem(REMINDER_SETTINGS_STORAGE_KEY) || '{}')
+      setReminderSettings(normalizeReminderSettings(storedSettings))
+    } catch (error) {
+      setReminderSettings(DEFAULT_REMINDER_SETTINGS)
+    }
   }, [])
 
   const activeWorks = useMemo(() => {
@@ -217,6 +396,25 @@ export default function DailyHoursPage() {
         ),
     [dailyEntries, selectedWorkId],
   )
+
+  const chefWorksWithEntries = useMemo(() => {
+    if (!isChef) return []
+
+    return activeWorks.map(work => ({
+      work,
+      entries: dailyEntries
+        .filter(entry => String(entry.workId) === String(work.id))
+        .sort((left, right) =>
+          String(left.person?.name || '').localeCompare(String(right.person?.name || '')),
+        ),
+    }))
+  }, [activeWorks, dailyEntries, isChef])
+
+  const visibleChefEntriesCount = useMemo(() => {
+    if (!isChef) return selectedWorkEntries.length
+
+    return chefWorksWithEntries.reduce((sum, group) => sum + group.entries.length, 0)
+  }, [chefWorksWithEntries, isChef, selectedWorkEntries.length])
 
   useEffect(() => {
     if (isChef) {
@@ -260,13 +458,15 @@ export default function DailyHoursPage() {
   useEffect(() => {
     const nextEntryHours = {}
 
-    selectedWorkEntries.forEach(entry => {
+    const visibleEntries = isChef ? chefWorksWithEntries.flatMap(group => group.entries) : selectedWorkEntries
+
+    visibleEntries.forEach(entry => {
       nextEntryHours[String(entry.id)] = String(entry.hours ?? 0)
     })
 
     setEntryHours(nextEntryHours)
     setRowErrors({})
-  }, [selectedWorkEntries])
+  }, [chefWorksWithEntries, isChef, selectedWorkEntries])
 
   const pendingChefEntries = useMemo(
     () => dailyEntries.filter(entry => !entry.submitted),
@@ -283,7 +483,7 @@ export default function DailyHoursPage() {
         return
       }
 
-      if (!isReminderAfterCutoff() || pendingChefEntries.length === 0) {
+      if (!isReminderAfterCutoff(new Date(), reminderSettings) || pendingChefEntries.length === 0) {
         return
       }
 
@@ -299,15 +499,15 @@ export default function DailyHoursPage() {
         )
         const baseBody =
           pendingChefEntries.length === 1
-            ? 'Tens 1 registo por submeter no Registo diario.'
-            : `Tens ${pendingChefEntries.length} registos por submeter no Registo diario.`
+            ? 'Tens 1 registo por submeter no Registo diário.'
+            : `Tens ${pendingChefEntries.length} registos por submeter no Registo diário.`
 
         const body =
           pendingWorks.size > 0
             ? `${baseBody} Obras: ${Array.from(pendingWorks).join(', ')}.`
             : baseBody
 
-        const notification = new window.Notification('Registo diario por completar', { body })
+        const notification = new window.Notification('Registo diário por completar', { body })
         notification.onclick = () => window.focus()
       }
 
@@ -317,7 +517,7 @@ export default function DailyHoursPage() {
     triggerReminderIfNeeded()
     const intervalId = window.setInterval(triggerReminderIfNeeded, 30000)
     return () => window.clearInterval(intervalId)
-  }, [isChef, loading, pendingChefEntries, selectedDate, session?.id, session?.personId])
+  }, [isChef, loading, pendingChefEntries, reminderSettings, selectedDate, session?.id, session?.personId])
 
   const totalHours = useMemo(() => {
     return Number(
@@ -330,8 +530,8 @@ export default function DailyHoursPage() {
     !loading &&
     selectedDate === getTodayDate() &&
     pendingChefEntries.length > 0 &&
-    isReminderAfterCutoff()
-  const reminderCutoffLabel = getReminderCutoffLabel()
+    isReminderAfterCutoff(new Date(), reminderSettings)
+  const reminderCutoffLabel = getReminderCutoffLabel(new Date(), reminderSettings)
 
   async function loadPageData(date) {
     setLoading(true)
@@ -351,6 +551,25 @@ export default function DailyHoursPage() {
       setError(err.message)
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function loadWorkNotes(date) {
+    try {
+      const response = await fetch(`/api/daily-work-notes?date=${encodeURIComponent(date)}`)
+      const data = await response.json()
+
+      if (!response.ok) {
+        return
+      }
+
+      const nextWorkNotes = {}
+      ;(Array.isArray(data) ? data : []).forEach(note => {
+        nextWorkNotes[String(note.workId)] = note.note || ''
+      })
+      setWorkNotes(nextWorkNotes)
+    } catch (err) {
+      setWorkNotes({})
     }
   }
 
@@ -384,14 +603,58 @@ export default function DailyHoursPage() {
     }))
   }
 
-  async function handleSaveAllHours() {
+  function handleWorkNoteChange(workId, value) {
+    setWorkNotes(current => ({
+      ...current,
+      [String(workId)]: value,
+    }))
+  }
+
+  function toggleWorkNote(workId) {
+    setOpenWorkNoteId(currentWorkId => (currentWorkId === workId ? null : workId))
+  }
+
+  async function handleSaveWorkNote(workId) {
+    setError('')
+    setSuccess('')
+    setSavingWorkNoteId(workId)
+
+    try {
+      const response = await fetch('/api/daily-work-notes', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          date: selectedDate,
+          workId,
+          note: workNotes[String(workId)] || '',
+        }),
+      })
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Erro ao guardar nota.')
+      }
+
+      setWorkNotes(current => ({
+        ...current,
+        [String(workId)]: data.note || '',
+      }))
+      setSuccess('Nota da obra guardada com sucesso.')
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setSavingWorkNoteId(null)
+    }
+  }
+
+  async function handleSaveAllHours(entriesToSave = selectedWorkEntries) {
     setError('')
     setSuccess('')
     const nextRowErrors = {}
     let hasErrors = false
 
     // Validate all entries first
-    for (const entry of selectedWorkEntries) {
+    for (const entry of entriesToSave) {
       const hoursValue = entryHours[String(entry.id)]
       const numericHours = Number(hoursValue)
 
@@ -410,7 +673,7 @@ export default function DailyHoursPage() {
 
     try {
       // Step 1: Save all hours
-      const updatePromises = selectedWorkEntries.map(entry => {
+      const updatePromises = entriesToSave.map(entry => {
         const hoursValue = entryHours[String(entry.id)]
         const numericHours = Number(hoursValue)
 
@@ -430,7 +693,7 @@ export default function DailyHoursPage() {
       }
 
       // Step 2: Submit all hours
-      const submitPromises = selectedWorkEntries.map(entry =>
+      const submitPromises = entriesToSave.map(entry =>
         fetch(`/api/work-assignments/${entry.id}/submit`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
@@ -526,7 +789,7 @@ export default function DailyHoursPage() {
         throw new Error(data.error || 'Erro ao atualizar horas')
       }
 
-      setSuccess('Horas do chef atualizadas com sucesso.')
+      setSuccess('Horas atualizadas e submetidas com sucesso.')
       setEditingChefHours(null)
       await loadPageData(selectedDate)
     } catch (err) {
@@ -607,7 +870,7 @@ export default function DailyHoursPage() {
 
   async function handleEnableNotifications() {
     if (typeof window === 'undefined' || !('Notification' in window)) {
-      setError('Este navegador nao suporta notificacoes.')
+      setError('Este navegador não suporta notificações.')
       setSuccess('')
       return
     }
@@ -620,12 +883,12 @@ export default function DailyHoursPage() {
       setNotificationPermission(permission)
 
       if (permission === 'granted') {
-        setSuccess('Notificacoes ativadas com sucesso.')
+        setSuccess('Notificações ativadas com sucesso.')
       } else if (permission === 'denied') {
-        setError('As notificacoes foram bloqueadas no navegador.')
+        setError('As notificações foram bloqueadas no navegador.')
       }
     } catch (permissionError) {
-      setError('Nao foi possivel ativar as notificacoes.')
+      setError('Não foi possível ativar as notificações.')
     }
   }
 
@@ -638,39 +901,64 @@ export default function DailyHoursPage() {
               {!isChef ? (
                 <>
                   <Link href="/" style={{ color: 'var(--vp-accent)', textDecoration: 'none', fontWeight: 700 }}>
-                    {'<- '}Voltar ao menu
+                    Voltar ao menu
                   </Link>
-                  <p style={{ margin: '18px 0 0', textTransform: 'uppercase', letterSpacing: '0.12em', fontSize: '12px', color: 'var(--vp-text-soft)' }}>
-                    Registo diário
-                  </p>
                 </>
               ) : (
                 null
               )}
-              <h1 style={{ margin: !isChef ? '10px 0 12px' : '0 0 12px', fontSize: '44px', lineHeight: 1.05 }}>
+              <h1 style={{ margin: !isChef ? '18px 0 12px' : '0 0 12px', fontSize: '52px', lineHeight: 1.05 }}>
                 Registo Diário
               </h1>
             </div>
-            <LogoutButton />
+            {isChef ? (
+              <div style={accountClusterStyle}>
+                <span style={accountNamePillStyle}>{session?.name || 'Perfil'}</span>
+                <details style={accountMenuStyle}>
+                  <summary style={accountMenuButtonStyle} aria-label="Abrir menu da conta">
+                    <span style={dotsStyle} aria-hidden="true">
+                      <span style={dotStyle} />
+                      <span style={dotStyle} />
+                      <span style={dotStyle} />
+                    </span>
+                  </summary>
+                  <div style={accountMenuPanelStyle}>
+                    <Link href="/account-settings" style={accountMenuLinkStyle}>
+                      Definições
+                    </Link>
+                    <div style={{ marginTop: '8px' }}>
+                      <LogoutButton
+                        style={{
+                          ...accountMenuLinkStyle,
+                          width: '100%',
+                          boxShadow: 'none',
+                        }}
+                      />
+                    </div>
+                  </div>
+                </details>
+              </div>
+            ) : null}
           </div>
         </section>
 
         <section style={topBarStyle}>
           <div style={statGridStyle}>
             <article style={{ ...statCardStyle, gridColumn: 'span 2' }}>
-              <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>Obra</div>
-              <select name="workId" value={selectedWorkId} onChange={handleWorkChange} style={inputStyle}>
-                <option value="">Seleciona uma obra</option>
-                {activeWorks.map(work => (
-                  <option key={work.id} value={work.id}>
-                    {work.name}
-                  </option>
-                ))}
-              </select>
-              {isChef && activeWorks.length > 1 && (
-                <p style={{ margin: '8px 0 0', color: 'var(--vp-text-muted)', fontSize: '13px' }}>
-                  Podes alternar entre todas as obras onde estás afetado.
-                </p>
+              <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>Obras atribuídas</div>
+              {isChef ? (
+                <div style={{ marginTop: '8px', fontSize: 'clamp(20px, 4vw, 24px)', fontWeight: 700 }}>
+                  {activeWorks.length}
+                </div>
+              ) : (
+                <select name="workId" value={selectedWorkId} onChange={handleWorkChange} style={inputStyle}>
+                  <option value="">Seleciona uma obra</option>
+                  {activeWorks.map(work => (
+                    <option key={work.id} value={work.id}>
+                      {work.name}
+                    </option>
+                  ))}
+                </select>
               )}
             </article>
             <article style={statCardStyle}>
@@ -684,6 +972,7 @@ export default function DailyHoursPage() {
                   type="date"
                   value={selectedDate}
                   onChange={(event) => setSelectedDate(event.target.value)}
+                  onClick={openNativeDatePicker}
                   style={{ ...inputStyle, marginTop: '8px', fontSize: '14px', width: '100%' }}
                 />
               )}
@@ -691,7 +980,7 @@ export default function DailyHoursPage() {
             <article style={statCardStyle}>
               <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>Pessoas atribuídas</div>
               <div style={{ marginTop: '8px', fontSize: 'clamp(24px, 5vw, 32px)', fontWeight: 700 }}>
-                {selectedWorkEntries.length}
+                {visibleChefEntriesCount}
               </div>
             </article>
           </div>
@@ -709,16 +998,16 @@ export default function DailyHoursPage() {
               {notificationPermission !== 'granted' && notificationPermission !== 'unsupported' && (
                 <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
                   <span style={{ fontSize: '13px' }}>
-                    Ativa as notificacoes do navegador para receber este aviso automaticamente as {reminderCutoffLabel}.
+                    Ativa as notificações do navegador para receber este aviso automaticamente as {reminderCutoffLabel}.
                   </span>
                   <button type="button" onClick={handleEnableNotifications} style={secondaryButtonStyle}>
-                    Ativar notificacoes
+                    Ativar notificações
                   </button>
                 </div>
               )}
               {notificationPermission === 'unsupported' && (
                 <span style={{ fontSize: '13px' }}>
-                  Este navegador nao suporta notificacoes automaticas, mas o aviso continua visivel dentro da pagina.
+                  Este navegador não suporta notificações automaticas, mas o aviso continua visivel dentro da pagina.
                 </span>
               )}
             </div>
@@ -737,19 +1026,194 @@ export default function DailyHoursPage() {
             </p>
           )}
 
-          {!loading && !selectedWork && isChef && (
+          {!loading && isChef && activeWorks.length > 0 && visibleChefEntriesCount === 0 && (
             <p style={{ margin: '18px 0 0', color: 'var(--vp-text-muted)' }}>
               Não foi encontrada uma obra atribuída para este utilizador.
             </p>
           )}
 
-          {!loading && selectedWork && selectedWorkEntries.length === 0 && (
+          {!loading && isChef && visibleChefEntriesCount > 0 && (
+            <div style={{ display: 'grid', gap: '22px', marginTop: '22px' }}>
+              {chefWorksWithEntries
+                .filter(({ entries }) => entries.length > 0)
+                .map(({ work, entries }) => (
+                  <section
+                    key={work.id}
+                    style={{
+                      display: 'grid',
+                      gap: '12px',
+                      border: '1px solid var(--vp-border)',
+                      borderRadius: '20px',
+                      padding: '16px',
+                      background: 'var(--vp-surface)',
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+                      <div>
+                        <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase', fontWeight: 800 }}>
+                          Obra
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginTop: '6px' }}>
+                          <h2 style={{ margin: 0, fontSize: '24px', lineHeight: 1.1 }}>
+                            {work.name}
+                          </h2>
+                          <button
+                            type="button"
+                            onClick={() => toggleWorkNote(work.id)}
+                            style={{
+                              ...secondaryButtonStyle,
+                              padding: '8px 12px',
+                              width: 'fit-content',
+                              background: workNotes[String(work.id)] ? 'rgba(37, 99, 235, 0.08)' : 'transparent',
+                            }}
+                          >
+                            {workNotes[String(work.id)] ? 'Editar nota' : 'Adicionar nota'}
+                          </button>
+                        </div>
+                      </div>
+                      <div style={{ color: 'var(--vp-text-muted)', fontWeight: 700 }}>
+                        {entries.length} {entries.length === 1 ? 'pessoa' : 'pessoas'}
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'grid', gap: '10px' }}>
+                      {openWorkNoteId === work.id && (
+                        <div
+                          style={{
+                            display: 'grid',
+                            gap: '10px',
+                            padding: '14px',
+                            borderRadius: '18px',
+                            background: 'var(--vp-surface-muted)',
+                            border: '1px solid var(--vp-border)',
+                          }}
+                        >
+                          <label style={{ ...labelStyle, margin: 0 }}>
+                            Nota da obra
+                            <textarea
+                              value={workNotes[String(work.id)] || ''}
+                              onChange={(event) => handleWorkNoteChange(work.id, event.target.value)}
+                              placeholder="Escreve uma nota rápida sobre esta obra..."
+                              rows={2}
+                              style={{
+                                ...inputStyle,
+                                minHeight: '74px',
+                                resize: 'vertical',
+                                lineHeight: 1.5,
+                                fontFamily: 'inherit',
+                              }}
+                            />
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => handleSaveWorkNote(work.id)}
+                            disabled={savingWorkNoteId === work.id}
+                            style={{
+                              ...secondaryButtonStyle,
+                              width: 'fit-content',
+                              justifySelf: 'end',
+                              border: 'none',
+                              background: savingWorkNoteId === work.id ? 'var(--vp-disabled)' : '#ff8c00',
+                              color: '#ffffff',
+                              boxShadow: savingWorkNoteId === work.id ? 'none' : '0 14px 28px rgba(255, 140, 0, 0.22)',
+                              cursor: savingWorkNoteId === work.id ? 'not-allowed' : 'pointer',
+                            }}
+                          >
+                            {savingWorkNoteId === work.id ? 'A guardar...' : 'Guardar nota'}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    <div
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: '1fr 60px',
+                        gap: '12px',
+                        alignItems: 'center',
+                        padding: '0 12px',
+                        color: 'var(--vp-text-soft)',
+                        fontSize: '12px',
+                        fontWeight: 700,
+                        letterSpacing: '0.08em',
+                        textTransform: 'uppercase',
+                      }}
+                    >
+                      <div>Pessoa</div>
+                      <div style={{ textAlign: 'center' }}>Horas</div>
+                    </div>
+
+                    {entries.map(entry => (
+                      <article
+                        key={entry.id}
+                        style={{
+                          display: 'grid',
+                          gridTemplateColumns: '1fr 60px',
+                          gap: '12px',
+                          border: '1px solid var(--vp-border)',
+                          borderRadius: '18px',
+                          padding: '16px',
+                          background: entry.submitted ? 'var(--vp-highlight)' : 'var(--vp-surface-muted)',
+                          alignItems: 'center',
+                        }}
+                      >
+                        <div style={{ minWidth: 0 }}>
+                          <strong>{entry.person?.name || `Pessoa ${entry.personId}`}</strong>
+                          {entry.notes && (
+                            <p style={{ margin: '6px 0 0', color: 'var(--vp-text-muted)', overflowWrap: 'anywhere', fontSize: '13px' }}>
+                              {entry.notes}
+                            </p>
+                          )}
+                        </div>
+
+                        <div>
+                          {entry.submitted ? (
+                            <div style={{ fontWeight: 700, color: '#1f7a45', textAlign: 'center' }}>
+                              {entry.hours}h
+                            </div>
+                          ) : (
+                            <>
+                              <input
+                                type="number"
+                                min="0"
+                                step="1"
+                                value={entryHours[String(entry.id)] ?? ''}
+                                onChange={(event) => handleHoursChange(entry.id, event.target.value)}
+                                style={{ ...inputStyle, marginTop: 0 }}
+                              />
+                              {rowErrors[String(entry.id)] && (
+                                <span style={{ color: '#b42318', fontSize: '13px' }}>{rowErrors[String(entry.id)]}</span>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      </article>
+                    ))}
+
+                    <button
+                      type="button"
+                      onClick={() => handleSaveAllHours(entries)}
+                      disabled={savingAll || entries.every(entry => entry.submitted)}
+                      style={
+                        savingAll || entries.every(entry => entry.submitted)
+                          ? { ...primaryButtonStyle, background: 'var(--vp-disabled)', cursor: 'not-allowed' }
+                          : { ...primaryButtonStyle, background: '#1f7a45' }
+                      }
+                    >
+                      {savingAll ? 'A guardar e submeter...' : 'Submeter'}
+                    </button>
+                  </section>
+                ))}
+            </div>
+          )}
+
+          {!loading && !isChef && selectedWork && selectedWorkEntries.length === 0 && (
             <p style={{ margin: '18px 0 0', color: 'var(--vp-text-muted)' }}>
               Ainda não existem pessoas atribuídas a esta obra para hoje.
             </p>
           )}
 
-          {!loading && selectedWorkEntries.length > 0 && (
+          {!loading && !isChef && selectedWorkEntries.length > 0 && (
             <div style={{ display: 'grid', gap: '12px', marginTop: '22px' }}>
               <div
                 style={{
@@ -825,6 +1289,11 @@ export default function DailyHoursPage() {
                           <span style={{ fontWeight: 700, color: entry.submitted ? '#1f7a45' : 'var(--vp-text-soft)' }}>
                             {entry.submitted ? '✓ Submetido' : 'Por submeter'}
                           </span>
+                          {entry.submitted && formatSubmittedTime(entry.submittedAt) ? (
+                            <span style={{ fontSize: '12px', fontWeight: 700, color: '#1f7a45' }}>
+                              {formatSubmittedTime(entry.submittedAt)}
+                            </span>
+                          ) : null}
                         </div>
                       </div>
                       <div>
@@ -870,17 +1339,11 @@ export default function DailyHoursPage() {
                             <button
                               type="button"
                               onClick={() => handleEditChefHours(entry.id, entry.dailyHours)}
-                              style={{
-                                ...secondaryButtonStyle,
-                                width: '34px',
-                                height: '34px',
-                                padding: 0,
-                                fontSize: '14px',
-                              }}
+                              style={editPencilButtonStyle}
                               title="Editar horas do chefe"
                               aria-label="Editar horas do chefe"
                             >
-                              ✎
+                              <EditPencilIcon />
                             </button>
                           </div>
                         )}
@@ -922,23 +1385,17 @@ export default function DailyHoursPage() {
                               ✕
                             </button>
                           </div>
-                        ) : entry.approvedHours !== null && entry.approvedHours !== undefined ? (
+                        ) : isAssignmentApproved(entry) ? (
                           <div style={{ display: 'flex', gap: '8px', alignItems: 'center', justifyContent: 'center' }}>
                             <span style={{ fontWeight: 700, color: '#1f7a45' }}>{entry.approvedHours}h ✓</span>
                             <button
                               type="button"
                               onClick={() => handleEditApprovedHours(entry.id, entry.approvedHours)}
-                              style={{
-                                ...secondaryButtonStyle,
-                                width: '34px',
-                                height: '34px',
-                                padding: 0,
-                                fontSize: '14px',
-                              }}
+                              style={editPencilButtonStyle}
                               title="Editar horas aprovadas"
                               aria-label="Editar horas aprovadas"
                             >
-                              ✎
+                              <EditPencilIcon />
                             </button>
                           </div>
                         ) : (
@@ -949,17 +1406,11 @@ export default function DailyHoursPage() {
                             <button
                               type="button"
                               onClick={() => handleEditApprovedHours(entry.id, entry.dailyHours)}
-                              style={{
-                                ...secondaryButtonStyle,
-                                width: '34px',
-                                height: '34px',
-                                padding: 0,
-                                fontSize: '14px',
-                              }}
+                              style={editPencilButtonStyle}
                               title="Editar horas aprovadas"
                               aria-label="Editar horas aprovadas"
                             >
-                              ✎
+                              <EditPencilIcon />
                             </button>
                           </div>
                         )}
@@ -992,12 +1443,12 @@ export default function DailyHoursPage() {
                     disabled={
                       approvingAll ||
                       selectedWorkEntries.length === 0 ||
-                      selectedWorkEntries.every(e => e.approvedHours !== null && e.approvedHours !== undefined)
+                      selectedWorkEntries.every(e => isAssignmentApproved(e))
                     }
                     style={
                       approvingAll ||
                       selectedWorkEntries.length === 0 ||
-                      selectedWorkEntries.every(e => e.approvedHours !== null && e.approvedHours !== undefined)
+                      selectedWorkEntries.every(e => isAssignmentApproved(e))
                         ? { ...primaryButtonStyle, background: 'var(--vp-disabled)', cursor: 'not-allowed' }
                         : { ...primaryButtonStyle, background: '#1f7a45' }
                     }
@@ -1016,3 +1467,5 @@ export default function DailyHoursPage() {
     </main>
   )
 }
+
+

@@ -109,6 +109,42 @@ O arquivo Excel deve ter o seguinte formato:
 - React
 - xlsx
 
+## Seguranca de autenticacao
+
+O login e a troca de palavra-passe enviam um envelope cifrado: o browser cifra o conteudo com AES-GCM e cifra a chave temporaria com a chave publica RSA-OAEP do servidor. Isto protege o corpo dos pedidos de credenciais; HTTPS continua a ser obrigatorio para proteger todo o canal.
+
+Em desenvolvimento, a aplicacao gera um par RSA temporario em memoria. Em producao, configure obrigatoriamente:
+
+- `AUTH_SECRET`: segredo longo e aleatorio para assinar sessoes.
+- `LOGIN_PUBLIC_KEY_PEM`: chave publica RSA em formato PEM/SPKI.
+- `LOGIN_PRIVATE_KEY_PEM`: chave privada RSA em formato PEM/PKCS8.
+
+Exemplo para gerar chaves fora do repositorio:
+
+```bash
+openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out login-private.pem
+openssl rsa -pubout -in login-private.pem -out login-public.pem
+```
+
+O servidor redireciona pedidos HTTP para HTTPS em producao e envia `Strict-Transport-Security`. Nunca coloque a chave privada no codigo frontend nem no controlo de versoes.
+
+As passwords novas e as passwords alteradas sao guardadas apenas como hash `bcrypt` com custo 12. A validacao de login usa `bcrypt.compare`; hashes `scrypt` anteriores continuam validos durante a migracao e sao substituidos por `bcrypt` no proximo login correto.
+
+A regra aplicada para novas passwords e:
+
+- minimo de 12 caracteres;
+- pelo menos uma letra maiuscula;
+- pelo menos um numero;
+- pelo menos um caracter especial;
+- maximo de 72 bytes, para respeitar o limite seguro do `bcrypt`.
+
+O login limita tentativas falhadas por nome de utilizador:
+
+- maximo de 5 falhas num periodo de 15 minutos;
+- ao atingir o limite, o login fica bloqueado durante 15 minutos;
+- a resposta de bloqueio indica o tempo restante, sem revelar se a conta existe;
+- um login correto limpa as falhas anteriores.
+
 ## Troubleshooting
 
 - Certifique-se de que o arquivo Excel está no formato .xlsx.

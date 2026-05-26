@@ -1,29 +1,32 @@
 [
-  {
-    "id": 1,
-    "name": "Construtora Alfa",
-    "vatNumber": "501111111",
-    "contactName": "Marta Silva",
-    "email": "marta@construtora-alfa.pt",
-    "phone": "912000111",
-    "notes": "Cliente regular de reabilitacao."
-  },
-  {
-    "id": 2,
-    "name": "Particular",
-    "vatNumber": "299111222",
-    "contactName": "Ricardo Costa",
-    "email": "ricardo@example.com",
-    "phone": "913000222",
-    "notes": "Cliente particular para moradia."
-  },
-  {
-    "id": 3,
-    "name": "Logistica Horizonte",
-    "vatNumber": "504222333",
-    "contactName": "Helena Ramos",
-    "email": "helena@logisticahorizonte.pt",
-    "phone": "914000333",
-    "notes": "Cliente industrial."
-  }
+    {
+        "id":  1,
+        "name":  "Construtora Alfa",
+        "vatNumber":  "501111111",
+        "contactName":  "Marta Silva",
+        "email":  "marta@construtora-alfa.pt",
+        "phone":  "912000111",
+        "notes":  "Cliente regular de reabilitacao.",
+        "companyId":  1
+    },
+    {
+        "id":  2,
+        "name":  "Particular",
+        "vatNumber":  "299111222",
+        "contactName":  "Ricardo Costa",
+        "email":  "ricardo@example.com",
+        "phone":  "913000222",
+        "notes":  "Cliente particular para moradia.",
+        "companyId":  1
+    },
+    {
+        "id":  3,
+        "name":  "Logistica Horizonte",
+        "vatNumber":  "504222333",
+        "contactName":  "Helena Ramos",
+        "email":  "helena@logisticahorizonte.pt",
+        "phone":  "914000333",
+        "notes":  "Cliente industrial.",
+        "companyId":  1
+    }
 ]

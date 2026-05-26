@@ -21,7 +21,7 @@ export async function PUT(request, { params }) {
   try {
     const { id } = await params
     const body = await request.json()
-    const { name, clientId, location, status, budget, defaultHourlyCost, startDate, endDate, notes, number } = body
+    const { name, clientId, location, status, budget, defaultHourlyCost, roleHourlyCosts, specialPersonHourlyCosts, startDate, endDate, workingDays, notes, number } = body
 
     if (clientId !== undefined && (!clientId || !getClientById(clientId))) {
       return NextResponse.json({ error: 'A obra tem de pertencer a um cliente valido' }, { status: 400 })
@@ -46,8 +46,11 @@ export async function PUT(request, { params }) {
       status,
       budget,
       defaultHourlyCost,
+      roleHourlyCosts,
+      specialPersonHourlyCosts,
       startDate,
       endDate,
+      workingDays,
       notes,
       number,
     })

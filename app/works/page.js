@@ -2,7 +2,8 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import EditPencilIcon, { editPencilButtonStyle } from '../components/EditPencilIcon'
 
 const pageStyle = {
   minHeight: '100vh',
@@ -80,6 +81,7 @@ const modalCardStyle = {
   width: 'min(980px, 100%)',
   maxHeight: 'calc(100vh - 48px)',
   overflowY: 'auto',
+  overflowX: 'hidden',
   background: 'var(--vp-surface-soft-strong)',
   border: '1px solid var(--vp-border)',
   borderRadius: '28px',
@@ -91,10 +93,18 @@ const inputStyle = {
   width: '100%',
   marginTop: '8px',
   padding: '12px 14px',
+  boxSizing: 'border-box',
   borderRadius: '12px',
   border: '1px solid var(--vp-border)',
   background: 'var(--vp-surface-muted)',
   fontSize: '14px',
+}
+
+const notesTextareaStyle = {
+  ...inputStyle,
+  minHeight: '72px',
+  resize: 'none',
+  overflow: 'hidden',
 }
 
 const labelStyle = {
@@ -133,13 +143,7 @@ const dangerButtonStyle = {
   cursor: 'pointer',
 }
 
-const iconButtonStyle = {
-  ...secondaryButtonStyle,
-  width: '34px',
-  height: '34px',
-  padding: 0,
-  fontSize: '14px',
-}
+const iconButtonStyle = editPencilButtonStyle
 
 const iconDangerButtonStyle = {
   ...dangerButtonStyle,
@@ -147,6 +151,45 @@ const iconDangerButtonStyle = {
   height: '34px',
   padding: 0,
   fontSize: '14px',
+}
+
+const workDayOptions = [
+  { value: 'monday', label: 'Segunda' },
+  { value: 'tuesday', label: 'Terça' },
+  { value: 'wednesday', label: 'Quarta' },
+  { value: 'thursday', label: 'Quinta' },
+  { value: 'friday', label: 'Sexta' },
+  { value: 'saturday', label: 'Sábado' },
+  { value: 'sunday', label: 'Domingo' },
+]
+
+const rolePriceOptions = [
+  { value: 'chef_primeira', label: 'Chefe de primeira' },
+  { value: 'chef_segunda', label: 'Chefe de segunda' },
+  { value: 'carpinteiro', label: 'Carpinteiro' },
+  { value: 'ferrajeiro', label: 'Ferrajeiro' },
+  { value: 'trolha', label: 'Trolha' },
+  { value: 'gruista', label: 'Gruista' },
+]
+
+const defaultWorkingDays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday']
+
+const workingDaysGridStyle = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+  gap: '10px',
+  marginTop: '8px',
+}
+
+const workingDayOptionStyle = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: '8px',
+  padding: '10px 12px',
+  borderRadius: '12px',
+  background: 'var(--vp-surface-muted)',
+  border: '1px solid var(--vp-border)',
+  fontWeight: 700,
 }
 
 const emptyWorkForm = {
@@ -158,9 +201,18 @@ const emptyWorkForm = {
   status: 'planned',
   budget: '',
   defaultHourlyCost: '',
+  roleHourlyCosts: {},
+  specialPersonHourlyCosts: {},
   startDate: '',
   endDate: '',
+  workingDays: defaultWorkingDays,
   notes: '',
+}
+
+function autoResizeTextarea(textarea) {
+  if (!textarea) return
+  textarea.style.height = '72px'
+  textarea.style.height = `${Math.max(textarea.scrollHeight, 72)}px`
 }
 
 export default function WorksPage() {
@@ -174,10 +226,29 @@ export default function WorksPage() {
   const [formErrors, setFormErrors] = useState({})
   const [form, setForm] = useState(emptyWorkForm)
   const [showCreateForm, setShowCreateForm] = useState(false)
+  const [handledEditId, setHandledEditId] = useState('')
+  const notesTextareaRef = useRef(null)
 
   useEffect(() => {
     loadData()
   }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || loading || works.length === 0) return
+
+    const editId = new URLSearchParams(window.location.search).get('edit')
+    if (!editId || handledEditId === editId) return
+
+    const workToEdit = works.find(work => String(work.id) === String(editId))
+    if (!workToEdit) return
+
+    startEdit(workToEdit)
+    setHandledEditId(editId)
+  }, [handledEditId, loading, works])
+
+  useEffect(() => {
+    autoResizeTextarea(notesTextareaRef.current)
+  }, [form.notes, showCreateForm])
 
   const activeWorks = useMemo(() => works.filter(work => work.status !== 'completed'), [works])
   const archivedWorks = useMemo(() => works.filter(work => work.status === 'completed'), [works])
@@ -211,6 +282,32 @@ export default function WorksPage() {
     const { name, value } = event.target
     setForm(current => ({ ...current, [name]: value }))
     setFormErrors(current => ({ ...current, [name]: '' }))
+  }
+
+  function handleWorkingDayChange(event) {
+    const { value, checked } = event.target
+
+    setForm(current => {
+      const currentDays = Array.isArray(current.workingDays) ? current.workingDays : []
+      const nextDays = checked
+        ? [...new Set([...currentDays, value])]
+        : currentDays.filter(day => day !== value)
+
+      return { ...current, workingDays: nextDays }
+    })
+  }
+
+  function handleRoleHourlyCostChange(event) {
+    const { name, value } = event.target
+    const role = name.replace('roleHourlyCost-', '')
+
+    setForm(current => ({
+      ...current,
+      roleHourlyCosts: {
+        ...(current.roleHourlyCosts || {}),
+        [role]: value,
+      },
+    }))
   }
 
   function validateForm() {
@@ -255,8 +352,11 @@ export default function WorksPage() {
       status: work.status ?? 'planned',
       budget: work.budget ?? '',
       defaultHourlyCost: work.defaultHourlyCost ?? '',
+      roleHourlyCosts: work.roleHourlyCosts || {},
+      specialPersonHourlyCosts: work.specialPersonHourlyCosts || {},
       startDate: work.startDate ?? '',
       endDate: work.endDate ?? '',
+      workingDays: Array.isArray(work.workingDays) ? work.workingDays : defaultWorkingDays,
       notes: work.notes ?? '',
     })
     setShowCreateForm(true)
@@ -283,8 +383,19 @@ export default function WorksPage() {
         status: form.status,
         budget: form.budget === '' ? 0 : Number(form.budget),
         defaultHourlyCost: form.defaultHourlyCost === '' ? 0 : Number(form.defaultHourlyCost),
+        roleHourlyCosts: Object.fromEntries(
+          Object.entries(form.roleHourlyCosts || {})
+            .filter(([, value]) => value !== '' && value !== null && value !== undefined)
+            .map(([role, value]) => [role, Number(value)]),
+        ),
+        specialPersonHourlyCosts: Object.fromEntries(
+          Object.entries(form.specialPersonHourlyCosts || {})
+            .filter(([, value]) => value !== '' && value !== null && value !== undefined)
+            .map(([personId, value]) => [personId, Number(value)]),
+        ),
         startDate: form.startDate || null,
         endDate: form.endDate || null,
+        workingDays: form.workingDays,
         notes: form.notes,
       }
 
@@ -361,6 +472,17 @@ export default function WorksPage() {
           <strong>#{work.number} - {work.name}</strong>
           <p style={{ margin: '6px 0 0', color: 'var(--vp-text-muted)' }}>{work.client?.name || 'Sem cliente'}</p>
           <p style={{ margin: '6px 0 0', color: 'var(--vp-text-muted)' }}>Estado: {work.status}</p>
+          <p style={{ margin: '6px 0 0', color: 'var(--vp-text-muted)' }}>
+            Dias de trabalho: {(work.workingDays || defaultWorkingDays)
+              .map(day => workDayOptions.find(option => option.value === day)?.label)
+              .filter(Boolean)
+              .join(', ')}
+          </p>
+          {work.roleHourlyCosts && Object.keys(work.roleHourlyCosts).length > 0 && (
+            <p style={{ margin: '6px 0 0', color: 'var(--vp-text-muted)' }}>
+              Preços por role definidos: {Object.keys(work.roleHourlyCosts).length}
+            </p>
+          )}
         </div>
         <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
           <button
@@ -373,7 +495,7 @@ export default function WorksPage() {
             title="Editar obra"
             aria-label="Editar obra"
           >
-            ✎
+            <EditPencilIcon />
           </button>
         </div>
       </div>
@@ -453,9 +575,9 @@ export default function WorksPage() {
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} style={{ display: 'grid', gap: '14px', marginTop: '18px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
-                <label style={labelStyle}>
+            <form onSubmit={handleSubmit} style={{ display: 'grid', gap: '20px', marginTop: '18px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '20px' }}>
+                <label style={{ ...labelStyle, maxWidth: '110px' }}>
                   Numero
                   <input type="number" name="number" value={form.number} onChange={handleChange} style={inputStyle} />
                 </label>
@@ -519,15 +641,60 @@ export default function WorksPage() {
                 </label>
               </div>
 
+              <fieldset style={{ border: '1px solid var(--vp-border)', borderRadius: '18px', padding: '16px', margin: 0 }}>
+                <legend style={{ padding: '0 8px', fontWeight: 800 }}>Dias em que a obra trabalha</legend>
+                <div style={workingDaysGridStyle}>
+                  {workDayOptions.map(option => (
+                    <label key={option.value} style={workingDayOptionStyle}>
+                      <input
+                        type="checkbox"
+                        value={option.value}
+                        checked={(form.workingDays || []).includes(option.value)}
+                        onChange={handleWorkingDayChange}
+                      />
+                      {option.label}
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+
+              <fieldset style={{ border: '1px solid var(--vp-border)', borderRadius: '18px', padding: '16px', margin: 0 }}>
+                <legend style={{ padding: '0 8px', fontWeight: 800 }}>Preço por role no plano diário</legend>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '12px', marginTop: '8px' }}>
+                  {rolePriceOptions.map(option => (
+                    <label key={option.value} style={labelStyle}>
+                      {option.label}
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        name={`roleHourlyCost-${option.value}`}
+                        value={form.roleHourlyCosts?.[option.value] ?? ''}
+                        onChange={handleRoleHourlyCostChange}
+                        placeholder="Usar preço por defeito"
+                        style={inputStyle}
+                      />
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+
               <label style={labelStyle}>
                 Notas
-                <textarea name="notes" value={form.notes} onChange={handleChange} rows={4} style={inputStyle} />
+                <textarea
+                  ref={notesTextareaRef}
+                  name="notes"
+                  value={form.notes}
+                  onChange={handleChange}
+                  rows={2}
+                  style={notesTextareaStyle}
+                ></textarea>
               </label>
 
               {error && <p style={{ margin: 0, color: '#b42318' }}>{error}</p>}
               {success && <p style={{ margin: 0, color: '#1f7a45' }}>{success}</p>}
 
-              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
                 <button type="submit" disabled={submitting} style={primaryButtonStyle}>
                   {submitting ? 'A gravar...' : form.id ? 'Guardar alterações' : 'Criar obra'}
                 </button>
@@ -551,3 +718,4 @@ export default function WorksPage() {
     </main>
   )
 }
+

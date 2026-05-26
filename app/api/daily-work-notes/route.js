@@ -1,0 +1,106 @@
+import { NextResponse } from 'next/server'
+import { canManageEntireApp } from '../../../lib/auth.js'
+import { getAllDailyWorkNotes, removeDailyWorkNotes, upsertDailyWorkNote } from '../../../lib/daily-work-notes.js'
+import { isFeatureEnabled } from '../../../lib/feature-flags.js'
+import { getServerSession } from '../../../lib/server-session.js'
+
+function canAccessWork(session, workId) {
+  if (!session) return false
+  if (canManageEntireApp(session.role)) return true
+  return session.workIds.includes(Number(workId))
+}
+
+function filterNotesForSession(notes, session) {
+  if (!session) return []
+
+  return notes.filter(note => {
+    if (!canAccessWork(session, note.workId)) return false
+    if (canManageEntireApp(session.role)) return true
+    return Number(note.authorId) === Number(session.personId || session.userId)
+  })
+}
+
+export async function GET(request) {
+  try {
+    if (!isFeatureEnabled('dailyWorkNotes')) {
+      return NextResponse.json({ error: 'As notas diarias da obra estao desativadas.' }, { status: 503 })
+    }
+
+    const session = await getServerSession()
+
+    if (!session) {
+      return NextResponse.json({ error: 'Sessão obrigatória.' }, { status: 401 })
+    }
+
+    const { searchParams } = new URL(request.url)
+    const filters = {
+      date: searchParams.get('date'),
+      workId: searchParams.get('workId'),
+    }
+
+    const notes = filterNotesForSession(getAllDailyWorkNotes(filters), session)
+    return NextResponse.json(notes)
+  } catch (error) {
+    return NextResponse.json({ error: 'Erro ao obter notas.' }, { status: 500 })
+  }
+}
+
+export async function PUT(request) {
+  try {
+    if (!isFeatureEnabled('dailyWorkNotes')) {
+      return NextResponse.json({ error: 'As notas diarias da obra estao desativadas.' }, { status: 503 })
+    }
+
+    const session = await getServerSession()
+
+    if (!session) {
+      return NextResponse.json({ error: 'Sessão obrigatória.' }, { status: 401 })
+    }
+
+    const body = await request.json()
+    const workId = Number(body.workId)
+
+    if (!canAccessWork(session, workId)) {
+      return NextResponse.json({ error: 'Sem permissão para esta obra.' }, { status: 403 })
+    }
+
+    const note = upsertDailyWorkNote({
+      date: body.date,
+      workId,
+      note: body.note,
+      authorId: session.personId || session.userId,
+      authorName: session.name,
+    })
+
+    return NextResponse.json(note)
+  } catch (error) {
+    const status = error.message?.includes('obrigatória') ? 400 : 500
+    return NextResponse.json({ error: error.message || 'Erro ao guardar nota.' }, { status })
+  }
+}
+
+export async function DELETE(request) {
+  try {
+    if (!isFeatureEnabled('dailyWorkNotes')) {
+      return NextResponse.json({ error: 'As notas diarias da obra estao desativadas.' }, { status: 503 })
+    }
+
+    const session = await getServerSession()
+
+    if (!session) {
+      return NextResponse.json({ error: 'SessÃ£o obrigatÃ³ria.' }, { status: 401 })
+    }
+
+    if (!canManageEntireApp(session.role)) {
+      return NextResponse.json({ error: 'Sem permissÃ£o para remover notas.' }, { status: 403 })
+    }
+
+    const body = await request.json()
+    const ids = Array.isArray(body?.ids) ? body.ids : []
+    const removedCount = removeDailyWorkNotes(ids)
+
+    return NextResponse.json({ removedCount })
+  } catch (error) {
+    return NextResponse.json({ error: 'Erro ao remover notas.' }, { status: 500 })
+  }
+}

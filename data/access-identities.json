@@ -2,9 +2,9 @@
   {
     "id": 1,
     "personId": null,
-    "role": "chef",
+    "role": "chef_primeira",
     "username": "construtora.alfa",
-    "password": "alfa2026",
+    "password": "scrypt$v1$5b645c8c1e73ad23a19ac9a2a03d8e90$df638019393aea249fb5227e004031e3995bd56f1ddeea46245250db6b9c24b84e8f616daee74d2eee75680cc49569b56f5bc2ff67cbb653a551929fb5605a72",
     "works": [
       1
     ]
@@ -12,9 +12,9 @@
   {
     "id": 2,
     "personId": null,
-    "role": "chef",
+    "role": "chef_primeira",
     "username": "particular.valeverde",
-    "password": "vale2026",
+    "password": "scrypt$v1$bbd88d49353d64153201cb323181885b$51af534d42b78988d64f765b05971c5d742724da7d8c77d240990958407b422a12c419378d973340f3ae84e8c10e34870e7416b85ae5a6a4e7c663496cc98003",
     "works": [
       2
     ]
@@ -22,9 +22,9 @@
   {
     "id": 3,
     "personId": null,
-    "role": "chef",
+    "role": "chef_primeira",
     "username": "logistica.horizonte",
-    "password": "horizonte2026",
+    "password": "scrypt$v1$fc43ca7ce58020efcf5aaf67e5190137$acd72af4c215ca09b76b403d79e60d446b5fee888cb08e9065523073f61ee536b2bc1108e810e61e1d66c925c684e92f79fb44ef9dfe9f24ce0377fd72d9c4cc",
     "works": [
       3
     ]
@@ -34,98 +34,89 @@
     "personId": 1,
     "role": "admin",
     "username": "Abel_Pinheiro",
-    "password": "Abel123",
+    "password": "scrypt$v1$15f5622fa8065c4dddecbeb7fa7b946c$d8c07d051cbe6d144d34e35dc6d3dfea9882750b01f298307c8ac8edb3b55ee861f5a822f26225a3a7034f0ecbc938a4d094f9a3a52fc4c56a6192ff04701687",
     "works": []
   },
   {
     "id": 5,
     "personId": 3,
-    "role": "chef",
+    "role": "chef_primeira",
     "username": "Agostinho_Fernandes",
-    "password": "Agostinho123",
-    "works": []
+    "password": "scrypt$v1$1d582d54c53b9ac090eaba6c5be9b3e0$d7833817985cbff9adafd08a040238e2829611a2724ef9159816728230abffc25f7b71c031b5b2233d3f5219c51e39c720a5f93b478dbce3eafd4fbe616c20f6",
+    "works": [
+      1
+    ]
   },
   {
     "id": 6,
     "personId": 2,
     "role": "responsavel",
     "username": "Helena_Bento",
-    "password": "Helena123",
+    "password": "scrypt$v1$73a0517773fca12fa5207b6621f8629d$a4472e283355213ebf0d7a17c7772e6b37243d3c381a4af5c98ed9365a56ba2fa5802aa92dc2a21a4ce6030daad15d142c97076e7605c6cade4306bc7bfd3160",
     "works": []
-  },
-  {
-    "id": 7,
-    "personId": 18,
-    "role": "chef",
-    "username": "David_Cunha",
-    "password": "David123",
-    "works": [
-      1,
-      2
-    ]
   },
   {
     "id": 8,
     "personId": 14,
     "role": "responsavel",
     "username": "Carlos_Silva",
-    "password": "Carlos123",
+    "password": "scrypt$v1$2ac1ea6d14f1e3b25a2446e413d0b2ac$4556f55aa163041b71a294b476115809f5893fc52656290d659ebf55ca97e0f1065ff3d2c7c8d878565e053b07ef7e96a2bd9199cd30a8e4cb98dbd9292f5a93",
     "works": []
   },
   {
     "id": 9,
     "personId": 16,
-    "role": "chef",
+    "role": "chef_primeira",
     "username": "Cristiano_Silva",
-    "password": "Cristiano123",
+    "password": "scrypt$v1$141942f92b80f3842056164c1daf33b3$50cb98d6ac61a3f1ffd8ef7a712065df92bda64f733375a05587e433cd386a23da41348dbdf2ff5a489e1c0136afa6b6fb99d090941194dc8d91c870c25bc836",
     "works": []
   },
   {
     "id": 10,
     "personId": 22,
-    "role": "chef",
+    "role": "chef_primeira",
     "username": "Ernesto_Monteiro",
-    "password": "Ernesto123",
+    "password": "scrypt$v1$732d015ff53d3ff8141bffa4086d4f3c$019a19feb303726ef044f1bbffdbcf693b59ef8d73420a140f0894c17e175970bb1e80827c08f3df09f9deff209254da76ecf6b31615de61d25a9a2b505c677f",
     "works": []
   },
   {
     "id": 11,
     "personId": 28,
-    "role": "chef",
+    "role": "chef_primeira",
     "username": "Ivo_Campos",
-    "password": "Ivo123",
+    "password": "scrypt$v1$a781ba00eb7b5ecfc6778bc12a8ade5d$f406f96160d8435c2bb1b486d8b18fad7f2ba0849944ec890dcd34fd34afc01ebb736e60bcb886890ebc416459ce335ba007428788f7b990065f1c4e0c18e098",
     "works": []
   },
   {
     "id": 12,
     "personId": 36,
-    "role": "chef",
+    "role": "chef_primeira",
     "username": "Jose_Sa",
-    "password": "Jose123",
+    "password": "scrypt$v1$89fe6249c3c4fb07ac1b2a5c1805f6b1$a70cbb4eae6a7975d2bd43d8dc20809448fe93c7a582289f2993e1e90140cd2e20585354a8e806b73b04dffbba0bb75507210f45f6fbe2c102e0126ab2db8e03",
     "works": []
   },
   {
     "id": 13,
     "personId": 41,
-    "role": "chef",
+    "role": "chef_primeira",
     "username": "Lucas_Pacheco",
-    "password": "Lucas123",
+    "password": "scrypt$v1$df4780358c0ac3edacff77fe179fdb45$725d369e0c2118ef3cf6fc4312863c380ef46f1f5175060f791f17afc0092f4e82a3f8575f95d5e41db9d5f981b34b89f0d065543f57d8e081543f715d566bea",
     "works": []
   },
   {
     "id": 14,
     "personId": 64,
-    "role": "chef",
+    "role": "chef_primeira",
     "username": "Vasile_Buburuzan",
-    "password": "Vasile123",
+    "password": "scrypt$v1$42c93a8ccc350f78ace6ca9beeb6a2c5$dfe9466526dc06361b997927eb85087b21563620b4a06131226f9cd00b598ba7d1d766cb2b727688ffe37050209a09729946c4a26e24e2b4b9295b1927d6d480",
     "works": []
   },
   {
     "id": 15,
     "personId": 61,
-    "role": "chef",
+    "role": "chef_primeira",
     "username": "Simion_Buburuzan",
-    "password": "Simion123",
+    "password": "scrypt$v1$49fd8e4f1e1d5391ff23c76671e1182f$132e010f5ac6bb3a2ad41ba134528fa4a547c1e0b42ab360449893b7e34c97a4f7663734f8b13640411d0d453d291e9d74350d0e01ba9d96bf4261f97c5700a6",
     "works": []
   },
   {
@@ -133,7 +124,7 @@
     "personId": 44,
     "role": "carpinteiro",
     "username": "Luis_Relvas",
-    "password": "Luis123",
+    "password": "scrypt$v1$a1dab260051f2450a8f7aecb60f2a96e$6a066be1c47d521e84cb7e087f49e4d7cf067b4b50096a197bfff09b288fe425f4fe310109fec9bd683182328774579cc8b97514e4a0254f71fbf9c13e8428cf",
     "works": []
   }
 ]
