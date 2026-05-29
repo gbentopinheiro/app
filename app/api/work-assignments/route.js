@@ -1,131 +1,18 @@
 import { NextResponse } from 'next/server'
-import { canAccessAssignmentsOverview, canManageEntireApp } from '../../../lib/auth.js'
 import { isDailyPlanLocked } from '../../../lib/daily-plan-lock.js'
 import { isChefRole } from '../../../lib/roles.js'
 import { getServerSession } from '../../../lib/server-session.js'
+import {
+  canAccessAssignmentsRoute,
+  canAccessWork,
+  extendDefaultsForChef,
+  filterAssignmentsForSession,
+  filterDefaultsForSession,
+  isChefPersonAllowedForWork,
+  resolveDailyPlanDate,
+  resolvePreviewScopedSession,
+} from '../../../lib/work-assignment-policy.js'
 import { createWorkAssignment, getAllWorkAssignments, getAssignmentDefaults } from '../../../lib/work-assignments.js'
-import { getWorkPlanById } from '../../../lib/work-plans.js'
-
-function canAccessWork(session, workId) {
-  if (!session) return false
-  if (canManageEntireApp(session.role)) return true
-  return session.workIds.includes(Number(workId))
-}
-
-function filterAssignmentsForSession(assignments, session) {
-  if (!session || canAccessAssignmentsOverview(session.role)) {
-    return assignments
-  }
-
-  return assignments.filter(assignment => canAccessWork(session, assignment.workId))
-}
-
-function filterDefaultsForSession(defaults, session) {
-  if (!session || canAccessAssignmentsOverview(session.role)) {
-    return defaults
-  }
-
-  return {
-    ...defaults,
-    works: defaults.works.filter(work => canAccessWork(session, work.id)),
-  }
-}
-
-function getChefReferenceAssignments(session, filters = {}) {
-  if (!session || !isChefRole(session.role)) {
-    return []
-  }
-
-  const scopedFilters = {}
-
-  if (filters.workPlanId) {
-    scopedFilters.workPlanId = filters.workPlanId
-  } else if (filters.date) {
-    scopedFilters.date = filters.date
-  }
-
-  if (!scopedFilters.workPlanId && !scopedFilters.date) {
-    return []
-  }
-
-  return filterAssignmentsForSession(getAllWorkAssignments(scopedFilters), session)
-}
-
-function buildPlannedPeopleByWork(assignments) {
-  const groupedPeople = new Map()
-
-  assignments.forEach(assignment => {
-    const workId = Number(assignment.workId)
-    const personId = Number(assignment.person?.id || assignment.personId)
-
-    if (!workId || !personId || !assignment.person) {
-      return
-    }
-
-    const currentWorkPeople = groupedPeople.get(workId) || new Map()
-
-    currentWorkPeople.set(personId, {
-      id: assignment.person.id,
-      name: assignment.person.name,
-      defaultHourlyPrice: assignment.person.defaultHourlyPrice,
-    })
-
-    groupedPeople.set(workId, currentWorkPeople)
-  })
-
-  return Object.fromEntries(
-    Array.from(groupedPeople.entries()).map(([workId, peopleMap]) => [
-      String(workId),
-      Array.from(peopleMap.values()).sort((left, right) => left.name.localeCompare(right.name)),
-    ]),
-  )
-}
-
-function extendDefaultsForChef(defaults, session, filters = {}) {
-  const nextDefaults = filterDefaultsForSession(defaults, session)
-  const referenceAssignments = getChefReferenceAssignments(session, filters)
-  const plannedPeopleByWork = buildPlannedPeopleByWork(referenceAssignments)
-  const allowedPeople = Array.from(
-    new Map(
-      Object.values(plannedPeopleByWork)
-        .flat()
-        .map(person => [person.id, person]),
-    ).values(),
-  ).sort((left, right) => left.name.localeCompare(right.name))
-
-  return {
-    ...nextDefaults,
-    people: allowedPeople,
-    plannedPeopleByWork,
-    restrictPeopleByWork: true,
-  }
-}
-
-function isChefPersonAllowedForWork(session, { workPlanId, date, workId, personId }) {
-  if (!session || !isChefRole(session.role)) {
-    return true
-  }
-
-  const referenceAssignments = getChefReferenceAssignments(session, { workPlanId, date })
-
-  return referenceAssignments.some(
-    assignment =>
-      Number(assignment.workId) === Number(workId) &&
-      Number(assignment.personId) === Number(personId),
-  )
-}
-
-function resolveDailyPlanDate({ workPlanId, date }) {
-  if (date) {
-    return date
-  }
-
-  if (!workPlanId) {
-    return null
-  }
-
-  return getWorkPlanById(workPlanId)?.date || null
-}
 
 export async function GET(request) {
   try {
@@ -136,6 +23,12 @@ export async function GET(request) {
     }
 
     const { searchParams } = new URL(request.url)
+    const scopedSession = resolvePreviewScopedSession(session, searchParams)
+
+    if (!canAccessAssignmentsRoute(scopedSession)) {
+      return NextResponse.json({ error: 'Sem permissao para consultar afetacoes.' }, { status: 403 })
+    }
+
     const includeDefaults = searchParams.get('includeDefaults') === 'true'
     const filters = {
       workPlanId: searchParams.get('workPlanId'),
@@ -144,19 +37,19 @@ export async function GET(request) {
       date: searchParams.get('date'),
     }
 
-    if (isChefRole(session.role) && filters.workId && !canAccessWork(session, filters.workId)) {
+    if (isChefRole(scopedSession.role) && filters.workId && !canAccessWork(scopedSession, filters.workId)) {
       return NextResponse.json({ error: 'Sem permissao para esta obra.' }, { status: 403 })
     }
 
-    const assignments = filterAssignmentsForSession(getAllWorkAssignments(filters), session)
+    const assignments = filterAssignmentsForSession(getAllWorkAssignments(filters), scopedSession)
 
     if (includeDefaults) {
       return NextResponse.json({
         items: assignments,
         defaults:
-          isChefRole(session.role)
-            ? extendDefaultsForChef(getAssignmentDefaults(), session, filters)
-            : filterDefaultsForSession(getAssignmentDefaults(), session),
+          isChefRole(scopedSession.role)
+            ? extendDefaultsForChef(getAssignmentDefaults(), scopedSession, filters)
+            : filterDefaultsForSession(getAssignmentDefaults(), scopedSession),
       })
     }
 
@@ -172,6 +65,10 @@ export async function POST(request) {
 
     if (!session) {
       return NextResponse.json({ error: 'Sessao obrigatoria.' }, { status: 401 })
+    }
+
+    if (!canAccessAssignmentsRoute(session)) {
+      return NextResponse.json({ error: 'Sem permissao para criar afetacoes.' }, { status: 403 })
     }
 
     const body = await request.json()

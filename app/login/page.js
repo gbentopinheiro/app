@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
+import { createProtectedPayload } from '../../lib/browser-protected-payload.js'
 import { BentixLogo } from './components/BentixLogo'
 
 const pageStyle = {
@@ -200,6 +201,7 @@ const panelStyle = {
   WebkitBackdropFilter: 'blur(16px)',
   boxShadow: '0 30px 80px rgba(3, 8, 20, 0.42)',
   boxSizing: 'border-box',
+  transform: 'translateX(-72px)',
 }
 
 const panelHeaderStyle = {
@@ -321,13 +323,15 @@ export default function LoginPage() {
     setError('')
 
     try {
+      const protectedPayload = await createProtectedPayload({
+        username,
+        password,
+      })
+
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          username,
-          password,
-        }),
+        body: JSON.stringify({ protectedPayload }),
       })
 
       const data = await response.json()

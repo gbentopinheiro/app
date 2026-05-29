@@ -1,0 +1,22 @@
+[
+  {
+    "id": 1,
+    "personId": 1,
+    "name": "Cartão de cidadão",
+    "expirationDate": "2026-10-22",
+    "warningDays": 30,
+    "notes": "",
+    "createdAt": "2026-05-27T19:15:35.581Z",
+    "updatedAt": "2026-05-27T19:15:35.581Z"
+  },
+  {
+    "id": 2,
+    "personId": 1,
+    "name": "cartao europeu",
+    "expirationDate": "2026-05-31",
+    "warningDays": 15,
+    "notes": "",
+    "createdAt": "2026-05-28T19:59:51.368Z",
+    "updatedAt": "2026-05-28T19:59:51.368Z"
+  }
+]

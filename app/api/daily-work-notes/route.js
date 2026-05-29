@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { canManageEntireApp } from '../../../lib/auth.js'
+import { buildChefPreviewSession, getChefPreviewIdentity } from '../../../lib/chef-preview.js'
 import { getAllDailyWorkNotes, removeDailyWorkNotes, upsertDailyWorkNote } from '../../../lib/daily-work-notes.js'
 import { isFeatureEnabled } from '../../../lib/feature-flags.js'
 import { getServerSession } from '../../../lib/server-session.js'
@@ -8,6 +9,26 @@ function canAccessWork(session, workId) {
   if (!session) return false
   if (canManageEntireApp(session.role)) return true
   return session.workIds.includes(Number(workId))
+}
+
+function resolvePreviewScopedSession(session, searchParams) {
+  if (!session || !canManageEntireApp(session.role)) {
+    return session
+  }
+
+  const previewPersonId = searchParams.get('previewPersonId')
+  const previewChef = searchParams.get('previewChef')
+
+  if (!previewPersonId && !previewChef) {
+    return session
+  }
+
+  const previewIdentity = getChefPreviewIdentity({
+    personId: previewPersonId,
+    username: previewChef,
+  })
+
+  return buildChefPreviewSession(previewIdentity) || session
 }
 
 function filterNotesForSession(notes, session) {
@@ -33,12 +54,13 @@ export async function GET(request) {
     }
 
     const { searchParams } = new URL(request.url)
+    const scopedSession = resolvePreviewScopedSession(session, searchParams)
     const filters = {
       date: searchParams.get('date'),
       workId: searchParams.get('workId'),
     }
 
-    const notes = filterNotesForSession(getAllDailyWorkNotes(filters), session)
+    const notes = filterNotesForSession(getAllDailyWorkNotes(filters), scopedSession)
     return NextResponse.json(notes)
   } catch (error) {
     return NextResponse.json({ error: 'Erro ao obter notas.' }, { status: 500 })

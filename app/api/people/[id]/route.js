@@ -7,7 +7,9 @@ import {
   getAccessIdentityByUsername,
   updateAccessIdentity,
 } from '../../../../lib/access-identities.js'
+import { canManageEntireApp } from '../../../../lib/auth.js'
 import { roleRequiresAppAccess, roleUsesWorkScope } from '../../../../lib/roles.js'
+import { getServerSession } from '../../../../lib/server-session.js'
 import { readProtectedRequestJson } from '../../../../lib/login-transport.js'
 
 function hasAccessConfiguration(accessIdentity) {
@@ -100,6 +102,16 @@ function getErrorStatus(error) {
 
 export async function GET(request, { params }) {
   try {
+    const session = await getServerSession()
+
+    if (!session) {
+      return NextResponse.json({ error: 'Sessao obrigatoria.' }, { status: 401 })
+    }
+
+    if (!canManageEntireApp(session.role)) {
+      return NextResponse.json({ error: 'Sem permissao para consultar esta pessoa.' }, { status: 403 })
+    }
+
     const { id } = await params
     const person = getPersonById(id)
 
@@ -115,6 +127,16 @@ export async function GET(request, { params }) {
 
 export async function PUT(request, { params }) {
   try {
+    const session = await getServerSession()
+
+    if (!session) {
+      return NextResponse.json({ error: 'Sessao obrigatoria.' }, { status: 401 })
+    }
+
+    if (!canManageEntireApp(session.role)) {
+      return NextResponse.json({ error: 'Sem permissao para atualizar pessoas.' }, { status: 403 })
+    }
+
     const { id } = await params
     const body = await readProtectedRequestJson(request)
     const { name, price, monthlyPrice, role, accessIdentity } = body
@@ -162,6 +184,16 @@ export async function PUT(request, { params }) {
 
 export async function DELETE(request, { params }) {
   try {
+    const session = await getServerSession()
+
+    if (!session) {
+      return NextResponse.json({ error: 'Sessao obrigatoria.' }, { status: 401 })
+    }
+
+    if (!canManageEntireApp(session.role)) {
+      return NextResponse.json({ error: 'Sem permissao para remover pessoas.' }, { status: 403 })
+    }
+
     const { id } = await params
     const person = getPersonById(id)
 

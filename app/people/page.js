@@ -131,6 +131,64 @@ const peopleListStyle = {
   paddingRight: '6px',
 }
 
+const responsavelPeopleListStyle = {
+  ...peopleListStyle,
+  overflowX: 'hidden',
+  justifyItems: 'start',
+}
+
+const responsavelPersonRowStyle = {
+  display: 'block',
+  width: '100%',
+  boxSizing: 'border-box',
+  textAlign: 'left',
+  padding: '14px 16px',
+  borderRadius: '16px',
+  border: '1px solid var(--vp-border)',
+  background: 'var(--vp-surface)',
+  color: 'inherit',
+  textDecoration: 'none',
+  cursor: 'pointer',
+}
+
+const responsavelAlertListWrapStyle = {
+  display: 'grid',
+  gap: '10px',
+  marginTop: '10px',
+  marginBottom: '16px',
+  padding: '14px',
+  borderRadius: '18px',
+  background: 'rgba(180, 35, 24, 0.08)',
+  border: '1px solid rgba(180, 35, 24, 0.16)',
+}
+
+const responsavelAlertListStyle = {
+  display: 'grid',
+  gap: '8px',
+}
+
+const responsavelAlertLinkStyle = {
+  padding: '10px 12px',
+  borderRadius: '14px',
+  border: '1px solid rgba(180, 35, 24, 0.18)',
+  background: 'rgba(255, 255, 255, 0.88)',
+  color: '#b42318',
+  textDecoration: 'none',
+}
+
+const responsavelAlertNameStyle = {
+  margin: 0,
+  fontSize: '14px',
+  fontWeight: 800,
+}
+
+const responsavelAlertMetaStyle = {
+  margin: '4px 0 0',
+  fontSize: '12px',
+  lineHeight: 1.4,
+  color: '#9f1f14',
+}
+
 const inputStyle = {
   width: '100%',
   marginTop: '8px',
@@ -258,6 +316,31 @@ const closeButtonStyle = {
   cursor: 'pointer',
 }
 
+const responsavelListHeaderStyle = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  gap: '12px',
+  flexWrap: 'wrap',
+}
+
+const responsavelCreateFormStyle = {
+  display: 'grid',
+  gap: '12px',
+  marginBottom: '16px',
+  padding: '16px',
+  borderRadius: '18px',
+  background: 'rgba(37, 99, 235, 0.05)',
+  border: '1px solid rgba(191, 219, 254, 0.9)',
+}
+
+const responsavelCreateActionsStyle = {
+  display: 'flex',
+  gap: '10px',
+  flexWrap: 'wrap',
+  justifyContent: 'flex-end',
+}
+
 const emptyPersonForm = {
   id: null,
   name: '',
@@ -352,6 +435,18 @@ function formatCurrency(value) {
     style: 'currency',
     currency: 'EUR',
   }).format(Number(value) || 0)
+}
+
+function getDocumentAlertPriority(status) {
+  if (status === 'expired') {
+    return 0
+  }
+
+  if (status === 'warning') {
+    return 1
+  }
+
+  return 2
 }
 
 function buildPeopleHoursGrid(monthKey, people, assignments) {
@@ -655,6 +750,182 @@ function buildPeoplePrintDocument(rows, summary, exportDateLabel, hoursGrid) {
   `
 }
 
+function buildResponsavelDocumentReviewPrintDocument(alertPeople, exportDateLabel) {
+  const rows = alertPeople
+    .flatMap(person => {
+      const personDocuments = Array.isArray(person.documentAlerts) ? person.documentAlerts : []
+
+      return personDocuments.map(document => `
+        <tr>
+          <td>${escapeHtml(person.name || '')}</td>
+          <td>${escapeHtml(document.name || '')}</td>
+          <td>${escapeHtml(document.statusLabel || '')}</td>
+          <td>${escapeHtml(formatDateLabel(document.expirationDate))}</td>
+        </tr>
+      `)
+    })
+    .join('')
+
+  return `
+    <!doctype html>
+    <html lang="pt">
+      <head>
+        <meta charset="utf-8" />
+        <title>Documentos a rever</title>
+        <style>
+          @page {
+            size: A4 portrait;
+            margin: 12mm;
+          }
+          body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            color: #10233e;
+            background: #ffffff;
+          }
+          .sheet {
+            padding: 22px 18px;
+          }
+          .sheet-header {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 12px;
+            align-items: end;
+            margin-bottom: 18px;
+          }
+          h1 {
+            margin: 0;
+            font-size: 24px;
+            line-height: 1.05;
+          }
+          .sheet-subtitle {
+            margin: 6px 0 0;
+            color: #6b7280;
+            font-size: 13px;
+          }
+          .sheet-date {
+            font-size: 13px;
+            font-weight: 700;
+            color: #b42318;
+            text-align: right;
+          }
+          .summary {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 16px;
+            padding: 10px 12px;
+            border-radius: 999px;
+            background: rgba(180, 35, 24, 0.08);
+            border: 1px solid rgba(180, 35, 24, 0.16);
+            color: #b42318;
+            font-size: 12px;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+          }
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+          }
+          th, td {
+            border: 1px solid #d4dbe5;
+            padding: 9px 10px;
+            font-size: 11px;
+            vertical-align: top;
+            word-break: break-word;
+          }
+          th {
+            background: #eef3fb;
+            color: #173b70;
+            text-align: left;
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+          }
+          tbody tr:nth-child(even) {
+            background: #fafbfd;
+          }
+        </style>
+      </head>
+      <body>
+        <section class="sheet">
+          <div class="sheet-header">
+            <div>
+              <h1>Documentos a rever</h1>
+            </div>
+            <div class="sheet-date">Emitido em ${escapeHtml(exportDateLabel)}</div>
+          </div>
+          <div class="summary">${escapeHtml(String(alertPeople.length))} pessoas com documentos a rever</div>
+          <table>
+            <thead>
+              <tr>
+                <th>Pessoa</th>
+                <th>Documento</th>
+                <th>Estado</th>
+                <th>Expiração</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </section>
+      </body>
+    </html>
+  `
+}
+
+const PEOPLE_EXCEL_BORDER_RGB = '738178'
+const PEOPLE_EXCEL_HEADER_FILL_RGB = 'E3E8E3'
+const PEOPLE_EXCEL_SUNDAY_FILL_RGB = 'D6B8A6'
+const PEOPLE_EXCEL_TOTAL_FILL_RGB = 'F3DCCF'
+
+function buildPeopleExcelBorder(style = 'medium') {
+  return {
+    top: { style, color: { rgb: PEOPLE_EXCEL_BORDER_RGB } },
+    right: { style, color: { rgb: PEOPLE_EXCEL_BORDER_RGB } },
+    bottom: { style, color: { rgb: PEOPLE_EXCEL_BORDER_RGB } },
+    left: { style, color: { rgb: PEOPLE_EXCEL_BORDER_RGB } },
+  }
+}
+
+function buildPeopleExcelFill(rgb) {
+  return {
+    patternType: 'solid',
+    fgColor: { rgb },
+  }
+}
+
+function ensurePeopleWorksheetCell(worksheet, row, col) {
+  const address = XLSX.utils.encode_cell({ r: row, c: col })
+
+  if (!worksheet[address]) {
+    worksheet[address] = { t: 's', v: '' }
+  }
+
+  return address
+}
+
+function applyPeopleWorksheetCellStyle(worksheet, row, col, style) {
+  const address = ensurePeopleWorksheetCell(worksheet, row, col)
+  const cell = worksheet[address]
+
+  cell.s = {
+    ...(cell.s || {}),
+    ...style,
+    font: {
+      ...(cell.s?.font || {}),
+      ...(style.font || {}),
+    },
+    fill: style.fill || cell.s?.fill,
+    alignment: {
+      ...(cell.s?.alignment || {}),
+      ...(style.alignment || {}),
+    },
+    border: style.border || cell.s?.border,
+  }
+}
+
 function buildPeopleHoursWorksheet(hoursGrid) {
   // Estrutura do Excel independente do PDF congelado abaixo.
   const titleColumnIndex = 0
@@ -710,6 +981,59 @@ function buildPeopleHoursWorksheet(hoursGrid) {
     { wch: 14 },
   ]
 
+  const mediumBorder = buildPeopleExcelBorder('medium')
+
+  applyPeopleWorksheetCellStyle(worksheet, 0, 0, {
+    font: { bold: true, sz: 16 },
+    alignment: { horizontal: 'center', vertical: 'center' },
+  })
+  applyPeopleWorksheetCellStyle(worksheet, 1, 0, {
+    font: { sz: 9 },
+    alignment: { horizontal: 'center', vertical: 'center' },
+  })
+  applyPeopleWorksheetCellStyle(worksheet, 2, 0, {
+    font: { sz: 9 },
+    alignment: { horizontal: 'center', vertical: 'center' },
+  })
+
+  for (let col = 0; col <= totalColumnIndex; col += 1) {
+    const dayMeta = hoursGrid.dayColumns[col - firstDayColumnIndex]
+    const isSundayHeader = Boolean(dayMeta?.isSunday)
+    const fill = buildPeopleExcelFill(isSundayHeader ? PEOPLE_EXCEL_SUNDAY_FILL_RGB : PEOPLE_EXCEL_HEADER_FILL_RGB)
+    const alignLeft = col === 0 || col === 1
+
+    applyPeopleWorksheetCellStyle(worksheet, 2, col, {
+      font: { bold: true, sz: 10 },
+      alignment: { horizontal: alignLeft ? 'left' : 'center', vertical: 'center' },
+      fill,
+      border: mediumBorder,
+    })
+    applyPeopleWorksheetCellStyle(worksheet, 3, col, {
+      font: { bold: true, sz: 10 },
+      alignment: { horizontal: alignLeft ? 'left' : 'center', vertical: 'center' },
+      fill,
+      border: mediumBorder,
+    })
+  }
+
+  for (let row = 4; row < 4 + hoursGrid.rows.length; row += 1) {
+    for (let col = 0; col <= totalColumnIndex; col += 1) {
+      const isSundayColumn = col >= firstDayColumnIndex && col < hoursColumnIndex && hoursGrid.dayColumns[col - firstDayColumnIndex]?.isSunday
+      const isTotalColumn = col === totalColumnIndex
+
+      applyPeopleWorksheetCellStyle(worksheet, row, col, {
+        font: { sz: 10, bold: isTotalColumn },
+        alignment: { horizontal: col === 1 ? 'left' : 'center', vertical: 'center' },
+        fill: isSundayColumn
+          ? buildPeopleExcelFill(PEOPLE_EXCEL_SUNDAY_FILL_RGB)
+          : col === priceColumnIndex || isTotalColumn
+            ? buildPeopleExcelFill(PEOPLE_EXCEL_TOTAL_FILL_RGB)
+            : undefined,
+        border: mediumBorder,
+      })
+    }
+  }
+
   return worksheet
 }
 
@@ -745,6 +1069,44 @@ function buildPeopleListWorksheet(rows, summary, exportDateLabel) {
     { wch: 14 },
     { wch: 14 },
   ]
+
+  const mediumBorder = buildPeopleExcelBorder('medium')
+
+  applyPeopleWorksheetCellStyle(worksheet, 0, 0, {
+    font: { bold: true, sz: 16 },
+    alignment: { horizontal: 'center', vertical: 'center' },
+  })
+  applyPeopleWorksheetCellStyle(worksheet, 1, 0, {
+    font: { bold: true, sz: 10 },
+    alignment: { horizontal: 'center', vertical: 'center' },
+  })
+  applyPeopleWorksheetCellStyle(worksheet, 2, 0, {
+    font: { sz: 9 },
+    alignment: { horizontal: 'center', vertical: 'center' },
+  })
+
+  for (let col = 0; col < 6; col += 1) {
+    applyPeopleWorksheetCellStyle(worksheet, 4, col, {
+      font: { bold: true, sz: 10 },
+      alignment: { horizontal: col === 1 ? 'left' : 'center', vertical: 'center' },
+      fill: buildPeopleExcelFill(PEOPLE_EXCEL_HEADER_FILL_RGB),
+      border: mediumBorder,
+    })
+  }
+
+  for (let row = 5; row < 5 + rows.length; row += 1) {
+    const sourceRow = rows[row - 5]
+    const highlightMonthlyTotal = Number(sourceRow?.monthlyPrice) > 0
+
+    for (let col = 0; col < 6; col += 1) {
+      applyPeopleWorksheetCellStyle(worksheet, row, col, {
+        font: { sz: 10, bold: col === 5 && highlightMonthlyTotal },
+        alignment: { horizontal: col === 1 ? 'left' : 'center', vertical: 'center' },
+        fill: col === 5 && highlightMonthlyTotal ? buildPeopleExcelFill(PEOPLE_EXCEL_TOTAL_FILL_RGB) : undefined,
+        border: mediumBorder,
+      })
+    }
+  }
 
   return worksheet
 }
@@ -1422,6 +1784,7 @@ export default function PeoplePage() {
   const [assignments, setAssignments] = useState([])
   const [accessIdentities, setAccessIdentities] = useState([])
   const [accessWorks, setAccessWorks] = useState([])
+  const [viewerRole, setViewerRole] = useState(null)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
@@ -1437,6 +1800,9 @@ export default function PeoplePage() {
   const [exportSearchTerm, setExportSearchTerm] = useState('')
   const [selectedExportPersonIds, setSelectedExportPersonIds] = useState([])
   const [exporting, setExporting] = useState(false)
+  const isResponsavelView = viewerRole === ROLE_RESPONSAVEL
+  const canManagePeople = Boolean(viewerRole) && !isResponsavelView
+  const canCreatePeople = Boolean(viewerRole) && (canManagePeople || isResponsavelView)
   const isMonthlyForm = Number(form.monthlyPrice) > 0
   const roleNeedsAccess = roleRequiresAppAccess(form.role)
   const formUsesWorkScope = roleUsesWorkScope(form.role)
@@ -1514,6 +1880,24 @@ export default function PeoplePage() {
     }),
     [exportPeople],
   )
+  const responsavelDocumentAlertPeople = useMemo(() => {
+    if (!isResponsavelView) {
+      return []
+    }
+
+    return [...people]
+      .filter(person => person.hasDocumentAlert)
+      .sort((left, right) => {
+        const priorityComparison =
+          getDocumentAlertPriority(left.documentAlertStatus) - getDocumentAlertPriority(right.documentAlertStatus)
+
+        if (priorityComparison !== 0) {
+          return priorityComparison
+        }
+
+        return String(left.name || '').localeCompare(String(right.name || ''), 'pt-PT', { sensitivity: 'base' })
+      })
+  }, [isResponsavelView, people])
   const monthlyAssignmentSummary = useMemo(() => {
     if (!selectedPerson) return []
 
@@ -1578,21 +1962,46 @@ export default function PeoplePage() {
     setSuccess('')
 
     try {
-      const [peopleResponse, assignmentsResponse, accessIdentitiesResponse] = await Promise.all([
-        fetch('/api/people'),
+      const sessionResponse = await fetch('/api/auth/session')
+      const sessionData = await sessionResponse.json()
+
+      if (!sessionResponse.ok) {
+        throw new Error(sessionData.error || 'Erro ao carregar a sessão')
+      }
+
+      const nextViewerRole = sessionData?.user?.role || ''
+      const responsavelView = nextViewerRole === ROLE_RESPONSAVEL
+      setViewerRole(nextViewerRole)
+
+      const peopleResponse = await fetch('/api/people')
+      const peopleData = await peopleResponse.json()
+
+      if (!peopleResponse.ok) {
+        throw new Error(peopleData.error || 'Erro ao carregar pessoas')
+      }
+
+      setPeople(peopleData)
+
+      if (responsavelView) {
+        setAssignments([])
+        setAccessIdentities([])
+        setAccessWorks([])
+        setShowForm(false)
+        setShowExportModal(false)
+        return
+      }
+
+      const [assignmentsResponse, accessIdentitiesResponse] = await Promise.all([
         fetch('/api/work-assignments'),
         fetch('/api/access-identities?includeWorks=true'),
       ])
 
-      const peopleData = await peopleResponse.json()
       const assignmentsData = await assignmentsResponse.json()
       const accessIdentitiesData = await accessIdentitiesResponse.json()
 
-      if (!peopleResponse.ok) throw new Error(peopleData.error || 'Erro ao carregar pessoas')
       if (!assignmentsResponse.ok) throw new Error(assignmentsData.error || 'Erro ao carregar afetações')
       if (!accessIdentitiesResponse.ok) throw new Error(accessIdentitiesData.error || 'Erro ao carregar acessos')
 
-      setPeople(peopleData)
       setAssignments(assignmentsData)
       setAccessIdentities(accessIdentitiesData.items || [])
       setAccessWorks(accessIdentitiesData.works || [])
@@ -1617,6 +2026,17 @@ export default function PeoplePage() {
   }
 
   function validateForm() {
+    if (isResponsavelView) {
+      const nextErrors = {}
+
+      if (!form.name.trim()) {
+        nextErrors.name = 'O nome é obrigatório.'
+      }
+
+      setFormErrors(nextErrors)
+      return Object.keys(nextErrors).length === 0
+    }
+
     const nextErrors = {}
 
     if (!form.name.trim()) nextErrors.name = 'O nome é obrigatório.'
@@ -1637,7 +2057,16 @@ export default function PeoplePage() {
   }
 
   function startCreate() {
-    setForm(emptyPersonForm)
+    setForm(
+      isResponsavelView
+        ? {
+            ...emptyPersonForm,
+            role: ROLE_CARPINTEIRO,
+            price: 0,
+            monthlyPrice: 0,
+          }
+        : emptyPersonForm,
+    )
     setShowForm(true)
     setError('')
     setSuccess('')
@@ -1712,6 +2141,27 @@ export default function PeoplePage() {
     setSubmitting(true)
 
     try {
+      if (isResponsavelView) {
+        const protectedPayload = await createProtectedPayload({ name: form.name })
+        const response = await fetch('/api/people', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ protectedPayload }),
+        })
+        const data = await response.json()
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Erro ao gravar pessoa')
+        }
+
+        await loadPeople()
+        setSelectedPersonId(data.id)
+        setSuccess('Pessoa criada com sucesso.')
+        setShowForm(false)
+        setForm(emptyPersonForm)
+        return
+      }
+
       const payload = {
         name: form.name,
         price: Number(form.price),
@@ -1806,24 +2256,20 @@ export default function PeoplePage() {
 
     try {
       const hoursGrid = buildPeopleHoursGrid(exportMonthKey, exportPeople, assignments)
-      const workbook = buildPeopleExcelWorkbook(
+      const excelDocument = buildPeopleExcelDocument(
         rows,
         exportSummary,
         formatDateLabel(getExportDateLabel()),
         hoursGrid,
       )
-      const workbookBytes = XLSX.write(workbook, {
-        bookType: 'xlsx',
-        type: 'array',
-      })
-      const blob = new Blob([workbookBytes], {
-        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      const blob = new Blob([`\ufeff${excelDocument}`], {
+        type: 'application/vnd.ms-excel;charset=utf-8',
       })
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
 
       link.href = url
-      link.download = `pessoas-${getExportDateLabel()}-${exportMonthKey}.xlsx`
+      link.download = `pessoas-${getExportDateLabel()}-${exportMonthKey}.xls`
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
@@ -1885,7 +2331,82 @@ export default function PeoplePage() {
     }
   }
 
+  function handlePrintResponsavelDocumentAlerts() {
+    if (responsavelDocumentAlertPeople.length === 0) {
+      setError('Nao existem pessoas com documentos a rever.')
+      setSuccess('')
+      return
+    }
+
+    const printDocument = buildResponsavelDocumentReviewPrintDocument(
+      responsavelDocumentAlertPeople,
+      formatDateLabel(getExportDateLabel()),
+    )
+
+    const printFrame = document.createElement('iframe')
+    printFrame.setAttribute('aria-hidden', 'true')
+    printFrame.style.position = 'fixed'
+    printFrame.style.right = '0'
+    printFrame.style.bottom = '0'
+    printFrame.style.width = '0'
+    printFrame.style.height = '0'
+    printFrame.style.border = '0'
+    printFrame.style.opacity = '0'
+    printFrame.style.pointerEvents = 'none'
+
+    const cleanup = () => {
+      window.setTimeout(() => {
+        if (document.body.contains(printFrame)) {
+          document.body.removeChild(printFrame)
+        }
+      }, 0)
+    }
+
+    document.body.appendChild(printFrame)
+
+    const frameWindow = printFrame.contentWindow
+    const frameDocument = frameWindow?.document
+
+    if (!frameWindow || !frameDocument) {
+      cleanup()
+      setError('Nao foi possivel abrir a folha de impressao.')
+      setSuccess('')
+      return
+    }
+
+    const handleAfterPrint = () => {
+      frameWindow.removeEventListener('afterprint', handleAfterPrint)
+      cleanup()
+    }
+
+    frameWindow.addEventListener('afterprint', handleAfterPrint)
+    frameDocument.open()
+    frameDocument.write(printDocument)
+    frameDocument.close()
+
+    window.setTimeout(() => {
+      frameWindow.focus()
+      frameWindow.print()
+    }, 250)
+
+    window.setTimeout(cleanup, 2000)
+    setError('')
+    setSuccess('')
+  }
+
   function renderPersonRow(person) {
+    if (isResponsavelView) {
+      return (
+        <Link
+          href={`/people/${person.id}`}
+          key={person.id}
+          style={responsavelPersonRowStyle}
+        >
+          <strong>{person.name}</strong>
+        </Link>
+      )
+    }
+
     const selected = Number(selectedPerson?.id) === Number(person.id)
 
     return (
@@ -1904,7 +2425,7 @@ export default function PeoplePage() {
           background: selected ? 'var(--vp-highlight)' : 'var(--vp-surface)',
           cursor: 'pointer',
         }}
-      >
+        >
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center' }}>
           <strong>{person.name}</strong>
           {!isWorkerRole(person.role) && (
@@ -1938,55 +2459,58 @@ export default function PeoplePage() {
           <Link href="/" style={{ color: 'var(--vp-accent)', textDecoration: 'none', fontWeight: 700 }}>
             Voltar ao menu
           </Link>
-          <p style={{ margin: '18px 0 0', textTransform: 'uppercase', letterSpacing: '0.12em', fontSize: '12px', color: 'var(--vp-text-soft)' }}>
-            Gestão de pessoas
-          </p>
+          {canManagePeople && (
+            <p style={{ margin: '18px 0 0', textTransform: 'uppercase', letterSpacing: '0.12em', fontSize: '12px', color: 'var(--vp-text-soft)' }}>
+              Gestão de pessoas
+            </p>
+          )}
           <h1 style={{ margin: '10px 0 12px', fontSize: '46px', lineHeight: 1.05 }}>
-            Gestão e manutenção de pessoas
+            {viewerRole === null ? 'Gestão de pessoas' : isResponsavelView ? 'Lista de pessoas' : 'Gestão e manutenção de pessoas'}
           </h1>
-
         </section>
 
-        <section style={topBarStyle}>
-          <div style={statGridStyle}>
-            <article style={statCardStyle}>
-              <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>Pessoas totais</div>
-              <div style={{ marginTop: '8px', fontSize: '32px', fontWeight: 700 }}>{people.length}</div>
-            </article>
-            <article style={statCardStyle}>
-              <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>Mensais</div>
-              <div style={{ marginTop: '8px', fontSize: '32px', fontWeight: 700 }}>{monthlyPeople.length}</div>
-            </article>
-            <article style={statCardStyle}>
-              <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>Horárias</div>
-              <div style={{ marginTop: '8px', fontSize: '32px', fontWeight: 700 }}>{hourlyPeople.length}</div>
-            </article>
-          </div>
+        {canManagePeople && (
+          <section style={topBarStyle}>
+            <div style={statGridStyle}>
+              <article style={statCardStyle}>
+                <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>Pessoas totais</div>
+                <div style={{ marginTop: '8px', fontSize: '32px', fontWeight: 700 }}>{people.length}</div>
+              </article>
+              <article style={statCardStyle}>
+                <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>Mensais</div>
+                <div style={{ marginTop: '8px', fontSize: '32px', fontWeight: 700 }}>{monthlyPeople.length}</div>
+              </article>
+              <article style={statCardStyle}>
+                <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>Horárias</div>
+                <div style={{ marginTop: '8px', fontSize: '32px', fontWeight: 700 }}>{hourlyPeople.length}</div>
+              </article>
+            </div>
 
-          <div style={buttonGroupStyle}>
-            <label style={{ display: 'none', gap: '6px', fontSize: '12px', color: 'var(--vp-text-soft)' }}>
-              Mês da exportação
-              <input
-                type="month"
-                value={exportMonthKey}
-                onChange={event => setExportMonthKey(event.target.value || getCurrentMonthKey())}
-                onClick={openNativeMonthPicker}
-                style={{ ...inputStyle, marginTop: 0, minWidth: '170px' }}
-              />
-            </label>
-            <button type="button" onClick={openExportModal} style={secondaryButtonStyle}>
-              Exportar
-            </button>
-            <button type="button" onClick={startCreate} style={primaryButtonStyle}>
-              Adicionar pessoa
-            </button>
-          </div>
-        </section>
+            <div style={buttonGroupStyle}>
+              <label style={{ display: 'none', gap: '6px', fontSize: '12px', color: 'var(--vp-text-soft)' }}>
+                Mês da exportação
+                <input
+                  type="month"
+                  value={exportMonthKey}
+                  onChange={event => setExportMonthKey(event.target.value || getCurrentMonthKey())}
+                  onClick={openNativeMonthPicker}
+                  style={{ ...inputStyle, marginTop: 0, minWidth: '170px' }}
+                />
+              </label>
+              <button type="button" onClick={openExportModal} style={secondaryButtonStyle}>
+                Exportar
+              </button>
+              <button type="button" onClick={startCreate} style={primaryButtonStyle}>
+                Adicionar pessoa
+              </button>
+            </div>
+          </section>
+        )}
 
         {!showForm && error && <p style={{ margin: 0, color: '#b42318' }}>{error}</p>}
         {!showForm && success && <p style={{ margin: 0, color: '#1f7a45' }}>{success}</p>}
 
-        {showForm && (
+        {canManagePeople && showForm && (
           <section style={panelStyle}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center' }}>
               <div>
@@ -2122,14 +2646,69 @@ export default function PeoplePage() {
           </section>
         )}
 
-        <div style={layoutStyle}>
+        <div style={canManagePeople ? layoutStyle : { display: 'grid' }}>
           <section style={panelStyle}>
-            <h2 style={{ marginTop: 0 }}>Lista de pessoas</h2>
+            <div style={isResponsavelView ? responsavelListHeaderStyle : {}}>
+              <h2 style={{ marginTop: 0, marginBottom: isResponsavelView ? 0 : undefined }}>Lista de pessoas</h2>
+            </div>
+
+            {isResponsavelView && showForm && (
+              <form onSubmit={handleSubmit} style={responsavelCreateFormStyle}>
+                <label style={labelStyle}>
+                  Nome
+                  <input
+                    type="text"
+                    name="name"
+                    value={form.name}
+                    onChange={handleChange}
+                    placeholder="Nome da pessoa"
+                    style={inputStyle}
+                  />
+                  {formErrors.name && <span style={{ color: '#b42318', fontSize: '13px' }}>{formErrors.name}</span>}
+                </label>
+
+                {error && <p style={{ margin: 0, color: '#b42318' }}>{error}</p>}
+
+                <div style={responsavelCreateActionsStyle}>
+                  <button type="button" onClick={cancelForm} style={secondaryButtonStyle}>
+                    Cancelar
+                  </button>
+                  <button type="submit" disabled={submitting} style={primaryButtonStyle}>
+                    {submitting ? 'A gravar...' : 'Guardar'}
+                  </button>
+                </div>
+              </form>
+            )}
+
             {loading && <p>A carregar pessoas...</p>}
-            {!loading && error && <p style={{ color: '#b42318' }}>{error}</p>}
-            {!loading && !error && people.length === 0 && <p>Sem pessoas registadas.</p>}
-            {!loading && !error && people.length > 0 && (
+            {!loading && error && !(isResponsavelView && showForm) && <p style={{ color: '#b42318' }}>{error}</p>}
+            {!loading && (!error || (isResponsavelView && showForm)) && people.length === 0 && <p>Sem pessoas registadas.</p>}
+            {!loading && (!error || (isResponsavelView && showForm)) && people.length > 0 && (
               <>
+                {isResponsavelView && responsavelDocumentAlertPeople.length > 0 && (
+                  <div style={responsavelAlertListWrapStyle}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                      <div style={{ fontSize: '12px', fontWeight: 900, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#b42318' }}>
+                        Documentos a rever
+                      </div>
+                      <button type="button" onClick={handlePrintResponsavelDocumentAlerts} style={dangerButtonStyle}>
+                        Imprimir folha
+                      </button>
+                    </div>
+                    <div style={responsavelAlertListStyle}>
+                      {responsavelDocumentAlertPeople.map(person => (
+                        <Link key={`alert-${person.id}`} href={`/people/${person.id}`} style={responsavelAlertLinkStyle}>
+                          <p style={responsavelAlertNameStyle}>{person.name}</p>
+                          <p style={responsavelAlertMetaStyle}>
+                            {person.documentAlertLabel}
+                            {person.documentAlertCount > 1 ? ` · ${person.documentAlertCount} documentos` : ''}
+                          </p>
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <input
                   type="search"
                   value={searchTerm}
@@ -2141,7 +2720,7 @@ export default function PeoplePage() {
                 {filteredPeople.length === 0 ? (
                   <p style={{ margin: 0, color: 'var(--vp-text-muted)' }}>Nenhuma pessoa encontrada com esse nome.</p>
                 ) : (
-                  <div style={peopleListStyle}>
+                  <div style={isResponsavelView ? responsavelPeopleListStyle : peopleListStyle}>
                     {filteredPeople.map(renderPersonRow)}
                   </div>
                 )}
@@ -2149,146 +2728,150 @@ export default function PeoplePage() {
             )}
           </section>
 
-          <section style={panelStyle}>
-            <h2 style={{ marginTop: 0 }}>Detalhe da pessoa</h2>
-            {!selectedPerson && <p>Seleciona uma pessoa para veres o detalhe.</p>}
-            {selectedPerson && (
-              <div style={{ display: 'grid', gap: '16px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'flex-start' }}>
-                  <div>
-                    <h3 style={{ margin: 0, fontSize: '30px' }}>{selectedPerson.name}</h3>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => startEdit(selectedPerson)}
-                    style={iconButtonStyle}
-                    title="Editar pessoa"
-                    aria-label="Editar pessoa"
-                  >
-                    <EditPencilIcon />
-                  </button>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
-                  <article style={statCardStyle}>
-                    <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>Tipo</div>
-                    <div style={{ marginTop: '8px', fontSize: '28px', fontWeight: 700 }}>
-                      {selectedPerson.isMonthlyBilling ? 'Mensal' : 'Horária'}
+          {canManagePeople && (
+            <section style={panelStyle}>
+              <h2 style={{ marginTop: 0 }}>Detalhe da pessoa</h2>
+              {!selectedPerson && <p>Seleciona uma pessoa para veres o detalhe.</p>}
+              {selectedPerson && (
+                <div style={{ display: 'grid', gap: '16px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'flex-start' }}>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: '30px' }}>{selectedPerson.name}</h3>
                     </div>
-                  </article>
-                  {!selectedPerson.isMonthlyBilling && (
-                    <article style={statCardStyle}>
-                      <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>Preço hora</div>
-                      <div style={{ marginTop: '8px', fontSize: '28px', fontWeight: 700 }}>{selectedPerson.price || 0}/h</div>
-                    </article>
-                  )}
-                  {selectedPerson.isMonthlyBilling && (
-                    <article style={statCardStyle}>
-                      <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>Preço mensal</div>
-                      <div style={{ marginTop: '8px', fontSize: '28px', fontWeight: 700 }}>
-                        {selectedPerson.monthlyPrice || 0}
-                      </div>
-                    </article>
-                  )}
-                  <article style={statCardStyle}>
-                    <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>Função</div>
-                    <div style={{ marginTop: '8px', fontSize: '28px', fontWeight: 700 }}>
-                      {getRoleLabel(selectedPerson.role)}
-                    </div>
-                  </article>
-                </div>
-
-                {(roleRequiresAppAccess(selectedPerson.role) || selectedAccessIdentity) && (
-                  <article style={statCardStyle}>
-                    <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>Acesso à aplicação</div>
-                    <div style={{ marginTop: '8px', display: 'grid', gap: '8px' }}>
-                      <div>
-                        <strong>Nome de utilizador:</strong> {selectedAccessIdentity?.username || 'Sem acesso configurado'}
-                      </div>
-                      {roleUsesWorkScope(selectedPerson.role) && (
-                        <div>
-                          <strong>Obras:</strong>{' '}
-                          {selectedAccessIdentity?.works?.length
-                            ? selectedAccessIdentity.works.map(work => work.name || `Obra ${work.id}`).join(', ')
-                            : 'Sem obras atribuídas'}
-                        </div>
-                      )}
-                    </div>
-                  </article>
-                )}
-
-                <div style={{ display: 'grid', gap: '12px' }}>
-                  <div>
-                    <h3 style={{ margin: 0, fontSize: '24px' }}>Histórico mensal</h3>
-                  </div>
-
-                  {monthlyAssignmentSummary.length === 0 && (
-                    <p style={{ margin: 0, color: 'var(--vp-text-muted)' }}>
-                      Sem afetações registadas para esta pessoa.
-                    </p>
-                  )}
-
-                  {monthlyAssignmentSummary.map(month => (
-                    <details
-                      key={month.monthKey}
-                      style={{
-                        border: '1px solid var(--vp-border)',
-                        borderRadius: '18px',
-                        background: 'var(--vp-surface)',
-                        padding: '16px',
-                      }}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                      <button
+                        type="button"
+                        onClick={() => startEdit(selectedPerson)}
+                        style={iconButtonStyle}
+                        title="Editar pessoa"
+                        aria-label="Editar pessoa"
                     >
-                      <summary style={{ cursor: 'pointer', fontWeight: 700 }}>
-                        {month.label} | {month.totalHours}h
-                      </summary>
+                        <EditPencilIcon />
+                      </button>
+                    </div>
+                  </div>
 
-                      <div style={{ display: 'grid', gap: '12px', marginTop: '14px' }}>
-                        {month.days.map(day => (
-                          <article
-                            key={day.date}
-                            style={{
-                              border: '1px solid var(--vp-border)',
-                              borderRadius: '14px',
-                              padding: '14px',
-                              background: 'var(--vp-surface-muted)',
-                            }}
-                          >
-                            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
-                              <strong>{formatDateLabel(day.date)}</strong>
-                              <span style={{ color: 'var(--vp-text-muted)' }}>{day.totalHours}h</span>
-                            </div>
-
-                            <div style={{ display: 'grid', gap: '8px', marginTop: '12px' }}>
-                              {day.works.map(work => (
-                                <div
-                                  key={`${day.date}-${work.name}`}
-                                  style={{
-                                    display: 'flex',
-                                    justifyContent: 'space-between',
-                                    gap: '12px',
-                                    padding: '10px 12px',
-                                    borderRadius: '12px',
-                                    background: 'var(--vp-surface)',
-                                  }}
-                                >
-                                  <span>{work.name}</span>
-                                  <strong>{work.hours}h</strong>
-                                </div>
-                              ))}
-                            </div>
-                          </article>
-                        ))}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
+                    <article style={statCardStyle}>
+                      <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>Tipo</div>
+                      <div style={{ marginTop: '8px', fontSize: '28px', fontWeight: 700 }}>
+                        {selectedPerson.isMonthlyBilling ? 'Mensal' : 'Horária'}
                       </div>
-                    </details>
-                  ))}
+                    </article>
+                    {!selectedPerson.isMonthlyBilling && (
+                      <article style={statCardStyle}>
+                        <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>Preço hora</div>
+                        <div style={{ marginTop: '8px', fontSize: '28px', fontWeight: 700 }}>{selectedPerson.price || 0}/h</div>
+                      </article>
+                    )}
+                    {selectedPerson.isMonthlyBilling && (
+                      <article style={statCardStyle}>
+                        <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>Preço mensal</div>
+                        <div style={{ marginTop: '8px', fontSize: '28px', fontWeight: 700 }}>
+                          {selectedPerson.monthlyPrice || 0}
+                        </div>
+                      </article>
+                    )}
+                    <article style={statCardStyle}>
+                      <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>Função</div>
+                      <div style={{ marginTop: '8px', fontSize: '28px', fontWeight: 700 }}>
+                        {getRoleLabel(selectedPerson.role)}
+                      </div>
+                    </article>
+                  </div>
+
+                  {(roleRequiresAppAccess(selectedPerson.role) || selectedAccessIdentity) && (
+                    <article style={statCardStyle}>
+                      <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>Acesso à aplicação</div>
+                      <div style={{ marginTop: '8px', display: 'grid', gap: '8px' }}>
+                        <div>
+                          <strong>Nome de utilizador:</strong> {selectedAccessIdentity?.username || 'Sem acesso configurado'}
+                        </div>
+                        {roleUsesWorkScope(selectedPerson.role) && (
+                          <div>
+                            <strong>Obras:</strong>{' '}
+                            {selectedAccessIdentity?.works?.length
+                              ? selectedAccessIdentity.works.map(work => work.name || `Obra ${work.id}`).join(', ')
+                              : 'Sem obras atribuídas'}
+                          </div>
+                        )}
+                      </div>
+                    </article>
+                  )}
+
+                  <div style={{ display: 'grid', gap: '12px' }}>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: '24px' }}>Histórico mensal</h3>
+                    </div>
+
+                    {monthlyAssignmentSummary.length === 0 && (
+                      <p style={{ margin: 0, color: 'var(--vp-text-muted)' }}>
+                        Sem afetações registadas para esta pessoa.
+                      </p>
+                    )}
+
+                    {monthlyAssignmentSummary.map(month => (
+                      <details
+                        key={month.monthKey}
+                        style={{
+                          border: '1px solid var(--vp-border)',
+                          borderRadius: '18px',
+                          background: 'var(--vp-surface)',
+                          padding: '16px',
+                        }}
+                      >
+                        <summary style={{ cursor: 'pointer', fontWeight: 700 }}>
+                          {month.label} | {month.totalHours}h
+                        </summary>
+
+                        <div style={{ display: 'grid', gap: '12px', marginTop: '14px' }}>
+                          {month.days.map(day => (
+                            <article
+                              key={day.date}
+                              style={{
+                                border: '1px solid var(--vp-border)',
+                                borderRadius: '14px',
+                                padding: '14px',
+                                background: 'var(--vp-surface-muted)',
+                              }}
+                            >
+                              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
+                                <strong>{formatDateLabel(day.date)}</strong>
+                                <span style={{ color: 'var(--vp-text-muted)' }}>{day.totalHours}h</span>
+                              </div>
+
+                              <div style={{ display: 'grid', gap: '8px', marginTop: '12px' }}>
+                                {day.works.map(work => (
+                                  <div
+                                    key={`${day.date}-${work.name}`}
+                                    style={{
+                                      display: 'flex',
+                                      justifyContent: 'space-between',
+                                      gap: '12px',
+                                      padding: '10px 12px',
+                                      borderRadius: '12px',
+                                      background: 'var(--vp-surface)',
+                                    }}
+                                  >
+                                    <span>{work.name}</span>
+                                    <strong>{work.hours}h</strong>
+                                  </div>
+                                ))}
+                              </div>
+                            </article>
+                          ))}
+                        </div>
+                      </details>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
-          </section>
+              )}
+            </section>
+          )}
         </div>
       </div>
 
-      {showExportModal && (
+      {canManagePeople && showExportModal && (
         <div style={modalBackdropStyle} onClick={closeExportModal}>
           <section style={modalCardStyle} onClick={(event) => event.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center' }}>

@@ -12,6 +12,7 @@ import { getAllDailyWorkNotes } from '../lib/daily-work-notes.js'
 import { getBelgianHolidays } from '../lib/belgian-holidays.js'
 import { getAllCalendarEvents } from '../lib/calendar-events.js'
 import { getCalendarNotificationState } from '../lib/calendar-notifications.js'
+import { getOperationNotifications } from '../lib/operation-notifications.js'
 
 const modules = [
   {
@@ -349,6 +350,13 @@ const dashboardBodyStyle = {
   minHeight: 0,
 }
 
+const responsavelDashboardBodyStyle = {
+  display: 'grid',
+  gridTemplateColumns: 'minmax(0, 1.55fr) minmax(260px, 0.65fr)',
+  gap: '14px',
+  minHeight: 0,
+}
+
 const dashboardCardStyle = {
   position: 'relative',
   overflow: 'hidden',
@@ -550,6 +558,53 @@ const notificationEmptyStyle = {
   lineHeight: 1.5,
 }
 
+const responsavelNotificationCenterStyle = {
+  padding: '10px',
+  gap: '6px',
+}
+
+const responsavelNotificationHeaderStyle = {
+  gap: '8px',
+}
+
+const responsavelNotificationTitleStyle = {
+  fontSize: '15px',
+}
+
+const responsavelNotificationBadgeStyle = {
+  minWidth: '22px',
+  height: '22px',
+  fontSize: '11px',
+}
+
+const responsavelNotificationListStyle = {
+  gap: '5px',
+  maxHeight: '92px',
+}
+
+const responsavelNotificationItemStyle = {
+  padding: '7px 9px',
+  borderRadius: '12px',
+}
+
+const responsavelNotificationMetaStyle = {
+  fontSize: '10px',
+  lineHeight: 1.2,
+}
+
+const responsavelNotificationTextStyle = {
+  margin: '3px 0 0',
+  fontSize: '11px',
+  lineHeight: 1.25,
+}
+
+const responsavelNotificationEmptyStyle = {
+  padding: '12px',
+  borderRadius: '14px',
+  fontSize: '11px',
+  lineHeight: 1.3,
+}
+
 const calendarCardStyle = {
   display: 'grid',
   gap: '10px',
@@ -630,6 +685,153 @@ const nextEventStyle = {
   fontWeight: 900,
 }
 
+const responsavelCalendarCardStyle = {
+  ...calendarCardStyle,
+  position: 'relative',
+  gridColumn: '1 / -1',
+  display: 'grid',
+  gridTemplateColumns: 'minmax(0, 1fr) minmax(180px, 220px)',
+  gap: '16px',
+  padding: '18px',
+  minHeight: '218px',
+  alignItems: 'stretch',
+}
+
+const responsavelCalendarBadgeWrapStyle = {
+  position: 'absolute',
+  top: '14px',
+  right: '14px',
+  zIndex: 1,
+}
+
+const responsavelCalendarCopyStyle = {
+  display: 'grid',
+  gap: '12px',
+  alignContent: 'start',
+}
+
+const responsavelCalendarAgendaStyle = {
+  display: 'grid',
+  gap: '10px',
+}
+
+const responsavelCalendarSectionStyle = tone => ({
+  display: 'grid',
+  gap: '8px',
+  padding: '12px',
+  borderRadius: '18px',
+  background: tone === 'today'
+    ? 'linear-gradient(135deg, rgba(37, 99, 235, 0.16) 0%, rgba(239, 246, 255, 0.96) 100%)'
+    : 'linear-gradient(135deg, rgba(255, 140, 0, 0.16) 0%, rgba(255, 247, 237, 0.96) 100%)',
+  border: tone === 'today'
+    ? '1px solid rgba(147, 197, 253, 0.92)'
+    : '1px solid rgba(253, 186, 116, 0.92)',
+  boxShadow: tone === 'today'
+    ? 'inset 0 1px 0 rgba(255,255,255,0.48)'
+    : 'inset 0 1px 0 rgba(255,255,255,0.52)',
+})
+
+const responsavelCalendarSectionHeaderStyle = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  gap: '10px',
+  flexWrap: 'wrap',
+}
+
+const responsavelCalendarSectionTitleStyle = tone => ({
+  margin: 0,
+  color: tone === 'today' ? '#173b70' : '#9a4b00',
+  fontSize: '12px',
+  fontWeight: 900,
+  letterSpacing: '0.08em',
+  textTransform: 'uppercase',
+})
+
+const responsavelCalendarSectionDateStyle = tone => ({
+  margin: 0,
+  color: tone === 'today' ? '#315b93' : '#b45309',
+  fontSize: '12px',
+  fontWeight: 800,
+})
+
+const responsavelCalendarEventsListStyle = {
+  display: 'grid',
+  gap: '8px',
+}
+
+const responsavelCalendarEventStyle = tone => ({
+  display: 'grid',
+  gridTemplateColumns: 'auto minmax(0, 1fr)',
+  gap: '10px',
+  alignItems: 'start',
+  padding: '10px 12px',
+  borderRadius: '14px',
+  background: 'rgba(255, 255, 255, 0.96)',
+  border: tone === 'today'
+    ? '1px solid rgba(191, 219, 254, 0.96)'
+    : '1px solid rgba(253, 186, 116, 0.96)',
+  boxShadow: tone === 'today'
+    ? '0 10px 24px rgba(37, 99, 235, 0.08)'
+    : '0 10px 24px rgba(255, 140, 0, 0.08)',
+})
+
+const responsavelCalendarEventTimeStyle = tone => ({
+  minWidth: '54px',
+  padding: '6px 8px',
+  borderRadius: '999px',
+  background: tone === 'today'
+    ? 'rgba(37, 99, 235, 0.12)'
+    : 'rgba(255, 140, 0, 0.14)',
+  color: tone === 'today' ? '#1d4ed8' : '#9a4b00',
+  fontSize: '11px',
+  lineHeight: 1,
+  fontWeight: 900,
+  textAlign: 'center',
+})
+
+const responsavelCalendarEventTitleStyle = {
+  margin: 0,
+  color: '#10233e',
+  fontSize: '13px',
+  lineHeight: 1.35,
+  fontWeight: 800,
+}
+
+const responsavelCalendarEventMetaStyle = {
+  margin: '4px 0 0',
+  color: '#64748b',
+  fontSize: '12px',
+  lineHeight: 1.4,
+}
+
+const responsavelCalendarEmptyStyle = tone => ({
+  margin: 0,
+  padding: '10px 12px',
+  borderRadius: '14px',
+  background: 'rgba(255, 255, 255, 0.82)',
+  border: tone === 'today'
+    ? '1px dashed rgba(96, 165, 250, 0.54)'
+    : '1px dashed rgba(251, 146, 60, 0.54)',
+  color: tone === 'today' ? '#315b93' : '#b45309',
+  fontSize: '12px',
+  lineHeight: 1.45,
+  fontWeight: 700,
+})
+
+const responsavelCalendarTodayStyle = {
+  ...calendarTodayCardStyle,
+  padding: '12px 14px',
+  border: '2px solid transparent',
+  background: '#ffffff',
+  backgroundImage: 'linear-gradient(#ffffff, #ffffff), linear-gradient(135deg, #2563eb 0%, #ff8c00 100%)',
+  backgroundOrigin: 'border-box',
+  backgroundClip: 'padding-box, border-box',
+  alignSelf: 'center',
+  alignContent: 'start',
+  justifyItems: 'start',
+}
+
 const heroMetaGridStyle = {
   display: 'grid',
   gridTemplateColumns: 'minmax(220px, 1fr)',
@@ -685,6 +887,11 @@ const cardStyle = accent => ({
   color: 'inherit',
   cursor: 'pointer',
 })
+
+const responsavelMainCardStyle = {
+  minHeight: '96px',
+  padding: '14px 16px',
+}
 
 const cardGlowStyle = accent => ({
   position: 'absolute',
@@ -806,6 +1013,84 @@ function getSmallCalendarSummary() {
   }
 }
 
+const travelAirportLabels = {
+  zaventem: 'Zaventem',
+  charleroi: 'Charleroi',
+  'bruxelles-midi': 'Bruxelles-Midi',
+  outro: 'Outro',
+}
+
+function formatAgendaDateLabel(date) {
+  return new Intl.DateTimeFormat('pt-PT', {
+    day: '2-digit',
+    month: '2-digit',
+  }).format(date)
+}
+
+function getAgendaRouteLabel(event, type) {
+  const airportLabel = travelAirportLabels[event.airport] || 'Origem'
+  const destinationLabel = event.destination || 'Destino por definir'
+
+  if (type === 'arrival') {
+    return `${destinationLabel} -> ${airportLabel}`
+  }
+
+  return `${airportLabel} -> ${destinationLabel}`
+}
+
+function getResponsavelCalendarAgenda() {
+  const now = new Date()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const tomorrow = addDays(today, 1)
+  const todayKey = formatDateKey(today.getFullYear(), today.getMonth() + 1, today.getDate())
+  const tomorrowKey = formatDateKey(tomorrow.getFullYear(), tomorrow.getMonth() + 1, tomorrow.getDate())
+
+  const agendaEntries = getAllCalendarEvents()
+    .filter(event => event.type === 'viagem')
+    .flatMap(event => {
+      const departureDate = String(event.departureDate || event.date || '').trim()
+      const arrivalDate = String(event.arrivalDate || '').trim()
+      const entries = []
+
+      if (departureDate) {
+        entries.push({
+          id: `${event.id}-departure`,
+          dateKey: departureDate,
+          time: event.departureTime || '--:--',
+          sortTime: event.departureTime || '99:99',
+          title: event.title || 'Viagem',
+          meta: getAgendaRouteLabel(event, 'departure'),
+        })
+      }
+
+      if (arrivalDate && arrivalDate !== departureDate) {
+        entries.push({
+          id: `${event.id}-arrival`,
+          dateKey: arrivalDate,
+          time: event.arrivalTime || '--:--',
+          sortTime: event.arrivalTime || '99:99',
+          title: `${event.title || 'Viagem'} · Regresso`,
+          meta: getAgendaRouteLabel(event, 'arrival'),
+        })
+      }
+
+      return entries
+    })
+    .sort((left, right) => (
+      left.dateKey.localeCompare(right.dateKey) ||
+      left.sortTime.localeCompare(right.sortTime) ||
+      left.title.localeCompare(right.title, 'pt-PT')
+    ))
+
+  return {
+    showTomorrow: now.getHours() >= 12,
+    todayLabel: formatAgendaDateLabel(today),
+    tomorrowLabel: formatAgendaDateLabel(tomorrow),
+    todayEntries: agendaEntries.filter(entry => entry.dateKey === todayKey),
+    tomorrowEntries: agendaEntries.filter(entry => entry.dateKey === tomorrowKey),
+  }
+}
+
 function formatNotificationDate(dateString) {
   const date = new Date(`${dateString}T00:00:00`)
 
@@ -917,15 +1202,19 @@ export default async function Home() {
   }
 
   const dashboardStats = getDashboardStats().filter(item =>
-    !isResponsavelRole(session.role) || item.label !== 'Faturação anual',
+    !isResponsavelRole(session.role) ||
+    (item.label !== 'Faturação anual' && item.label !== 'Pessoas'),
   )
+  const isResponsavel = isResponsavelRole(session.role)
   const workSubmissionStatus = getWorkSubmissionStatus()
-  const notifications = getRecentNotifications()
+  const notifications = isResponsavel
+    ? getOperationNotifications({ audience: 'responsavel', limit: 3 })
+    : getRecentNotifications()
   const smallCalendar = getSmallCalendarSummary()
+  const responsavelCalendarAgenda = getResponsavelCalendarAgenda()
   const calendarOverview = getCalendarOverview(session.username)
   const notificationsCenterEnabled = isFeatureEnabled('notificationsCenter')
   const calendarManagementEnabled = isFeatureEnabled('calendarManagement')
-  const isResponsavel = isResponsavelRole(session.role)
   const visibleModules = isResponsavelRole(session.role)
     ? modules.filter(module => module.href === '/people')
     : modules
@@ -997,7 +1286,7 @@ export default async function Home() {
             </div>
           </div>
 
-          <div style={dashboardBodyStyle}>
+          <div style={isResponsavel ? responsavelDashboardBodyStyle : dashboardBodyStyle}>
             <div style={dashboardGridStyle}>
               {!isResponsavel && (
                 <div style={workStatusTableStyle}>
@@ -1016,6 +1305,73 @@ export default async function Home() {
                 </div>
               )}
 
+              {isResponsavel && calendarManagementEnabled ? (
+                <Link href="/calendar" style={{ ...responsavelCalendarCardStyle, textDecoration: 'none', color: 'inherit' }}>
+                  <div style={responsavelCalendarBadgeWrapStyle}>
+                    <span style={notificationBadgeStyle}>{calendarOverview.unseenEventsCount}</span>
+                  </div>
+                  <div style={responsavelCalendarCopyStyle}>
+                    <div style={calendarHeaderStyle}>
+                      <div style={calendarTitleWrapStyle}>
+                        <h3 style={calendarTitleStyle}>Calendário</h3>
+                      </div>
+                    </div>
+                    <div style={responsavelCalendarAgendaStyle}>
+                      <div style={responsavelCalendarSectionStyle('today')}>
+                        <div style={responsavelCalendarSectionHeaderStyle}>
+                          <p style={responsavelCalendarSectionTitleStyle('today')}>Hoje</p>
+                          <p style={responsavelCalendarSectionDateStyle('today')}>{responsavelCalendarAgenda.todayLabel}</p>
+                        </div>
+                        {responsavelCalendarAgenda.todayEntries.length > 0 ? (
+                          <div style={responsavelCalendarEventsListStyle}>
+                            {responsavelCalendarAgenda.todayEntries.map(entry => (
+                              <div key={entry.id} style={responsavelCalendarEventStyle('today')}>
+                                <span style={responsavelCalendarEventTimeStyle('today')}>{entry.time}</span>
+                                <div>
+                                  <p style={responsavelCalendarEventTitleStyle}>{entry.title}</p>
+                                  <p style={responsavelCalendarEventMetaStyle}>{entry.meta}</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p style={responsavelCalendarEmptyStyle('today')}>Sem eventos registados para hoje.</p>
+                        )}
+                      </div>
+
+                      {responsavelCalendarAgenda.showTomorrow ? (
+                        <div style={responsavelCalendarSectionStyle('tomorrow')}>
+                          <div style={responsavelCalendarSectionHeaderStyle}>
+                            <p style={responsavelCalendarSectionTitleStyle('tomorrow')}>Amanhã</p>
+                            <p style={responsavelCalendarSectionDateStyle('tomorrow')}>{responsavelCalendarAgenda.tomorrowLabel}</p>
+                          </div>
+                          {responsavelCalendarAgenda.tomorrowEntries.length > 0 ? (
+                            <div style={responsavelCalendarEventsListStyle}>
+                              {responsavelCalendarAgenda.tomorrowEntries.map(entry => (
+                                <div key={entry.id} style={responsavelCalendarEventStyle('tomorrow')}>
+                                  <span style={responsavelCalendarEventTimeStyle('tomorrow')}>{entry.time}</span>
+                                  <div>
+                                    <p style={responsavelCalendarEventTitleStyle}>{entry.title}</p>
+                                    <p style={responsavelCalendarEventMetaStyle}>{entry.meta}</p>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p style={responsavelCalendarEmptyStyle('tomorrow')}>Sem eventos registados para amanhã.</p>
+                          )}
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                  <div style={responsavelCalendarTodayStyle}>
+                    <span style={calendarTodayTextStyle}>Hoje · {smallCalendar.weekday}</span>
+                    <span style={calendarTodayDayStyle}>{smallCalendar.day}</span>
+                    <span style={{ ...calendarMonthStyle, color: '#64748b' }}>{getTodayLabel()}</span>
+                  </div>
+                </Link>
+              ) : null}
+
               {dashboardStats.map(item => (
                 <article key={item.label} style={dashboardCardStyle}>
                   <div style={dashboardCardGlowStyle(item.glow)} />
@@ -1027,26 +1383,47 @@ export default async function Home() {
             </div>
 
             <div style={sidePanelStackStyle}>
-              {notificationsCenterEnabled && !isResponsavel ? (
-                <Link href="/notifications" style={{ ...notificationCenterStyle, textDecoration: 'none', color: 'inherit' }}>
-                  <div style={notificationHeaderStyle}>
-                    <h3 style={notificationTitleStyle}>Central de notificações</h3>
-                    <span style={notificationBadgeStyle}>{notifications.length}</span>
+              {notificationsCenterEnabled ? (
+                <Link
+                  href="/notifications"
+                  style={{
+                    ...notificationCenterStyle,
+                    ...(isResponsavel ? responsavelNotificationCenterStyle : {}),
+                    textDecoration: 'none',
+                    color: 'inherit',
+                  }}
+                >
+                  <div style={{ ...notificationHeaderStyle, ...(isResponsavel ? responsavelNotificationHeaderStyle : {}) }}>
+                    <h3 style={{ ...notificationTitleStyle, ...(isResponsavel ? responsavelNotificationTitleStyle : {}) }}>
+                      Central de notificações
+                    </h3>
+                    <span style={{ ...notificationBadgeStyle, ...(isResponsavel ? responsavelNotificationBadgeStyle : {}) }}>
+                      {notifications.length}
+                    </span>
                   </div>
 
                   {notifications.length > 0 ? (
-                    <div style={notificationListStyle}>
+                    <div style={{ ...notificationListStyle, ...(isResponsavel ? responsavelNotificationListStyle : {}) }}>
                       {notifications.map(notification => (
-                        <article key={notification.id} style={notificationItemStyle}>
-                          <p style={notificationMetaStyle}>
+                        <article
+                          key={notification.id}
+                          style={{ ...notificationItemStyle, ...(isResponsavel ? responsavelNotificationItemStyle : {}) }}
+                        >
+                          <p style={{ ...notificationMetaStyle, ...(isResponsavel ? responsavelNotificationMetaStyle : {}) }}>
                             {notification.date} - {notification.chef} - {notification.work}
                           </p>
-                          <p style={notificationTextStyle}>{notification.note}</p>
+                          <p style={{ ...notificationTextStyle, ...(isResponsavel ? responsavelNotificationTextStyle : {}) }}>
+                            {notification.note}
+                          </p>
                         </article>
                       ))}
                     </div>
                   ) : (
-                    <p style={notificationEmptyStyle}>Ainda não existem notas novas dos chefes.</p>
+                    <p style={{ ...notificationEmptyStyle, ...(isResponsavel ? responsavelNotificationEmptyStyle : {}) }}>
+                      {isResponsavel
+                        ? 'Ainda não existem alertas de documentos ativos.'
+                        : 'Ainda não existem notas novas dos chefes.'}
+                    </p>
                   )}
                 </Link>
               ) : (
@@ -1059,16 +1436,13 @@ export default async function Home() {
                 </div>
               )}
 
-              {calendarManagementEnabled ? (
+              {!isResponsavel && calendarManagementEnabled ? (
                 <Link href="/calendar" style={{ ...calendarCardStyle, textDecoration: 'none', color: 'inherit' }}>
                   <div style={calendarHeaderStyle}>
                     <div style={calendarTitleWrapStyle}>
                       <h3 style={calendarTitleStyle}>Calendário</h3>
-                      {calendarOverview.unseenEventsCount > 0 ? (
-                        <span style={notificationBadgeStyle}>{calendarOverview.unseenEventsCount}</span>
-                      ) : null}
                     </div>
-                    <p style={calendarMonthStyle}>{getMonthLabel()}</p>
+                    <span style={notificationBadgeStyle}>{calendarOverview.unseenEventsCount}</span>
                   </div>
                   <div style={calendarTodayCardStyle}>
                     <span style={calendarTodayTextStyle}>Hoje · {smallCalendar.weekday}</span>
@@ -1080,7 +1454,7 @@ export default async function Home() {
                     </p>
                   )}
                 </Link>
-              ) : (
+              ) : !isResponsavel ? (
                 <div style={calendarCardStyle}>
                   <div style={calendarHeaderStyle}>
                     <h3 style={calendarTitleStyle}>Calendário</h3>
@@ -1088,14 +1462,18 @@ export default async function Home() {
                   </div>
                   <p style={notificationEmptyStyle}>O calendario foi desativado no painel do programador.</p>
                 </div>
-              )}
+              ) : null}
             </div>
           </div>
         </section>
 
         <section style={cardsStyle}>
           {visibleModules.map(module => (
-            <Link key={module.href} href={module.href} style={cardStyle(module.accent)}>
+            <Link
+              key={module.href}
+              href={module.href}
+              style={isResponsavel ? { ...cardStyle(module.accent), ...responsavelMainCardStyle } : cardStyle(module.accent)}
+            >
               <div style={cardGlowStyle(module.accent)} />
               <div style={cardContentStyle}>
                 <div style={cardLabelStyle}>{module.label}</div>

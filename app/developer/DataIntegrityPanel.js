@@ -224,9 +224,6 @@ export default function DataIntegrityPanel() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
         <div>
           <h2 style={titleStyle}>Integridade de Dados</h2>
-          <p style={textStyle}>
-            Verifica a consistencia da base de dados: referencias orfas, usernames duplicados, e dados invalidos.
-          </p>
         </div>
         <div style={statusBadgeStyle(data?.hasIssues)}>
           <span>{data?.hasIssues ? '🔴 Problemas' : '✅ OK'}</span>

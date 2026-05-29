@@ -119,7 +119,7 @@ export default function FeatureFlagsPanel({ initialFlags }) {
       const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data.error || 'Nao foi possivel atualizar a funcionalidade.')
+        throw new Error(data.error || 'Não foi possível atualizar a funcionalidade.')
       }
 
       setFlags(data.flags)
@@ -140,10 +140,6 @@ export default function FeatureFlagsPanel({ initialFlags }) {
   return (
     <section style={panelStyle}>
       <h2 style={titleStyle}>Controlo de funcionalidades</h2>
-      <p style={textStyle}>
-        Ativa ou desativa partes especificas da aplicacao sem teres de alterar o codigo. Os bloqueios
-        passam a ser respeitados pelas paginas e APIs ligadas a cada funcao.
-      </p>
 
       <div style={listStyle}>
         {flags.map(flag => (

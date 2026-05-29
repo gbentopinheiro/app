@@ -1,15 +1,9 @@
 import { NextResponse } from 'next/server'
 import { getWorkAssignmentById, submitWorkAssignment } from '../../../../../lib/work-assignments.js'
-import { canManageEntireApp } from '../../../../../lib/auth.js'
 import { isFeatureEnabled } from '../../../../../lib/feature-flags.js'
 import { getServerSession } from '../../../../../lib/server-session.js'
 import { isChefRole } from '../../../../../lib/roles.js'
-
-function canAccessAssignment(session, assignment) {
-  if (!session || !assignment) return false
-  if (canManageEntireApp(session.role)) return true
-  return session.workIds.includes(Number(assignment.workId))
-}
+import { canAccessAssignment } from '../../../../../lib/work-assignment-policy.js'
 
 export async function PATCH(request, { params }) {
   try {

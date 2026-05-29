@@ -42,7 +42,7 @@
     "personId": 3,
     "role": "chef_primeira",
     "username": "Agostinho_Fernandes",
-    "password": "scrypt$v1$1d582d54c53b9ac090eaba6c5be9b3e0$d7833817985cbff9adafd08a040238e2829611a2724ef9159816728230abffc25f7b71c031b5b2233d3f5219c51e39c720a5f93b478dbce3eafd4fbe616c20f6",
+    "password": "$2b$12$hymRGtXgzzBIF.UgLnAOx.F5YKlG4IO.f.VxerUzPJwcDlXTuD.BG",
     "works": [
       1
     ]
@@ -52,7 +52,7 @@
     "personId": 2,
     "role": "responsavel",
     "username": "Helena_Bento",
-    "password": "scrypt$v1$73a0517773fca12fa5207b6621f8629d$a4472e283355213ebf0d7a17c7772e6b37243d3c381a4af5c98ed9365a56ba2fa5802aa92dc2a21a4ce6030daad15d142c97076e7605c6cade4306bc7bfd3160",
+    "password": "$2b$12$xKIISu2SmVMB22mEjxJ8p.Vq4JNMtkqFzFN.qLdePtko/oz8EZPf6",
     "works": []
   },
   {
@@ -100,7 +100,7 @@
     "personId": 41,
     "role": "chef_primeira",
     "username": "Lucas_Pacheco",
-    "password": "scrypt$v1$df4780358c0ac3edacff77fe179fdb45$725d369e0c2118ef3cf6fc4312863c380ef46f1f5175060f791f17afc0092f4e82a3f8575f95d5e41db9d5f981b34b89f0d065543f57d8e081543f715d566bea",
+    "password": "$2b$12$xNjBUVM5PCLmMX2m/I8K.u1TN9DrUkrnWYbBHu66Zpvst8/vyCjYq",
     "works": []
   },
   {
@@ -109,7 +109,9 @@
     "role": "chef_primeira",
     "username": "Vasile_Buburuzan",
     "password": "scrypt$v1$42c93a8ccc350f78ace6ca9beeb6a2c5$dfe9466526dc06361b997927eb85087b21563620b4a06131226f9cd00b598ba7d1d766cb2b727688ffe37050209a09729946c4a26e24e2b4b9295b1927d6d480",
-    "works": []
+    "works": [
+      1
+    ]
   },
   {
     "id": 15,

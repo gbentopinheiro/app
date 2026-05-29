@@ -94,6 +94,12 @@ const checkboxStyle = {
   cursor: 'pointer',
 }
 
+const checkboxGhostStyle = {
+  width: '18px',
+  height: '18px',
+  marginTop: '2px',
+}
+
 const metaStyle = {
   margin: 0,
   color: '#64748b',
@@ -138,10 +144,25 @@ export default function NotificationsClient({ initialNotifications }) {
   const [isDeleting, setIsDeleting] = useState(false)
   const [error, setError] = useState('')
 
-  const selectedCount = selectedIds.length
-  const allSelected = notifications.length > 0 && selectedCount === notifications.length
-
+  const deletableNotifications = useMemo(
+    () => notifications.filter(notification => notification.deletable),
+    [notifications],
+  )
+  const deletableIds = useMemo(
+    () => deletableNotifications.map(notification => notification.id),
+    [deletableNotifications],
+  )
   const selectedIdSet = useMemo(() => new Set(selectedIds), [selectedIds])
+  const selectedNotifications = useMemo(
+    () => notifications.filter(notification => selectedIdSet.has(notification.id)),
+    [notifications, selectedIdSet],
+  )
+  const selectedDeleteIds = useMemo(
+    () => selectedNotifications.map(notification => notification.sourceId),
+    [selectedNotifications],
+  )
+  const selectedCount = selectedIds.length
+  const allSelected = deletableIds.length > 0 && selectedCount === deletableIds.length
 
   function toggleSelection(id) {
     setSelectedIds(current => (
@@ -152,7 +173,7 @@ export default function NotificationsClient({ initialNotifications }) {
   }
 
   function toggleSelectAll() {
-    setSelectedIds(current => (current.length === notifications.length ? [] : notifications.map(item => item.id)))
+    setSelectedIds(current => (current.length === deletableIds.length ? [] : deletableIds))
   }
 
   async function handleDeleteSelected() {
@@ -165,7 +186,7 @@ export default function NotificationsClient({ initialNotifications }) {
       const response = await fetch('/api/daily-work-notes', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ids: selectedIds }),
+        body: JSON.stringify({ ids: selectedDeleteIds }),
       })
 
       const payload = await response.json()
@@ -186,9 +207,9 @@ export default function NotificationsClient({ initialNotifications }) {
   return (
     <section style={panelStyle}>
       <div style={headerStyle}>
-        <h2 style={sectionTitleStyle}>Notas dos chefes</h2>
+        <h2 style={sectionTitleStyle}>Notificações ativas</h2>
         <div style={headerActionsStyle}>
-          {notifications.length > 0 ? (
+          {deletableNotifications.length > 0 ? (
             <label style={helperTextStyle}>
               <input
                 type="checkbox"
@@ -218,7 +239,11 @@ export default function NotificationsClient({ initialNotifications }) {
       {notifications.length > 0 ? (
         <>
           <p style={{ ...helperTextStyle, marginBottom: '14px' }}>
-            {selectedCount > 0 ? `${selectedCount} selecionada(s)` : 'Seleciona uma ou mais notificações para eliminar.'}
+            {selectedCount > 0
+              ? `${selectedCount} selecionada(s)`
+              : deletableNotifications.length > 0
+                ? 'Seleciona notas dos chefes para eliminar. Os avisos de documentos ficam ativos automaticamente.'
+                : 'Os avisos de documentos ficam ativos até atualizares ou removeres o documento na ficha da pessoa.'}
           </p>
           <div style={listStyle}>
             {notifications.map(notification => {
@@ -226,13 +251,17 @@ export default function NotificationsClient({ initialNotifications }) {
 
               return (
                 <article key={notification.id} style={itemStyle(isSelected)}>
-                  <input
-                    type="checkbox"
-                    checked={isSelected}
-                    onChange={() => toggleSelection(notification.id)}
-                    style={checkboxStyle}
-                    aria-label={`Selecionar notificação de ${notification.chef}`}
-                  />
+                  {notification.deletable ? (
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => toggleSelection(notification.id)}
+                      style={checkboxStyle}
+                      aria-label={`Selecionar notificação ${notification.chef} - ${notification.work}`}
+                    />
+                  ) : (
+                    <span style={checkboxGhostStyle} aria-hidden="true" />
+                  )}
                   <div>
                     <p style={metaStyle}>
                       {notification.date} - {notification.chef} - {notification.work}
@@ -245,7 +274,7 @@ export default function NotificationsClient({ initialNotifications }) {
           </div>
         </>
       ) : (
-        <p style={emptyStyle}>Ainda não existem notas novas dos chefes.</p>
+        <p style={emptyStyle}>Ainda não existem notificações ativas.</p>
       )}
     </section>
   )

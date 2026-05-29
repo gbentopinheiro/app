@@ -1,5 +1,356 @@
 [
   {
+    "id": 78,
+    "username": "admin",
+    "name": "Administrador",
+    "role": "admin",
+    "accountType": "admin",
+    "loginAt": "2026-05-29T20:13:14.121Z",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+  },
+  {
+    "id": 77,
+    "username": "admin",
+    "name": "Administrador",
+    "role": "admin",
+    "accountType": "admin",
+    "loginAt": "2026-05-29T19:39:08.755Z",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+  },
+  {
+    "id": 76,
+    "username": "developer",
+    "name": "Programador",
+    "role": "developer",
+    "accountType": "developer",
+    "loginAt": "2026-05-29T19:38:26.501Z",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+  },
+  {
+    "id": 75,
+    "username": "developer",
+    "name": "Programador",
+    "role": "developer",
+    "accountType": "developer",
+    "loginAt": "2026-05-29T19:29:18.444Z",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+  },
+  {
+    "id": 74,
+    "username": "admin",
+    "name": "Administrador",
+    "role": "admin",
+    "accountType": "admin",
+    "loginAt": "2026-05-28T22:46:34.847Z",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+  },
+  {
+    "id": 73,
+    "username": "Helena_Bento",
+    "name": "Maria Helena Gonçalves Nunes Bento",
+    "role": "responsavel",
+    "accountType": "operational",
+    "loginAt": "2026-05-28T22:43:54.421Z",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+  },
+  {
+    "id": 72,
+    "username": "admin",
+    "name": "Administrador",
+    "role": "admin",
+    "accountType": "admin",
+    "loginAt": "2026-05-28T20:42:17.206Z",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+  },
+  {
+    "id": 71,
+    "username": "Helena_Bento",
+    "name": "Maria Helena Gonçalves Nunes Bento",
+    "role": "responsavel",
+    "accountType": "operational",
+    "loginAt": "2026-05-28T20:27:19.973Z",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+  },
+  {
+    "id": 70,
+    "username": "admin",
+    "name": "Administrador",
+    "role": "admin",
+    "accountType": "admin",
+    "loginAt": "2026-05-28T20:22:54.737Z",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+  },
+  {
+    "id": 69,
+    "username": "Agostinho_Fernandes",
+    "name": "AGOSTINHO MANUEL NOGUEIRA FERNANDES",
+    "role": "chef_primeira",
+    "accountType": "operational",
+    "loginAt": "2026-05-28T20:21:30.909Z",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+  },
+  {
+    "id": 68,
+    "username": "Helena_Bento",
+    "name": "Maria Helena Gonçalves Nunes Bento",
+    "role": "responsavel",
+    "accountType": "operational",
+    "loginAt": "2026-05-28T20:21:05.133Z",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+  },
+  {
+    "id": 67,
+    "username": "admin",
+    "name": "Administrador",
+    "role": "admin",
+    "accountType": "admin",
+    "loginAt": "2026-05-28T20:19:18.012Z",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+  },
+  {
+    "id": 66,
+    "username": "Helena_Bento",
+    "name": "Maria Helena Gonçalves Nunes Bento",
+    "role": "responsavel",
+    "accountType": "operational",
+    "loginAt": "2026-05-28T20:18:54.372Z",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+  },
+  {
+    "id": 65,
+    "username": "admin",
+    "name": "Administrador",
+    "role": "admin",
+    "accountType": "admin",
+    "loginAt": "2026-05-28T20:18:19.448Z",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+  },
+  {
+    "id": 64,
+    "username": "Helena_Bento",
+    "name": "Maria Helena Gonçalves Nunes Bento",
+    "role": "responsavel",
+    "accountType": "operational",
+    "loginAt": "2026-05-28T20:17:15.136Z",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+  },
+  {
+    "id": 63,
+    "username": "Helena_Bento",
+    "name": "Maria Helena Gonçalves Nunes Bento",
+    "role": "responsavel",
+    "accountType": "operational",
+    "loginAt": "2026-05-28T08:11:49.334Z",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+  },
+  {
+    "id": 62,
+    "username": "admin",
+    "name": "Administrador",
+    "role": "admin",
+    "accountType": "admin",
+    "loginAt": "2026-05-28T08:11:29.662Z",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+  },
+  {
+    "id": 61,
+    "username": "Helena_Bento",
+    "name": "Maria Helena GonÃ§alves Nunes Bento",
+    "role": "responsavel",
+    "accountType": "operational",
+    "loginAt": "2026-05-28T08:08:25.437Z",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+  },
+  {
+    "id": 60,
+    "username": "admin",
+    "name": "Administrador",
+    "role": "admin",
+    "accountType": "admin",
+    "loginAt": "2026-05-28T08:08:10.949Z",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+  },
+  {
+    "id": 59,
+    "username": "Helena_Bento",
+    "name": "Maria Helena GonÃ§alves Nunes Bento",
+    "role": "responsavel",
+    "accountType": "operational",
+    "loginAt": "2026-05-28T08:03:09.685Z",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+  },
+  {
+    "id": 58,
+    "username": "admin",
+    "name": "Administrador",
+    "role": "admin",
+    "accountType": "admin",
+    "loginAt": "2026-05-27T20:34:58.987Z",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+  },
+  {
+    "id": 57,
+    "username": "Helena_Bento",
+    "name": "Maria Helena GonÃ§alves Nunes Bento",
+    "role": "responsavel",
+    "accountType": "operational",
+    "loginAt": "2026-05-27T20:22:51.288Z",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+  },
+  {
+    "id": 56,
+    "username": "admin",
+    "name": "Administrador",
+    "role": "admin",
+    "accountType": "admin",
+    "loginAt": "2026-05-27T20:10:26.093Z",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+  },
+  {
+    "id": 55,
+    "username": "Helena_Bento",
+    "name": "Maria Helena GonÃ§alves Nunes Bento",
+    "role": "responsavel",
+    "accountType": "operational",
+    "loginAt": "2026-05-27T20:10:16.121Z",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+  },
+  {
+    "id": 54,
+    "username": "admin",
+    "name": "Administrador",
+    "role": "admin",
+    "accountType": "admin",
+    "loginAt": "2026-05-27T20:03:04.069Z",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+  },
+  {
+    "id": 53,
+    "username": "Helena_Bento",
+    "name": "Maria Helena GonÃ§alves Nunes Bento",
+    "role": "responsavel",
+    "accountType": "operational",
+    "loginAt": "2026-05-27T19:54:20.281Z",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+  },
+  {
+    "id": 52,
+    "username": "Helena_Bento",
+    "name": "Maria Helena GonÃ§alves Nunes Bento",
+    "role": "responsavel",
+    "accountType": "operational",
+    "loginAt": "2026-05-27T18:34:59.928Z",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+  },
+  {
+    "id": 51,
+    "username": "admin",
+    "name": "Administrador",
+    "role": "admin",
+    "accountType": "admin",
+    "loginAt": "2026-05-27T18:34:42.343Z",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+  },
+  {
+    "id": 50,
+    "username": "Helena_Bento",
+    "name": "Maria Helena GonÃ§alves Nunes Bento",
+    "role": "responsavel",
+    "accountType": "operational",
+    "loginAt": "2026-05-27T15:28:05.974Z",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+  },
+  {
+    "id": 49,
+    "username": "admin",
+    "name": "Administrador",
+    "role": "admin",
+    "accountType": "admin",
+    "loginAt": "2026-05-27T14:50:45.483Z",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+  },
+  {
+    "id": 48,
+    "username": "admin",
+    "name": "Administrador",
+    "role": "admin",
+    "accountType": "admin",
+    "loginAt": "2026-05-27T14:05:52.524Z",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+  },
+  {
+    "id": 47,
+    "username": "Agostinho_Fernandes",
+    "name": "AGOSTINHO MANUEL NOGUEIRA FERNANDES",
+    "role": "chef_primeira",
+    "accountType": "operational",
+    "loginAt": "2026-05-27T13:35:08.434Z",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+  },
+  {
+    "id": 46,
+    "username": "admin",
+    "name": "Administrador",
+    "role": "admin",
+    "accountType": "admin",
+    "loginAt": "2026-05-27T13:16:14.975Z",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+  },
+  {
+    "id": 45,
+    "username": "Agostinho_Fernandes",
+    "name": "AGOSTINHO MANUEL NOGUEIRA FERNANDES",
+    "role": "chef_primeira",
+    "accountType": "operational",
+    "loginAt": "2026-05-27T12:55:03.739Z",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+  },
+  {
+    "id": 44,
+    "username": "admin",
+    "name": "Administrador",
+    "role": "admin",
+    "accountType": "admin",
+    "loginAt": "2026-05-27T12:39:39.282Z",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+  },
+  {
+    "id": 43,
+    "username": "developer",
+    "name": "Programador",
+    "role": "developer",
+    "accountType": "developer",
+    "loginAt": "2026-05-26T20:38:51.220Z",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+  },
+  {
+    "id": 42,
+    "username": "admin",
+    "name": "Administrador",
+    "role": "admin",
+    "accountType": "admin",
+    "loginAt": "2026-05-26T20:30:21.399Z",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+  },
+  {
+    "id": 41,
+    "username": "Agostinho_Fernandes",
+    "name": "AGOSTINHO MANUEL NOGUEIRA FERNANDES",
+    "role": "chef_primeira",
+    "accountType": "operational",
+    "loginAt": "2026-05-26T20:11:53.274Z",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+  },
+  {
+    "id": 40,
+    "username": "admin",
+    "name": "Administrador",
+    "role": "admin",
+    "accountType": "admin",
+    "loginAt": "2026-05-26T19:02:44.375Z",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+  },
+  {
     "id": 39,
     "username": "developer",
     "name": "Programador",

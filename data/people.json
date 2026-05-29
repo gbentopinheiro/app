@@ -10,7 +10,7 @@
     },
     {
         "id":  2,
-        "name":  "Maria Helena GonÃ§alves Nunes Bento",
+        "name":  "Maria Helena Gonçalves Nunes Bento",
         "price":  0,
         "monthlyPrice":  0,
         "isMonthlyBilling":  false,
@@ -46,7 +46,7 @@
     },
     {
         "id":  6,
-        "name":  "ANTÃ“NIO AUGUSTO DE SOUSA FERREIRA",
+        "name":  "ANTÓNIO AUGUSTO DE SOUSA FERREIRA",
         "price":  13,
         "monthlyPrice":  0,
         "isMonthlyBilling":  false,
@@ -100,7 +100,7 @@
     },
     {
         "id":  12,
-        "name":  "ANTÃ“NIO GOMES",
+        "name":  "ANTÓNIO GOMES",
         "price":  12,
         "monthlyPrice":  0,
         "isMonthlyBilling":  false,
@@ -109,7 +109,7 @@
     },
     {
         "id":  13,
-        "name":  "BRAIMA SÃ“",
+        "name":  "BRAIMA SÓ",
         "price":  12,
         "monthlyPrice":  0,
         "isMonthlyBilling":  false,
@@ -298,7 +298,7 @@
     },
     {
         "id":  34,
-        "name":  "JOSÃ‰ LUÃS RIBEIRO DA COSTA",
+        "name":  "JOSÉ LUÍS RIBEIRO DA COSTA",
         "price":  0,
         "monthlyPrice":  3000,
         "isMonthlyBilling":  true,
@@ -325,7 +325,7 @@
     },
     {
         "id":  37,
-        "name":  "JOSUE VAZ DO PATROCÃNIO",
+        "name":  "JOSUE VAZ DO PATROCÍNIO",
         "price":  13,
         "monthlyPrice":  0,
         "isMonthlyBilling":  false,
@@ -505,7 +505,7 @@
     },
     {
         "id":  57,
-        "name":  "PORFÃRIO DA SILVA MAGALHAES",
+        "name":  "PORFÍRIO DA SILVA MAGALHAES",
         "price":  14,
         "monthlyPrice":  0,
         "isMonthlyBilling":  false,
@@ -640,7 +640,7 @@
     },
     {
         "id":  72,
-        "name":  "FRANCISCO CÃ“",
+        "name":  "FRANCISCO CÓ",
         "price":  30,
         "monthlyPrice":  0,
         "isMonthlyBilling":  false,

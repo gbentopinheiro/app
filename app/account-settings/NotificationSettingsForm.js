@@ -1,20 +1,19 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import {
+  DEFAULT_REMINDER_SETTINGS,
+  REMINDER_SETTINGS_STORAGE_KEY,
+  normalizeReminderSettings,
+} from '../../lib/reminder-settings.js'
 
-const REMINDER_SETTINGS_STORAGE_KEY = 'benpin:daily-hours-reminder-settings'
-const DEFAULT_REMINDER_SETTINGS = {
-  weekday: '17:25',
-  saturday: '15:25',
-}
-
-const formStyle = {
+const formStyle = ({ withTopBorder = true, marginTop = '24px' } = {}) => ({
   display: 'grid',
   gap: '16px',
-  marginTop: '24px',
-  paddingTop: '24px',
-  borderTop: '1px solid var(--vp-border)',
-}
+  marginTop,
+  paddingTop: withTopBorder ? '24px' : 0,
+  borderTop: withTopBorder ? '1px solid var(--vp-border)' : 'none',
+})
 
 const formTitleStyle = {
   margin: 0,
@@ -82,19 +81,12 @@ const messageStyle = {
   fontWeight: 800,
 }
 
-function normalizeReminderTime(value, fallback) {
-  const normalizedValue = String(value || '').trim()
-  return /^\d{2}:\d{2}$/.test(normalizedValue) ? normalizedValue : fallback
-}
-
-function normalizeReminderSettings(settings = {}) {
-  return {
-    weekday: normalizeReminderTime(settings.weekday, DEFAULT_REMINDER_SETTINGS.weekday),
-    saturday: normalizeReminderTime(settings.saturday, DEFAULT_REMINDER_SETTINGS.saturday),
-  }
-}
-
-export default function NotificationSettingsForm() {
+export default function NotificationSettingsForm({
+  title = 'Horário das notificações',
+  description = 'Define a que horas queres receber o aviso para submeter o registo diário.',
+  withTopBorder = true,
+  marginTop = '24px',
+}) {
   const [form, setForm] = useState(DEFAULT_REMINDER_SETTINGS)
   const [message, setMessage] = useState('')
 
@@ -122,10 +114,10 @@ export default function NotificationSettingsForm() {
   }
 
   return (
-    <form style={formStyle} onSubmit={handleSubmit}>
+    <form style={formStyle({ withTopBorder, marginTop })} onSubmit={handleSubmit}>
       <div>
-        <h2 style={formTitleStyle}>Horário das notificações</h2>
-        <p style={formTextStyle}>Define a que horas queres receber o aviso para submeter o registo diário.</p>
+        <h2 style={formTitleStyle}>{title}</h2>
+        {description ? <p style={formTextStyle}>{description}</p> : null}
       </div>
 
       <div style={gridStyle}>

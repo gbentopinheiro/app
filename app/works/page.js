@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import EditPencilIcon, { editPencilButtonStyle } from '../components/EditPencilIcon'
+import { buildWorkPricingSnapshot, hasWorkPricingChanges } from '../../lib/work-pricing.js'
 
 const pageStyle = {
   minHeight: '100vh',
@@ -173,6 +174,12 @@ const rolePriceOptions = [
 ]
 
 const defaultWorkingDays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday']
+const workStatusLabels = {
+  planned: 'Planeada',
+  in_progress: 'Em curso',
+  paused: 'Em pausa',
+  completed: 'Concluída',
+}
 
 const workingDaysGridStyle = {
   display: 'grid',
@@ -209,10 +216,38 @@ const emptyWorkForm = {
   notes: '',
 }
 
+const emptyWorkPricingSnapshot = buildWorkPricingSnapshot(emptyWorkForm)
+
+function toDateInputValue(date) {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function getPricingApplicationStartDate(mode) {
+  const today = new Date()
+
+  if (mode === 'month_start') {
+    return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-01`
+  }
+
+  if (mode === 'next_month') {
+    const nextMonth = new Date(today.getFullYear(), today.getMonth() + 1, 1)
+    return toDateInputValue(nextMonth)
+  }
+
+  return toDateInputValue(today)
+}
+
 function autoResizeTextarea(textarea) {
   if (!textarea) return
   textarea.style.height = '72px'
   textarea.style.height = `${Math.max(textarea.scrollHeight, 72)}px`
+}
+
+function getWorkStatusLabel(status) {
+  return workStatusLabels[String(status || '').trim()] || workStatusLabels.planned
 }
 
 export default function WorksPage() {
@@ -225,7 +260,10 @@ export default function WorksPage() {
   const [success, setSuccess] = useState('')
   const [formErrors, setFormErrors] = useState({})
   const [form, setForm] = useState(emptyWorkForm)
+  const [originalPricingSnapshot, setOriginalPricingSnapshot] = useState(emptyWorkPricingSnapshot)
   const [showCreateForm, setShowCreateForm] = useState(false)
+  const [showPricingChangeModal, setShowPricingChangeModal] = useState(false)
+  const [pendingWorkPayload, setPendingWorkPayload] = useState(null)
   const [handledEditId, setHandledEditId] = useState('')
   const notesTextareaRef = useRef(null)
 
@@ -330,6 +368,7 @@ export default function WorksPage() {
 
   function startCreate() {
     setForm(emptyWorkForm)
+    setOriginalPricingSnapshot(emptyWorkPricingSnapshot)
     setShowCreateForm(true)
     setSuccess('')
     setError('')
@@ -339,6 +378,9 @@ export default function WorksPage() {
   function cancelCreate() {
     setShowCreateForm(false)
     setForm(emptyWorkForm)
+    setOriginalPricingSnapshot(emptyWorkPricingSnapshot)
+    setShowPricingChangeModal(false)
+    setPendingWorkPayload(null)
     setFormErrors({})
   }
 
@@ -359,10 +401,71 @@ export default function WorksPage() {
       workingDays: Array.isArray(work.workingDays) ? work.workingDays : defaultWorkingDays,
       notes: work.notes ?? '',
     })
+    setOriginalPricingSnapshot(buildWorkPricingSnapshot(work))
     setShowCreateForm(true)
     setSuccess('')
     setError('')
     setFormErrors({})
+  }
+
+  async function saveWork(payload, pricingChangeApplication = null) {
+    const url = form.id ? `/api/works/${form.id}` : '/api/works'
+    const method = form.id ? 'PUT' : 'POST'
+
+    const response = await fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ...payload,
+        pricingChangeApplication,
+      }),
+    })
+
+    const data = await response.json()
+    if (!response.ok) throw new Error(data.error || 'Erro ao gravar obra')
+
+    await loadData()
+    setShowCreateForm(false)
+    setShowPricingChangeModal(false)
+    setPendingWorkPayload(null)
+    setForm(emptyWorkForm)
+    setOriginalPricingSnapshot(emptyWorkPricingSnapshot)
+
+    if (pricingChangeApplication?.startDate) {
+      const updatedCount = Number(data.repricedAssignmentsCount) || 0
+      setSuccess(
+        updatedCount > 0
+          ? `Obra atualizada e ${updatedCount} afetações ficaram com a nova tarifa.`
+          : 'Obra atualizada com a nova tarifa. Nao houve afetacoes elegiveis para atualizar.',
+      )
+      return
+    }
+
+    setSuccess(form.id ? 'Obra atualizada com sucesso.' : 'Obra criada com sucesso.')
+  }
+
+  async function confirmPricingChangeApplication(mode = 'none') {
+    if (!pendingWorkPayload) {
+      return
+    }
+
+    setShowPricingChangeModal(false)
+    setSubmitting(true)
+
+    try {
+      const pricingChangeApplication = mode === 'none'
+        ? null
+        : {
+            mode,
+            startDate: getPricingApplicationStartDate(mode),
+          }
+
+      await saveWork(pendingWorkPayload, pricingChangeApplication)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   async function handleSubmit(event) {
@@ -399,22 +502,13 @@ export default function WorksPage() {
         notes: form.notes,
       }
 
-      const url = form.id ? `/api/works/${form.id}` : '/api/works'
-      const method = form.id ? 'PUT' : 'POST'
+      if (form.id && hasWorkPricingChanges(payload, originalPricingSnapshot)) {
+        setPendingWorkPayload(payload)
+        setShowPricingChangeModal(true)
+        return
+      }
 
-      const response = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
-
-      const data = await response.json()
-      if (!response.ok) throw new Error(data.error || 'Erro ao gravar obra')
-
-      await loadData()
-      setSuccess(form.id ? 'Obra atualizada com sucesso.' : 'Obra criada com sucesso.')
-      setShowCreateForm(false)
-      setForm(emptyWorkForm)
+      await saveWork(payload)
     } catch (err) {
       setError(err.message)
     } finally {
@@ -471,7 +565,7 @@ export default function WorksPage() {
         <div>
           <strong>#{work.number} - {work.name}</strong>
           <p style={{ margin: '6px 0 0', color: 'var(--vp-text-muted)' }}>{work.client?.name || 'Sem cliente'}</p>
-          <p style={{ margin: '6px 0 0', color: 'var(--vp-text-muted)' }}>Estado: {work.status}</p>
+          <p style={{ margin: '6px 0 0', color: 'var(--vp-text-muted)' }}>Estado: {getWorkStatusLabel(work.status)}</p>
           <p style={{ margin: '6px 0 0', color: 'var(--vp-text-muted)' }}>
             Dias de trabalho: {(work.workingDays || defaultWorkingDays)
               .map(day => workDayOptions.find(option => option.value === day)?.label)
@@ -509,9 +603,6 @@ export default function WorksPage() {
           <Link href="/" style={{ color: 'var(--vp-accent)', textDecoration: 'none', fontWeight: 700 }}>
             Voltar ao menu
           </Link>
-          <p style={{ margin: '18px 0 0', textTransform: 'uppercase', letterSpacing: '0.12em', fontSize: '12px', color: 'var(--vp-text-soft)' }}>
-            Gestão de obra
-          </p>
           <h1 style={{ margin: '10px 0 12px', fontSize: '46px', lineHeight: 1.05 }}>
             Lista de obras
           </h1>
@@ -578,7 +669,7 @@ export default function WorksPage() {
             <form onSubmit={handleSubmit} style={{ display: 'grid', gap: '20px', marginTop: '18px' }}>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '20px' }}>
                 <label style={{ ...labelStyle, maxWidth: '110px' }}>
-                  Numero
+                  Número
                   <input type="number" name="number" value={form.number} onChange={handleChange} style={inputStyle} />
                 </label>
                 <label style={labelStyle}>
@@ -605,10 +696,10 @@ export default function WorksPage() {
                 <label style={labelStyle}>
                   Estado
                   <select name="status" value={form.status} onChange={handleChange} style={inputStyle}>
-                    <option value="planned">planned</option>
-                    <option value="in_progress">in_progress</option>
-                    <option value="paused">paused</option>
-                    <option value="completed">completed</option>
+                    <option value="planned">Planeada</option>
+                    <option value="in_progress">Em curso</option>
+                    <option value="paused">Em pausa</option>
+                    <option value="completed">Concluída</option>
                   </select>
                 </label>
                 <label style={labelStyle}>
@@ -712,6 +803,37 @@ export default function WorksPage() {
                 )}
               </div>
             </form>
+          </section>
+        </div>
+      )}
+
+      {showPricingChangeModal && (
+        <div style={modalBackdropStyle} onClick={() => !submitting && setShowPricingChangeModal(false)}>
+          <section style={{ ...modalCardStyle, width: 'min(720px, 100%)' }} onClick={(event) => event.stopPropagation()}>
+            <div style={{ display: 'grid', gap: '12px' }}>
+              <h2 style={{ margin: 0 }}>Alteracao de precos da obra</h2>
+              <p style={{ margin: 0, color: 'var(--vp-text-muted)' }}>
+                Mudaste os precos desta obra. Queres so guardar os novos valores para o futuro ou reaplicar a nova tarifa nas afetacoes ainda nao aprovadas?
+              </p>
+              <p style={{ margin: 0, color: 'var(--vp-text-muted)', fontSize: '13px' }}>
+                Horas ja aprovadas mantem o preco antigo. Afetacoes com preco manual tambem nao sao alteradas.
+              </p>
+            </div>
+
+            <div style={{ display: 'grid', gap: '10px', marginTop: '20px' }}>
+              <button type="button" onClick={() => confirmPricingChangeApplication('none')} style={primaryButtonStyle} disabled={submitting}>
+                So guardar os novos precos
+              </button>
+              <button type="button" onClick={() => confirmPricingChangeApplication('today')} style={secondaryButtonStyle} disabled={submitting}>
+                Aplicar a partir de hoje
+              </button>
+              <button type="button" onClick={() => confirmPricingChangeApplication('month_start')} style={secondaryButtonStyle} disabled={submitting}>
+                Aplicar desde o inicio do mes
+              </button>
+              <button type="button" onClick={() => confirmPricingChangeApplication('next_month')} style={secondaryButtonStyle} disabled={submitting}>
+                Aplicar a partir do proximo mes
+              </button>
+            </div>
           </section>
         </div>
       )}

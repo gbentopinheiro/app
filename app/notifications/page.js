@@ -2,8 +2,9 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import NotificationsClient from './NotificationsClient'
 import { canManageEntireApp } from '../../lib/auth.js'
-import { getAllDailyWorkNotes } from '../../lib/daily-work-notes.js'
 import { isFeatureEnabled } from '../../lib/feature-flags.js'
+import { getOperationNotifications } from '../../lib/operation-notifications.js'
+import { isResponsavelRole } from '../../lib/roles.js'
 import { getServerSession } from '../../lib/server-session.js'
 
 const pageStyle = {
@@ -44,33 +45,6 @@ const titleStyle = {
   fontWeight: 900,
 }
 
-function formatNotificationDate(dateString) {
-  const date = new Date(`${dateString}T00:00:00`)
-
-  if (Number.isNaN(date.getTime())) {
-    return dateString
-  }
-
-  return new Intl.DateTimeFormat('pt-PT', {
-    day: '2-digit',
-    month: 'long',
-    year: 'numeric',
-  }).format(date)
-}
-
-function getNotifications() {
-  return getAllDailyWorkNotes()
-    .filter(note => note.note)
-    .sort((left, right) => new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime())
-    .map(note => ({
-      id: note.id,
-      chef: note.authorName || 'Chefe',
-      work: note.work?.name || `Obra ${note.workId}`,
-      date: formatNotificationDate(note.date),
-      note: note.note,
-    }))
-}
-
 export default async function NotificationsPage() {
   const session = await getServerSession()
 
@@ -78,7 +52,7 @@ export default async function NotificationsPage() {
     redirect('/login')
   }
 
-  if (!canManageEntireApp(session.role)) {
+  if (!canManageEntireApp(session.role) && !isResponsavelRole(session.role)) {
     redirect('/')
   }
 
@@ -86,7 +60,10 @@ export default async function NotificationsPage() {
     redirect('/')
   }
 
-  const notifications = getNotifications()
+  const notifications = getOperationNotifications({
+    audience: isResponsavelRole(session.role) ? 'responsavel' : 'admin',
+    withYear: true,
+  })
 
   return (
     <main style={pageStyle}>

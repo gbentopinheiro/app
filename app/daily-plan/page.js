@@ -323,6 +323,50 @@ function canRoleUseManualHourlyCost(role) {
   return role === 'chef_primeira' || role === 'chef_segunda' || role === 'gruista'
 }
 
+function formatHourlyCostLabel(value) {
+  return new Intl.NumberFormat('pt-PT', {
+    minimumFractionDigits: Number.isInteger(Number(value)) ? 0 : 2,
+    maximumFractionDigits: 2,
+  }).format(Number(value))
+}
+
+function getManualHourlyCostSuggestions(work, person) {
+  if (!work || !person) {
+    return []
+  }
+
+  const suggestions = []
+  const specialPersonCost = work.specialPersonHourlyCosts?.[String(person.id)]
+  const roleCost = work.roleHourlyCosts?.[person.role]
+  const defaultCost = work.defaultHourlyCost
+
+  if (specialPersonCost !== undefined && specialPersonCost !== null && specialPersonCost !== '') {
+    suggestions.push({
+      key: `special-${person.id}`,
+      label: 'Preço especial desta pessoa',
+      value: Number(specialPersonCost),
+    })
+  }
+
+  if (roleCost !== undefined && roleCost !== null && roleCost !== '') {
+    suggestions.push({
+      key: `role-${person.role}`,
+      label: `Preço de ${getRoleLabel(person.role)}`,
+      value: Number(roleCost),
+    })
+  }
+
+  if (defaultCost !== undefined && defaultCost !== null && defaultCost !== '') {
+    suggestions.push({
+      key: `default-${work.id}`,
+      label: 'Preço base da obra',
+      value: Number(defaultCost),
+    })
+  }
+
+  return suggestions.filter(suggestion => !Number.isNaN(suggestion.value) && suggestion.value >= 0)
+}
+
 export default function DailyPlanPage() {
   const [selectedDate, setSelectedDate] = useState(today)
   const [currentTime, setCurrentTime] = useState(() => new Date())
@@ -490,6 +534,10 @@ export default function DailyPlanPage() {
 
     return 'default da obra'
   }, [assignmentForm.manualHourlyCost, canUseManualHourlyCost, selectedPerson, selectedWork])
+  const manualHourlyCostSuggestions = useMemo(
+    () => getManualHourlyCostSuggestions(selectedWork, selectedPerson),
+    [selectedPerson, selectedWork],
+  )
   const sortedPeople = useMemo(
     () =>
       [...defaults.people].sort((left, right) =>
@@ -758,6 +806,15 @@ export default function DailyPlanPage() {
       ...current,
       hourlyCost: event.target.value,
     }))
+  }
+
+  function applyManualHourlyCostSuggestion(value) {
+    setAssignmentForm(current => ({
+      ...current,
+      manualHourlyCost: true,
+      hourlyCost: String(value),
+    }))
+    setFormErrors(current => ({ ...current, hourlyCost: '' }))
   }
 
   function validateAssignmentForm() {
@@ -1567,18 +1624,42 @@ export default function DailyPlanPage() {
                   </label>
 
                   {assignmentForm.manualHourlyCost ? (
-                    <label style={labelStyle}>
-                      Preço hora manual
+                    <div style={{ display: 'grid', gap: '8px' }}>
+                      <span style={labelStyle}>Preço hora manual</span>
                       <input
                         type="number"
                         min="0"
                         step="0.01"
                         value={assignmentForm.hourlyCost}
                         onChange={handleManualHourlyCostChange}
-                        style={inputStyle}
+                        style={{ ...inputStyle, maxWidth: '240px', marginTop: 0 }}
                       />
+                      {manualHourlyCostSuggestions.length > 0 && (
+                        <div style={{ display: 'grid', gap: '8px', marginTop: '10px' }}>
+                          <span style={{ fontSize: '12px', color: 'var(--vp-text-muted)', fontWeight: 700 }}>
+                            Sugestões desta obra para esta pessoa
+                          </span>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                            {manualHourlyCostSuggestions.map(suggestion => (
+                              <button
+                                key={suggestion.key}
+                                type="button"
+                                onClick={() => applyManualHourlyCostSuggestion(suggestion.value)}
+                                style={{
+                                  ...secondaryButtonStyle,
+                                  padding: '7px 12px',
+                                  fontSize: '12px',
+                                  lineHeight: 1.2,
+                                }}
+                              >
+                                {suggestion.label}: {formatHourlyCostLabel(suggestion.value)}/h
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                       {formErrors.hourlyCost && <span style={{ color: '#b42318', fontSize: '13px' }}>{formErrors.hourlyCost}</span>}
-                    </label>
+                    </div>
                   ) : (
                     <p style={{ margin: 0, color: 'var(--vp-text-muted)', fontSize: '13px' }}>
                       Preço automático pela hierarquia: pessoa na obra, role da obra, default da obra.

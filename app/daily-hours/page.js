@@ -3,6 +3,16 @@
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import EditPencilIcon, { editPencilButtonStyle } from '../components/EditPencilIcon'
+import {
+  fetchChefDailyHoursData,
+  fetchChefWorkNotes,
+  mapWorkNotesByWorkId,
+  saveChefWorkNote,
+  sortEntriesByPersonName,
+  sortWorksByNumber,
+  submitChefEntries,
+  validateChefEntryHours,
+} from '../../lib/chef-daily-hours-shared.js'
 import { isChefRole } from '../../lib/roles.js'
 import { isAssignmentApproved } from '../../lib/work-assignment-approval.js'
 import LogoutButton from '../components/LogoutButton'
@@ -114,6 +124,60 @@ const secondaryButtonStyle = {
   fontWeight: 700,
   cursor: 'pointer',
   maxWidth: '100%',
+}
+
+const chefQuickActionsStyle = {
+  display: 'flex',
+  flexWrap: 'wrap',
+  gap: '10px',
+}
+
+function chefQuickActionButtonStyle(disabled) {
+  return {
+    border: '1px solid var(--vp-accent)',
+    borderRadius: '999px',
+    padding: '8px 14px',
+    background: disabled ? 'var(--vp-surface-soft)' : 'rgba(37, 99, 235, 0.08)',
+    color: disabled ? 'var(--vp-text-soft)' : 'var(--vp-accent)',
+    fontWeight: 800,
+    cursor: disabled ? 'not-allowed' : 'pointer',
+    opacity: disabled ? 0.7 : 1,
+  }
+}
+
+const chefHoursStepperStyle = {
+  display: 'grid',
+  gridTemplateColumns: '36px minmax(54px, 1fr) 36px',
+  gap: '8px',
+  alignItems: 'center',
+  width: 'min(100%, 150px)',
+  justifySelf: 'center',
+}
+
+function chefHoursStepperButtonStyle(disabled) {
+  return {
+    width: '36px',
+    height: '36px',
+    borderRadius: '12px',
+    border: '1px solid var(--vp-border)',
+    background: disabled ? 'var(--vp-surface-soft)' : 'var(--vp-surface)',
+    color: 'var(--vp-text)',
+    fontSize: '18px',
+    fontWeight: 800,
+    cursor: disabled ? 'not-allowed' : 'pointer',
+    opacity: disabled ? 0.65 : 1,
+  }
+}
+
+function chefHoursInputStyle(disabled) {
+  return {
+    ...inputStyle,
+    marginTop: 0,
+    padding: '10px 0',
+    textAlign: 'center',
+    background: disabled ? 'var(--vp-surface-soft)' : 'var(--vp-surface-muted)',
+    color: disabled ? 'var(--vp-text-soft)' : 'var(--vp-text)',
+  }
 }
 
 const reminderCardStyle = {
@@ -344,8 +408,8 @@ export default function DailyHoursPage() {
   const isChef = isChefRole(session?.role)
 
   useEffect(() => {
-    loadPageData(selectedDate)
-    loadWorkNotes(selectedDate)
+    loadPageDataShared(selectedDate)
+    loadWorkNotesShared(selectedDate)
   }, [selectedDate])
 
   useEffect(() => {
@@ -379,7 +443,7 @@ export default function DailyHoursPage() {
       ? [...defaults.works]
       : [...defaults.works].filter(work => work.status !== 'completed')
 
-    return availableWorks.sort((a, b) => Number(a.number || 0) - Number(b.number || 0))
+    return sortWorksByNumber(availableWorks)
   }, [defaults.works, isChef])
 
   const selectedWork = useMemo(
@@ -388,12 +452,7 @@ export default function DailyHoursPage() {
   )
 
   const selectedWorkEntries = useMemo(
-    () =>
-      dailyEntries
-        .filter(entry => String(entry.workId) === String(selectedWorkId))
-        .sort((left, right) =>
-          String(left.person?.name || '').localeCompare(String(right.person?.name || '')),
-        ),
+    () => sortEntriesByPersonName(dailyEntries.filter(entry => String(entry.workId) === String(selectedWorkId))),
     [dailyEntries, selectedWorkId],
   )
 
@@ -402,11 +461,7 @@ export default function DailyHoursPage() {
 
     return activeWorks.map(work => ({
       work,
-      entries: dailyEntries
-        .filter(entry => String(entry.workId) === String(work.id))
-        .sort((left, right) =>
-          String(left.person?.name || '').localeCompare(String(right.person?.name || '')),
-        ),
+      entries: sortEntriesByPersonName(dailyEntries.filter(entry => String(entry.workId) === String(work.id))),
     }))
   }, [activeWorks, dailyEntries, isChef])
 
@@ -469,7 +524,7 @@ export default function DailyHoursPage() {
   }, [chefWorksWithEntries, isChef, selectedWorkEntries])
 
   const pendingChefEntries = useMemo(
-    () => dailyEntries.filter(entry => !entry.submitted),
+    () => dailyEntries.filter(entry => !entry.submitted && entry.hasWorkAccess !== false),
     [dailyEntries],
   )
 
@@ -480,6 +535,10 @@ export default function DailyHoursPage() {
 
     function triggerReminderIfNeeded() {
       if (selectedDate !== getTodayDate()) {
+        return
+      }
+
+      if (new Date().getDay() === 0) {
         return
       }
 
@@ -601,6 +660,39 @@ export default function DailyHoursPage() {
       ...current,
       [String(entryId)]: '',
     }))
+  }
+
+  function setEntryHoursValue(entryId, value) {
+    handleHoursChange(entryId, value === '' ? '' : String(Math.max(0, Number(value) || 0)))
+  }
+
+  function adjustEntryHours(entryId, delta) {
+    const currentValue = Number(entryHours[String(entryId)] ?? 0)
+    setEntryHoursValue(entryId, Math.max(0, currentValue + delta))
+    setError('')
+    setSuccess('')
+  }
+
+  function applyHoursToEntries(entriesToUpdate, hours) {
+    const pendingEntries = entriesToUpdate.filter(entry => !entry.submitted)
+
+    if (pendingEntries.length === 0) {
+      return
+    }
+
+    setEntryHours(current => {
+      const next = { ...current }
+
+      pendingEntries.forEach(entry => {
+        next[String(entry.id)] = String(hours)
+      })
+
+      return next
+    })
+
+    setRowErrors({})
+    setError('')
+    setSuccess('')
   }
 
   function handleWorkNoteChange(workId, value) {
@@ -892,6 +984,95 @@ export default function DailyHoursPage() {
     }
   }
 
+  async function loadPageDataShared(date) {
+    setLoading(true)
+    setError('')
+
+    try {
+      const data = await fetchChefDailyHoursData({
+        date,
+        loadErrorMessage: 'Erro ao carregar registos diários',
+      })
+
+      setDefaults(data.defaults)
+      setDailyEntries(data.items)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function loadWorkNotesShared(date) {
+    try {
+      const result = await fetchChefWorkNotes({ date })
+
+      if (!result.ok) {
+        return
+      }
+
+      setWorkNotes(mapWorkNotesByWorkId(result.items))
+    } catch (err) {
+      setWorkNotes({})
+    }
+  }
+
+  async function handleSaveWorkNoteShared(workId) {
+    setError('')
+    setSuccess('')
+    setSavingWorkNoteId(workId)
+
+    try {
+      const savedNote = await saveChefWorkNote({
+        date: selectedDate,
+        workId,
+        note: workNotes[String(workId)] || '',
+        saveErrorMessage: 'Erro ao guardar nota.',
+      })
+
+      setWorkNotes(current => ({
+        ...current,
+        [String(workId)]: savedNote,
+      }))
+      setSuccess('Nota da obra guardada com sucesso.')
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setSavingWorkNoteId(null)
+    }
+  }
+
+  async function handleSaveAllHoursShared(entriesToSave = selectedWorkEntries) {
+    setError('')
+    setSuccess('')
+
+    const validation = validateChefEntryHours(entriesToSave, entryHours)
+
+    if (validation.hasErrors) {
+      setRowErrors(validation.rowErrors)
+      return
+    }
+
+    setSavingAll(true)
+
+    try {
+      await submitChefEntries({
+        entries: entriesToSave,
+        entryHours,
+        updateErrorMessage: 'Erro ao atualizar horas',
+        submitErrorMessage: 'Erro ao submeter horas',
+      })
+
+      await loadPageDataShared(selectedDate)
+      setSuccess('Horas guardadas e submetidas com sucesso! O administrador será notificado.')
+      setRowErrors({})
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setSavingAll(false)
+    }
+  }
+
   return (
     <main style={pageStyle}>
       <div style={shellStyle}>
@@ -945,10 +1126,22 @@ export default function DailyHoursPage() {
         <section style={topBarStyle}>
           <div style={statGridStyle}>
             <article style={{ ...statCardStyle, gridColumn: 'span 2' }}>
-              <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>Obras atribuídas</div>
+              <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>
+                {isChef ? 'Obras do dia' : 'Obras atribuídas'}
+              </div>
               {isChef ? (
-                <div style={{ marginTop: '8px', fontSize: 'clamp(20px, 4vw, 24px)', fontWeight: 700 }}>
-                  {activeWorks.length}
+                <div style={{ marginTop: '8px', display: 'grid', gap: '6px' }}>
+                  {activeWorks.length > 0 ? (
+                    activeWorks.map(work => (
+                      <div key={work.id} style={{ fontSize: 'clamp(16px, 2.6vw, 20px)', fontWeight: 700, lineHeight: 1.25 }}>
+                        {work.name}
+                      </div>
+                    ))
+                  ) : (
+                    <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--vp-text-soft)' }}>
+                      Sem obras
+                    </div>
+                  )}
                 </div>
               ) : (
                 <select name="workId" value={selectedWorkId} onChange={handleWorkChange} style={inputStyle}>
@@ -1036,174 +1229,236 @@ export default function DailyHoursPage() {
             <div style={{ display: 'grid', gap: '22px', marginTop: '22px' }}>
               {chefWorksWithEntries
                 .filter(({ entries }) => entries.length > 0)
-                .map(({ work, entries }) => (
-                  <section
-                    key={work.id}
-                    style={{
-                      display: 'grid',
-                      gap: '12px',
-                      border: '1px solid var(--vp-border)',
-                      borderRadius: '20px',
-                      padding: '16px',
-                      background: 'var(--vp-surface)',
-                    }}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
-                      <div>
-                        <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase', fontWeight: 800 }}>
-                          Obra
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginTop: '6px' }}>
-                          <h2 style={{ margin: 0, fontSize: '24px', lineHeight: 1.1 }}>
-                            {work.name}
-                          </h2>
-                          <button
-                            type="button"
-                            onClick={() => toggleWorkNote(work.id)}
-                            style={{
-                              ...secondaryButtonStyle,
-                              padding: '8px 12px',
-                              width: 'fit-content',
-                              background: workNotes[String(work.id)] ? 'rgba(37, 99, 235, 0.08)' : 'transparent',
-                            }}
-                          >
-                            {workNotes[String(work.id)] ? 'Editar nota' : 'Adicionar nota'}
-                          </button>
-                        </div>
-                      </div>
-                      <div style={{ color: 'var(--vp-text-muted)', fontWeight: 700 }}>
-                        {entries.length} {entries.length === 1 ? 'pessoa' : 'pessoas'}
-                      </div>
-                    </div>
+                .map(({ work, entries }) => {
+                  const pendingEntries = entries.filter(entry => !entry.submitted)
+                  const hasPendingEntries = pendingEntries.length > 0
 
-                    <div style={{ display: 'grid', gap: '10px' }}>
-                      {openWorkNoteId === work.id && (
-                        <div
-                          style={{
-                            display: 'grid',
-                            gap: '10px',
-                            padding: '14px',
-                            borderRadius: '18px',
-                            background: 'var(--vp-surface-muted)',
-                            border: '1px solid var(--vp-border)',
-                          }}
-                        >
-                          <label style={{ ...labelStyle, margin: 0 }}>
-                            Nota da obra
-                            <textarea
-                              value={workNotes[String(work.id)] || ''}
-                              onChange={(event) => handleWorkNoteChange(work.id, event.target.value)}
-                              placeholder="Escreve uma nota rápida sobre esta obra..."
-                              rows={2}
-                              style={{
-                                ...inputStyle,
-                                minHeight: '74px',
-                                resize: 'vertical',
-                                lineHeight: 1.5,
-                                fontFamily: 'inherit',
-                              }}
-                            />
-                          </label>
-                          <button
-                            type="button"
-                            onClick={() => handleSaveWorkNote(work.id)}
-                            disabled={savingWorkNoteId === work.id}
-                            style={{
-                              ...secondaryButtonStyle,
-                              width: 'fit-content',
-                              justifySelf: 'end',
-                              border: 'none',
-                              background: savingWorkNoteId === work.id ? 'var(--vp-disabled)' : '#ff8c00',
-                              color: '#ffffff',
-                              boxShadow: savingWorkNoteId === work.id ? 'none' : '0 14px 28px rgba(255, 140, 0, 0.22)',
-                              cursor: savingWorkNoteId === work.id ? 'not-allowed' : 'pointer',
-                            }}
-                          >
-                            {savingWorkNoteId === work.id ? 'A guardar...' : 'Guardar nota'}
-                          </button>
-                        </div>
-                      )}
-                    </div>
-
-                    <div
+                  return (
+                    <section
+                      key={work.id}
                       style={{
                         display: 'grid',
-                        gridTemplateColumns: '1fr 60px',
                         gap: '12px',
-                        alignItems: 'center',
-                        padding: '0 12px',
-                        color: 'var(--vp-text-soft)',
-                        fontSize: '12px',
-                        fontWeight: 700,
-                        letterSpacing: '0.08em',
-                        textTransform: 'uppercase',
+                        border: '1px solid var(--vp-border)',
+                        borderRadius: '20px',
+                        padding: '16px',
+                        background: 'var(--vp-surface)',
                       }}
                     >
-                      <div>Pessoa</div>
-                      <div style={{ textAlign: 'center' }}>Horas</div>
-                    </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+                        <div>
+                          <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase', fontWeight: 800 }}>
+                            Obra
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginTop: '6px' }}>
+                            <h2 style={{ margin: 0, fontSize: '24px', lineHeight: 1.1 }}>
+                              {work.name}
+                            </h2>
+                            <button
+                              type="button"
+                              onClick={() => toggleWorkNote(work.id)}
+                              style={{
+                                ...secondaryButtonStyle,
+                                padding: '8px 12px',
+                                width: 'fit-content',
+                                background: workNotes[String(work.id)] ? 'rgba(37, 99, 235, 0.08)' : 'transparent',
+                              }}
+                            >
+                              {workNotes[String(work.id)] ? 'Editar nota' : 'Adicionar nota'}
+                            </button>
+                          </div>
+                        </div>
+                        <div style={{ color: 'var(--vp-text-muted)', fontWeight: 700 }}>
+                          {entries.length} {entries.length === 1 ? 'pessoa' : 'pessoas'}
+                        </div>
+                      </div>
 
-                    {entries.map(entry => (
-                      <article
-                        key={entry.id}
+                      <div style={{ display: 'grid', gap: '10px' }}>
+                        {openWorkNoteId === work.id && (
+                          <div
+                            style={{
+                              display: 'grid',
+                              gap: '10px',
+                              padding: '14px',
+                              borderRadius: '18px',
+                              background: 'var(--vp-surface-muted)',
+                              border: '1px solid var(--vp-border)',
+                            }}
+                          >
+                            <label style={{ ...labelStyle, margin: 0 }}>
+                              Nota da obra
+                              <textarea
+                                value={workNotes[String(work.id)] || ''}
+                                onChange={(event) => handleWorkNoteChange(work.id, event.target.value)}
+                                placeholder="Escreve uma nota rápida sobre esta obra..."
+                                rows={2}
+                                style={{
+                                  ...inputStyle,
+                                  minHeight: '74px',
+                                  resize: 'vertical',
+                                  lineHeight: 1.5,
+                                  fontFamily: 'inherit',
+                                }}
+                              />
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() => handleSaveWorkNoteShared(work.id)}
+                              disabled={savingWorkNoteId === work.id}
+                              style={{
+                                ...secondaryButtonStyle,
+                                width: 'fit-content',
+                                justifySelf: 'end',
+                                border: 'none',
+                                background: savingWorkNoteId === work.id ? 'var(--vp-disabled)' : '#ff8c00',
+                                color: '#ffffff',
+                                boxShadow: savingWorkNoteId === work.id ? 'none' : '0 14px 28px rgba(255, 140, 0, 0.22)',
+                                cursor: savingWorkNoteId === work.id ? 'not-allowed' : 'pointer',
+                              }}
+                            >
+                              {savingWorkNoteId === work.id ? 'A guardar...' : 'Guardar nota'}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      <div style={chefQuickActionsStyle}>
+                        <button
+                          type="button"
+                          onClick={() => applyHoursToEntries(entries, 7)}
+                          disabled={savingAll || !hasPendingEntries}
+                          style={chefQuickActionButtonStyle(savingAll || !hasPendingEntries)}
+                        >
+                          Todos 7h
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => applyHoursToEntries(entries, 8)}
+                          disabled={savingAll || !hasPendingEntries}
+                          style={chefQuickActionButtonStyle(savingAll || !hasPendingEntries)}
+                        >
+                          Todos 8h
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => applyHoursToEntries(entries, 9)}
+                          disabled={savingAll || !hasPendingEntries}
+                          style={chefQuickActionButtonStyle(savingAll || !hasPendingEntries)}
+                        >
+                          Todos 9h
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => applyHoursToEntries(entries, 10)}
+                          disabled={savingAll || !hasPendingEntries}
+                          style={chefQuickActionButtonStyle(savingAll || !hasPendingEntries)}
+                        >
+                          Todos 10h
+                        </button>
+                      </div>
+
+                      <div
                         style={{
                           display: 'grid',
-                          gridTemplateColumns: '1fr 60px',
+                          gridTemplateColumns: '1fr minmax(150px, 170px)',
                           gap: '12px',
-                          border: '1px solid var(--vp-border)',
-                          borderRadius: '18px',
-                          padding: '16px',
-                          background: entry.submitted ? 'var(--vp-highlight)' : 'var(--vp-surface-muted)',
                           alignItems: 'center',
+                          padding: '0 12px',
+                          color: 'var(--vp-text-soft)',
+                          fontSize: '12px',
+                          fontWeight: 700,
+                          letterSpacing: '0.08em',
+                          textTransform: 'uppercase',
                         }}
                       >
-                        <div style={{ minWidth: 0 }}>
-                          <strong>{entry.person?.name || `Pessoa ${entry.personId}`}</strong>
-                          {entry.notes && (
-                            <p style={{ margin: '6px 0 0', color: 'var(--vp-text-muted)', overflowWrap: 'anywhere', fontSize: '13px' }}>
-                              {entry.notes}
-                            </p>
-                          )}
-                        </div>
+                        <div>Pessoa</div>
+                        <div style={{ textAlign: 'center' }}>Horas</div>
+                      </div>
 
-                        <div>
-                          {entry.submitted ? (
-                            <div style={{ fontWeight: 700, color: '#1f7a45', textAlign: 'center' }}>
-                              {entry.hours}h
-                            </div>
-                          ) : (
-                            <>
-                              <input
-                                type="number"
-                                min="0"
-                                step="1"
-                                value={entryHours[String(entry.id)] ?? ''}
-                                onChange={(event) => handleHoursChange(entry.id, event.target.value)}
-                                style={{ ...inputStyle, marginTop: 0 }}
-                              />
-                              {rowErrors[String(entry.id)] && (
-                                <span style={{ color: '#b42318', fontSize: '13px' }}>{rowErrors[String(entry.id)]}</span>
-                              )}
-                            </>
-                          )}
-                        </div>
-                      </article>
-                    ))}
+                      {entries.map(entry => (
+                        <article
+                          key={entry.id}
+                          style={{
+                            display: 'grid',
+                            gridTemplateColumns: '1fr minmax(150px, 170px)',
+                            gap: '12px',
+                            border: '1px solid var(--vp-border)',
+                            borderRadius: '18px',
+                            padding: '16px',
+                            background: entry.submitted ? 'var(--vp-highlight)' : 'var(--vp-surface-muted)',
+                            alignItems: 'center',
+                          }}
+                        >
+                          <div style={{ minWidth: 0 }}>
+                            <strong>{entry.person?.name || `Pessoa ${entry.personId}`}</strong>
+                            {entry.notes && (
+                              <p style={{ margin: '6px 0 0', color: 'var(--vp-text-muted)', overflowWrap: 'anywhere', fontSize: '13px' }}>
+                                {entry.notes}
+                              </p>
+                            )}
+                          </div>
 
-                    <button
-                      type="button"
-                      onClick={() => handleSaveAllHours(entries)}
-                      disabled={savingAll || entries.every(entry => entry.submitted)}
-                      style={
-                        savingAll || entries.every(entry => entry.submitted)
-                          ? { ...primaryButtonStyle, background: 'var(--vp-disabled)', cursor: 'not-allowed' }
-                          : { ...primaryButtonStyle, background: '#1f7a45' }
-                      }
-                    >
-                      {savingAll ? 'A guardar e submeter...' : 'Submeter'}
-                    </button>
-                  </section>
-                ))}
+                          <div style={{ display: 'grid', gap: '6px', justifyItems: 'center', justifySelf: 'center', width: '100%' }}>
+                            {entry.submitted ? (
+                              <div style={{ fontWeight: 700, color: '#1f7a45', textAlign: 'center' }}>
+                                {entry.hours}h
+                              </div>
+                            ) : (
+                              <>
+                                <div style={chefHoursStepperStyle}>
+                                  <button
+                                    type="button"
+                                    onClick={() => adjustEntryHours(entry.id, -1)}
+                                    disabled={savingAll}
+                                    style={chefHoursStepperButtonStyle(savingAll)}
+                                    aria-label={`Diminuir horas de ${entry.person?.name || `Pessoa ${entry.personId}`}`}
+                                  >
+                                    -
+                                  </button>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    step="1"
+                                    inputMode="numeric"
+                                    value={entryHours[String(entry.id)] ?? ''}
+                                    onChange={(event) => handleHoursChange(entry.id, event.target.value)}
+                                    style={chefHoursInputStyle(savingAll)}
+                                    disabled={savingAll}
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => adjustEntryHours(entry.id, 1)}
+                                    disabled={savingAll}
+                                    style={chefHoursStepperButtonStyle(savingAll)}
+                                    aria-label={`Aumentar horas de ${entry.person?.name || `Pessoa ${entry.personId}`}`}
+                                  >
+                                    +
+                                  </button>
+                                </div>
+                                {rowErrors[String(entry.id)] && (
+                                  <span style={{ color: '#b42318', fontSize: '13px' }}>{rowErrors[String(entry.id)]}</span>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        </article>
+                      ))}
+
+                      <button
+                        type="button"
+                        onClick={() => handleSaveAllHoursShared(entries)}
+                        disabled={savingAll || !hasPendingEntries}
+                        style={
+                          savingAll || !hasPendingEntries
+                            ? { ...primaryButtonStyle, background: 'var(--vp-disabled)', cursor: 'not-allowed' }
+                            : { ...primaryButtonStyle, background: '#1f7a45' }
+                        }
+                      >
+                        {savingAll ? 'A guardar e submeter...' : 'Submeter'}
+                      </button>
+                    </section>
+                  )
+                })}
             </div>
           )}
 

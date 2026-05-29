@@ -1,64 +1,14 @@
 import { NextResponse } from 'next/server'
 import { canManageEntireApp } from '../../../../lib/auth.js'
 import { isDailyPlanLocked } from '../../../../lib/daily-plan-lock.js'
-import { isChefRole } from '../../../../lib/roles.js'
 import { getServerSession } from '../../../../lib/server-session.js'
-import { deleteWorkAssignment, getAllWorkAssignments, getWorkAssignmentById, updateWorkAssignment } from '../../../../lib/work-assignments.js'
-
-function canAccessAssignment(session, assignment) {
-  if (!session || !assignment) return false
-  if (canManageEntireApp(session.role)) return true
-  return session.workIds.includes(Number(assignment.workId))
-}
-
-function getChefReferenceAssignments(session, filters = {}) {
-  if (!session || !isChefRole(session.role)) {
-    return []
-  }
-
-  const scopedFilters = {}
-
-  if (filters.workPlanId) {
-    scopedFilters.workPlanId = filters.workPlanId
-  } else if (filters.date) {
-    scopedFilters.date = filters.date
-  }
-
-  if (!scopedFilters.workPlanId && !scopedFilters.date) {
-    return []
-  }
-
-  return getAllWorkAssignments(scopedFilters).filter(
-    assignment => session.workIds.includes(Number(assignment.workId)),
-  )
-}
-
-function isChefPersonAllowedForWork(session, { workPlanId, date, workId, personId }) {
-  if (!session || !isChefRole(session.role)) {
-    return true
-  }
-
-  const referenceAssignments = getChefReferenceAssignments(session, { workPlanId, date })
-
-  return referenceAssignments.some(
-    assignment =>
-      Number(assignment.workId) === Number(workId) &&
-      Number(assignment.personId) === Number(personId),
-  )
-}
-
-function isDailyPlanStructureUpdate(body) {
-  return (
-    body.workPlanId !== undefined ||
-    body.workId !== undefined ||
-    body.personId !== undefined ||
-    body.date !== undefined ||
-    body.hourlyCost !== undefined ||
-    body.notes !== undefined ||
-    body.manualHourlyCost !== undefined ||
-    body.hasWorkAccess !== undefined
-  )
-}
+import {
+  canAccessAssignment,
+  canAccessWork,
+  isChefPersonAllowedForWork,
+  isDailyPlanStructureUpdate,
+} from '../../../../lib/work-assignment-policy.js'
+import { deleteWorkAssignment, getWorkAssignmentById, updateWorkAssignment } from '../../../../lib/work-assignments.js'
 
 export async function GET(request, { params }) {
   try {
@@ -119,7 +69,7 @@ export async function PUT(request, { params }) {
     const targetWorkPlanId = workPlanId !== undefined ? workPlanId : currentAssignment.workPlan?.id
     const targetDate = date !== undefined ? date : currentAssignment.date
 
-    if (isChefRole(session.role) && workId !== undefined && !session.workIds.includes(Number(workId))) {
+    if (workId !== undefined && !canAccessWork(session, workId)) {
       return NextResponse.json({ error: 'Sem permissao para mover a afetacao para essa obra.' }, { status: 403 })
     }
 

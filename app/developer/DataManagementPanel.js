@@ -161,9 +161,6 @@ export default function DataManagementPanel() {
         <h3 style={{ fontSize: '1rem', fontWeight: 600, color: '#1f2937', margin: '0 0 1rem 0' }}>
           📥 Exportar Dados
         </h3>
-        <p style={{ color: '#6b7280', marginBottom: '1rem' }}>
-          Descarregue um backup em JSON dos dados da aplicação
-        </p>
         <div>
           <button
             onClick={() => handleExport('full')}

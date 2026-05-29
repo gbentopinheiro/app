@@ -6,7 +6,10 @@ import {
   getAccessIdentityByUsername,
   updateAccessIdentity,
 } from '../../../lib/access-identities.js'
-import { roleRequiresAppAccess, roleUsesWorkScope } from '../../../lib/roles.js'
+import { canAccessPeopleManagement, canManageEntireApp } from '../../../lib/auth.js'
+import { getAllPersonDocumentReminders } from '../../../lib/person-document-reminders.js'
+import { getServerSession } from '../../../lib/server-session.js'
+import { DEFAULT_ROLE, isResponsavelRole, roleRequiresAppAccess, roleUsesWorkScope } from '../../../lib/roles.js'
 import { readProtectedRequestJson } from '../../../lib/login-transport.js'
 
 function hasAccessConfiguration(accessIdentity) {
@@ -96,10 +99,90 @@ function getErrorStatus(error) {
   return 500
 }
 
+function getDocumentAlertsByPersonId() {
+  return getAllPersonDocumentReminders()
+    .filter(reminder => reminder.status === 'expired' || reminder.status === 'warning')
+    .reduce((alertsMap, reminder) => {
+      const personId = Number(reminder.personId)
+
+      if (personId <= 0) {
+        return alertsMap
+      }
+
+      const currentAlert = alertsMap.get(personId)
+      const nextPriority = reminder.status === 'expired' ? 0 : 1
+      const currentPriority = currentAlert?.status === 'expired' ? 0 : 1
+
+      if (!currentAlert || nextPriority < currentPriority) {
+        alertsMap.set(personId, {
+          status: reminder.status,
+          statusLabel: reminder.statusLabel,
+          count: 1,
+          items: [
+            {
+              id: reminder.id,
+              name: reminder.name,
+              expirationDate: reminder.expirationDate,
+              warningDate: reminder.warningDate,
+              warningDaysLabel: reminder.warningDaysLabel,
+              status: reminder.status,
+              statusLabel: reminder.statusLabel,
+            },
+          ],
+        })
+        return alertsMap
+      }
+
+      alertsMap.set(personId, {
+        ...currentAlert,
+        count: currentAlert.count + 1,
+        items: [
+          ...(Array.isArray(currentAlert.items) ? currentAlert.items : []),
+          {
+            id: reminder.id,
+            name: reminder.name,
+            expirationDate: reminder.expirationDate,
+            warningDate: reminder.warningDate,
+            warningDaysLabel: reminder.warningDaysLabel,
+            status: reminder.status,
+            statusLabel: reminder.statusLabel,
+          },
+        ],
+      })
+
+      return alertsMap
+    }, new Map())
+}
+
+function getPeopleListForResponsavel(people) {
+  const documentAlertsByPersonId = getDocumentAlertsByPersonId()
+
+  return people.map(person => ({
+    id: person.id,
+    name: person.name,
+    hasDocumentAlert: documentAlertsByPersonId.has(Number(person.id)),
+    documentAlertStatus: documentAlertsByPersonId.get(Number(person.id))?.status || null,
+    documentAlertLabel: documentAlertsByPersonId.get(Number(person.id))?.statusLabel || '',
+    documentAlertCount: documentAlertsByPersonId.get(Number(person.id))?.count || 0,
+    documentAlerts: documentAlertsByPersonId.get(Number(person.id))?.items || [],
+  }))
+}
+
 export async function GET() {
   try {
+    const session = await getServerSession()
+
+    if (!session) {
+      return NextResponse.json({ error: 'Sessao obrigatoria.' }, { status: 401 })
+    }
+
+    if (!canAccessPeopleManagement(session.role)) {
+      return NextResponse.json({ error: 'Sem permissao para consultar pessoas.' }, { status: 403 })
+    }
+
     const people = getAllPeople()
-    return NextResponse.json(people)
+
+    return NextResponse.json(isResponsavelRole(session.role) ? getPeopleListForResponsavel(people) : people)
   } catch (error) {
     return NextResponse.json({ error: 'Erro ao obter pessoas' }, { status: 500 })
   }
@@ -107,8 +190,41 @@ export async function GET() {
 
 export async function POST(request) {
   try {
+    const session = await getServerSession()
+
+    if (!session) {
+      return NextResponse.json({ error: 'Sessao obrigatoria.' }, { status: 401 })
+    }
+
+    if (!canManageEntireApp(session.role) && !isResponsavelRole(session.role)) {
+      return NextResponse.json({ error: 'Sem permissao para criar pessoas.' }, { status: 403 })
+    }
+
     const body = await readProtectedRequestJson(request)
     const { name, price, monthlyPrice, role, accessIdentity } = body
+
+    if (isResponsavelRole(session.role)) {
+      if (!String(name || '').trim()) {
+        return NextResponse.json({ error: 'Nome obrigatorio.' }, { status: 400 })
+      }
+
+      const newPerson = createPerson({
+        name,
+        price: 0,
+        monthlyPrice: 0,
+        role: DEFAULT_ROLE,
+      })
+
+      return NextResponse.json({
+        id: newPerson.id,
+        name: newPerson.name,
+        hasDocumentAlert: false,
+        documentAlertStatus: null,
+        documentAlertLabel: '',
+        documentAlertCount: 0,
+        documentAlerts: [],
+      }, { status: 201 })
+    }
 
     if (!name || price === undefined || monthlyPrice === undefined) {
       return NextResponse.json({ error: 'Nome, preço e monthlyPrice são obrigatórios' }, { status: 400 })

@@ -1,14 +1,9 @@
 import { NextResponse } from 'next/server'
 import { getWorkAssignmentById, updateWorkAssignment } from '../../../../../lib/work-assignments.js'
-import { canApproveHours, canManageEntireApp } from '../../../../../lib/auth.js'
+import { canApproveHours } from '../../../../../lib/auth.js'
 import { isFeatureEnabled } from '../../../../../lib/feature-flags.js'
 import { getServerSession } from '../../../../../lib/server-session.js'
-
-function canAccessAssignment(session, assignment) {
-  if (!session || !assignment) return false
-  if (canManageEntireApp(session.role)) return true
-  return false
-}
+import { canAccessAssignment } from '../../../../../lib/work-assignment-policy.js'
 
 export async function PUT(request, { params }) {
   try {
@@ -24,7 +19,7 @@ export async function PUT(request, { params }) {
 
     if (!canApproveHours(session.role)) {
       return NextResponse.json(
-        { error: 'Apenas administradores e responsaveis podem aprovar horas.' },
+        { error: 'Apenas administradores podem aprovar horas.' },
         { status: 403 },
       )
     }

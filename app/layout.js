@@ -1,8 +1,19 @@
 import './globals.css'
+import PwaSetupClient from './components/PwaSetupClient'
 
 export const metadata = {
   title: 'BenPin',
+  manifest: '/manifest.webmanifest',
+  appleWebApp: {
+    capable: true,
+    title: 'Bentix',
+    statusBarStyle: 'default',
+  },
   description: 'Plataforma de gestão operacional da BenPin',
+}
+
+export const viewport = {
+  themeColor: '#0b1730',
 }
 
 const bodyStyle = {
@@ -58,7 +69,10 @@ const bodyStyle = {
 export default function RootLayout({ children }) {
   return (
     <html lang="pt">
-      <body style={bodyStyle}>{children}</body>
+      <body style={bodyStyle}>
+        <PwaSetupClient />
+        {children}
+      </body>
     </html>
   )
 }

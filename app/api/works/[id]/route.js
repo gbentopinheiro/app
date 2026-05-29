@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { deleteWork, getWorkById, updateWork } from '../../../../lib/works.js'
 import { getClientById } from '../../../../lib/clients.js'
+import { repriceWorkAssignmentsForWork } from '../../../../lib/work-assignments.js'
 
 export async function GET(request, { params }) {
   try {
@@ -21,10 +22,25 @@ export async function PUT(request, { params }) {
   try {
     const { id } = await params
     const body = await request.json()
-    const { name, clientId, location, status, budget, defaultHourlyCost, roleHourlyCosts, specialPersonHourlyCosts, startDate, endDate, workingDays, notes, number } = body
+    const {
+      name,
+      clientId,
+      location,
+      status,
+      budget,
+      defaultHourlyCost,
+      roleHourlyCosts,
+      specialPersonHourlyCosts,
+      startDate,
+      endDate,
+      workingDays,
+      notes,
+      number,
+      pricingChangeApplication,
+    } = body
 
     if (clientId !== undefined && (!clientId || !getClientById(clientId))) {
-      return NextResponse.json({ error: 'A obra tem de pertencer a um cliente valido' }, { status: 400 })
+      return NextResponse.json({ error: 'A obra tem de pertencer a um cliente válido' }, { status: 400 })
     }
 
     if (defaultHourlyCost !== undefined && Number(defaultHourlyCost) < 0) {
@@ -37,6 +53,10 @@ export async function PUT(request, { params }) {
 
     if (endDate && Number.isNaN(new Date(endDate).getTime())) {
       return NextResponse.json({ error: 'endDate tem de ser uma data válida' }, { status: 400 })
+    }
+
+    if (pricingChangeApplication?.startDate && Number.isNaN(new Date(`${pricingChangeApplication.startDate}T00:00:00`).getTime())) {
+      return NextResponse.json({ error: 'A data de aplicacao da tarifa e invalida' }, { status: 400 })
     }
 
     const updatedWork = updateWork(id, {
@@ -59,7 +79,16 @@ export async function PUT(request, { params }) {
       return NextResponse.json({ error: 'Obra não encontrada' }, { status: 404 })
     }
 
-    return NextResponse.json(updatedWork)
+    const repricedAssignmentsCount = pricingChangeApplication?.startDate
+      ? repriceWorkAssignmentsForWork(id, pricingChangeApplication.startDate)
+      : 0
+
+    return NextResponse.json({
+      ...updatedWork,
+      repricedAssignmentsCount,
+      pricingAppliedFrom: pricingChangeApplication?.startDate || null,
+      pricingApplicationMode: pricingChangeApplication?.mode || null,
+    })
   } catch (error) {
     return NextResponse.json({ error: 'Erro ao atualizar obra' }, { status: 500 })
   }

@@ -1,8 +1,9 @@
-﻿'use client'
+'use client'
 
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
+import * as XLSX from 'xlsx'
 import EditPencilIcon, { editPencilButtonStyle } from '../../components/EditPencilIcon'
 import { getApprovedAssignmentHours, getApprovedAssignmentTotalCost } from '../../../lib/work-assignment-approval.js'
 
@@ -134,6 +135,13 @@ const clientButtonStyle = {
   textUnderlineOffset: '3px',
 }
 
+const workStatusLabels = {
+  planned: 'Planeada',
+  in_progress: 'Em curso',
+  paused: 'Em pausa',
+  completed: 'Concluída',
+}
+
 function formatDateLabel(dateString) {
   const date = new Date(`${dateString}T00:00:00`)
   if (Number.isNaN(date.getTime())) return dateString
@@ -153,9 +161,66 @@ function formatMonthLabel(monthKey) {
   }).format(new Date(year, month - 1, 1))
 }
 
+function getWorkStatusLabel(status) {
+  return workStatusLabels[String(status || '').trim()] || workStatusLabels.planned
+}
+
+function formatExportMonthHeader(monthKey, fallbackLabel = '') {
+  if (!monthKey || monthKey === 'Sem data') {
+    return fallbackLabel || monthKey || ''
+  }
+
+  const [year, month] = monthKey.split('-').map(Number)
+  if (!year || !month) {
+    return fallbackLabel || monthKey
+  }
+
+  const frenchLabel = new Intl.DateTimeFormat('fr-FR', {
+    month: 'long',
+    year: 'numeric',
+  }).format(new Date(year, month - 1, 1))
+
+  return `Mois: ${frenchLabel}`
+}
+
+function formatPdfMonthHeader(monthKey, fallbackLabel = '') {
+  const monthHeader = formatExportMonthHeader(monthKey, fallbackLabel)
+  const normalizedLabel = monthHeader.replace(/^Mois:\s*/i, '')
+
+  if (!normalizedLabel) {
+    return monthHeader
+  }
+
+  return normalizedLabel.charAt(0).toUpperCase() + normalizedLabel.slice(1)
+}
+
 function formatSheetName(work, monthKey) {
-  const baseName = `${work?.number || 'obra'}-${monthKey}`
+  const workDisplayName = getWorkExportDisplayName(work, 'obra')
+  const baseName = `${work?.number || workDisplayName || 'obra'}-${monthKey}`
   return baseName.slice(0, 31)
+}
+
+function getWorkExportDisplayName(work, fallback = 'Obra') {
+  const workName = String(work?.name || '').trim()
+  if (workName) {
+    return workName
+  }
+
+  const clientName = String(work?.client?.name || '').trim()
+  if (clientName) {
+    return clientName
+  }
+
+  return fallback
+}
+
+function getWorkDocumentBranding(work) {
+  const company = work?.company
+  return {
+    mark: String(company?.documentMark || '').trim(),
+    label: String(company?.documentLabel || company?.name || '').trim(),
+    logoUrl: String(company?.documentLogoUrl || '').trim(),
+  }
 }
 
 function escapeHtml(value) {
@@ -233,7 +298,7 @@ function buildMonthlyGrid(month) {
     .filter(person => person.totalHours > 0 || person.totalValue > 0)
 
   return {
-    headers: ['Trabalhador', ...dayColumns, 'Horas', 'PreÃ§o', 'Total'],
+    headers: ['Trabalhador', ...dayColumns, 'Horas', 'Preço', 'Total'],
     rows: peopleRows,
   }
 }
@@ -289,10 +354,61 @@ function formatGridNumber(value) {
 
 function formatGridPrice(value) {
   if (value === null || value === undefined || Number.isNaN(Number(value))) {
-    return 'VÃ¡rios'
+    return 'Vários'
   }
 
   return formatGridNumber(Number(value))
+}
+
+const EXCEL_BORDER_RGB = '738178'
+const EXCEL_HEADER_FILL_RGB = 'E4E7E2'
+const EXCEL_WEEKEND_FILL_RGB = 'D7B8A6'
+const EXCEL_TOTAL_FILL_RGB = 'F3DCCF'
+
+function buildExcelBorder(style = 'medium') {
+  return {
+    top: { style, color: { rgb: EXCEL_BORDER_RGB } },
+    right: { style, color: { rgb: EXCEL_BORDER_RGB } },
+    bottom: { style, color: { rgb: EXCEL_BORDER_RGB } },
+    left: { style, color: { rgb: EXCEL_BORDER_RGB } },
+  }
+}
+
+function buildExcelFill(rgb) {
+  return {
+    patternType: 'solid',
+    fgColor: { rgb },
+  }
+}
+
+function ensureWorksheetCell(worksheet, row, col) {
+  const address = XLSX.utils.encode_cell({ r: row, c: col })
+
+  if (!worksheet[address]) {
+    worksheet[address] = { t: 's', v: '' }
+  }
+
+  return address
+}
+
+function applyWorksheetCellStyle(worksheet, row, col, style) {
+  const address = ensureWorksheetCell(worksheet, row, col)
+  const cell = worksheet[address]
+
+  cell.s = {
+    ...(cell.s || {}),
+    ...style,
+    font: {
+      ...(cell.s?.font || {}),
+      ...(style.font || {}),
+    },
+    fill: style.fill || cell.s?.fill,
+    alignment: {
+      ...(cell.s?.alignment || {}),
+      ...(style.alignment || {}),
+    },
+    border: style.border || cell.s?.border,
+  }
 }
 
 function buildExcelDocument(months, work, workId) {
@@ -326,7 +442,7 @@ function buildExcelDocument(months, work, workId) {
 
         return `<Row>${cells}</Row>`
       }).join('')
-      : `<Row><Cell ss:StyleID="emptyCell"><Data ss:Type="String">Sem registos para este mÃªs.</Data></Cell></Row>`
+      : `<Row><Cell ss:StyleID="emptyCell"><Data ss:Type="String">Sem registos para este mês.</Data></Cell></Row>`
 
     const summaryRows = `
       <Row ss:Height="8"/>
@@ -337,7 +453,7 @@ function buildExcelDocument(months, work, workId) {
       </Row>
       <Row>
         <Cell ss:MergeAcross="25"/>
-        <Cell ss:MergeAcross="3" ss:StyleID="summaryLabel"><Data ss:Type="String">PreÃ§o hora</Data></Cell>
+        <Cell ss:MergeAcross="3" ss:StyleID="summaryLabel"><Data ss:Type="String">Preço hora</Data></Cell>
         <Cell ss:StyleID="summaryValue"><Data ss:Type="Number">${summary.hourlyPrice}</Data></Cell>
       </Row>
       <Row>
@@ -490,7 +606,7 @@ function buildPrintDocument(months, work) {
       ? grid.rows
         .map(row => `<tr>${row.map(cell => `<td>${escapeHtml(cell)}</td>`).join('')}</tr>`)
         .join('')
-      : `<tr><td colspan="${grid.headers.length}">Sem registos para este mÃªs.</td></tr>`
+      : `<tr><td colspan="${grid.headers.length}">Sem registos para este mês.</td></tr>`
 
     return `
       <section class="sheet">
@@ -513,7 +629,7 @@ function buildPrintDocument(months, work) {
             <strong>${escapeHtml(summary.totalHours)}</strong>
           </div>
           <div class="summary-row">
-            <span>PreÃ§o hora</span>
+            <span>Preço hora</span>
             <strong>${escapeHtml(summary.hourlyPrice)}</strong>
           </div>
           <div class="summary-row total">
@@ -648,7 +764,7 @@ function buildWorkExportExcelDocument(months, work, workId) {
 
         return `<Row>${cells}</Row>`
       }).join('')
-      : `<Row><Cell ss:StyleID="emptyCell"><Data ss:Type="String">Sem registos para este mÃªs.</Data></Cell></Row>`
+      : `<Row><Cell ss:StyleID="emptyCell"><Data ss:Type="String">Sem registos para este mês.</Data></Cell></Row>`
 
     const summaryRows = `
       <Row ss:Height="8"/>
@@ -796,11 +912,176 @@ function buildWorkExportExcelDocument(months, work, workId) {
 </Workbook>`
 }
 
+function buildWorkExportExcelWorkbook(months, work, workId) {
+  const workbook = XLSX.utils.book_new()
+  const branding = getWorkDocumentBranding(work)
+  const workDisplayName = getWorkExportDisplayName(work, `Obra ${workId}`)
+  const mediumBorder = buildExcelBorder('medium')
+
+  months.forEach(month => {
+    const grid = buildMonthlyGrid(month)
+    const summary = buildMonthlySummary(month)
+    const printHeaders = ['', ...grid.headers.slice(1, 32), 'Horas']
+    const totalColumnCount = printHeaders.length
+    const calculationStartColumn = 25
+    const monthHeaderLabel = formatExportMonthHeader(month.monthKey, month.label)
+    const emptyRow = Array.from({ length: totalColumnCount }, () => '')
+    const dataRows = grid.rows.length > 0
+      ? grid.rows.map(row => [
+          row.name,
+          ...row.values.map(value => formatGridNumber(value)),
+          formatGridNumber(row.totalHours),
+        ])
+      : [['Sem registos para este mês.']]
+    const calculationRows = summary.roleRows.length > 0
+      ? summary.roleRows.map(roleRow => [
+          roleRow.calculationDisplay,
+          formatGridNumber(roleRow.totalValue),
+        ])
+      : [['Sem horas aprovadas para calcular neste mês.', '']]
+
+    const normalizedDataRows = grid.rows.length > 0
+      ? dataRows
+      : [['Sem registos para este mês.', ...emptyRow.slice(1)]]
+    const calculationSheetRows = summary.roleRows.length > 0
+      ? summary.roleRows.map(roleRow => {
+          const row = [...emptyRow]
+          row[calculationStartColumn] = roleRow.calculationDisplay
+          row[totalColumnCount - 1] = formatGridNumber(roleRow.totalValue)
+          return row
+        })
+      : (() => {
+          const row = [...emptyRow]
+          row[calculationStartColumn] = 'Sem horas aprovadas para calcular neste mês.'
+          return [row]
+        })()
+    const totalRow = [...emptyRow]
+    totalRow[calculationStartColumn] = 'TOTAL'
+    totalRow[totalColumnCount - 1] = formatGridNumber(summary.totalValue)
+
+    const aoa = [
+      [monthHeaderLabel],
+      [workDisplayName],
+      emptyRow,
+      printHeaders,
+      ...normalizedDataRows,
+      emptyRow,
+      ...calculationSheetRows,
+      totalRow,
+    ]
+
+    const worksheet = XLSX.utils.aoa_to_sheet(aoa)
+    const dataRowStart = 4
+    const dataRowCount = normalizedDataRows.length
+    const separatorRowIndex = dataRowStart + dataRowCount
+    const calculationStartRow = separatorRowIndex + 1
+    const calculationEndRow = calculationStartRow + calculationSheetRows.length - 1
+    const totalRowIndex = calculationEndRow + 1
+
+    worksheet['!merges'] = [
+      { s: { r: 0, c: 0 }, e: { r: 0, c: totalColumnCount - 1 } },
+      { s: { r: 1, c: 0 }, e: { r: 1, c: totalColumnCount - 1 } },
+      ...calculationSheetRows.map((_, index) => ({
+        s: { r: calculationStartRow + index, c: calculationStartColumn },
+        e: { r: calculationStartRow + index, c: totalColumnCount - 2 },
+      })),
+      {
+        s: { r: totalRowIndex, c: calculationStartColumn },
+        e: { r: totalRowIndex, c: totalColumnCount - 2 },
+      },
+    ]
+    worksheet['!cols'] = [
+      { wch: 34 },
+      ...Array.from({ length: 31 }, () => ({ wch: 5 })),
+      { wch: 10 },
+    ]
+    worksheet['!rows'] = [
+      { hpt: 22 },
+      { hpt: 28 },
+    ]
+
+    if (worksheet.A2) {
+      worksheet.A2.s = {
+        font: { bold: true, sz: 16 },
+        alignment: { horizontal: 'center', vertical: 'center' },
+      }
+    }
+
+    applyWorksheetCellStyle(worksheet, 0, 0, {
+      font: { bold: true, sz: 11 },
+      alignment: { horizontal: 'left', vertical: 'center' },
+    })
+
+    applyWorksheetCellStyle(worksheet, 1, 0, {
+      font: { bold: true, sz: 16 },
+      alignment: { horizontal: 'center', vertical: 'center' },
+    })
+
+    for (let col = 0; col < totalColumnCount; col += 1) {
+      const isWeekendHeader = col > 0 && col <= 31 && isWeekendDay(month.monthKey, Number(printHeaders[col]))
+      applyWorksheetCellStyle(worksheet, 3, col, {
+        font: { bold: true, sz: 10 },
+        alignment: {
+          horizontal: col === 0 ? 'left' : 'center',
+          vertical: 'center',
+        },
+        fill: buildExcelFill(isWeekendHeader ? EXCEL_WEEKEND_FILL_RGB : EXCEL_HEADER_FILL_RGB),
+        border: mediumBorder,
+      })
+    }
+
+    for (let row = dataRowStart; row < dataRowStart + dataRowCount; row += 1) {
+      for (let col = 0; col < totalColumnCount; col += 1) {
+        applyWorksheetCellStyle(worksheet, row, col, {
+          font: { sz: 10 },
+          alignment: {
+            horizontal: col === 0 ? 'left' : 'center',
+            vertical: 'center',
+          },
+          border: mediumBorder,
+        })
+      }
+    }
+
+    for (let row = calculationStartRow; row <= calculationEndRow; row += 1) {
+      for (let col = calculationStartColumn; col < totalColumnCount; col += 1) {
+        applyWorksheetCellStyle(worksheet, row, col, {
+          font: { sz: 10, bold: col === totalColumnCount - 1 },
+          alignment: {
+            horizontal: 'center',
+            vertical: 'center',
+          },
+          border: mediumBorder,
+        })
+      }
+    }
+
+    for (let col = calculationStartColumn; col < totalColumnCount; col += 1) {
+      applyWorksheetCellStyle(worksheet, totalRowIndex, col, {
+        font: { sz: 10, bold: true },
+        alignment: {
+          horizontal: col === calculationStartColumn ? 'left' : 'center',
+          vertical: 'center',
+        },
+        fill: buildExcelFill(EXCEL_TOTAL_FILL_RGB),
+        border: mediumBorder,
+      })
+    }
+
+    XLSX.utils.book_append_sheet(workbook, worksheet, formatSheetName(work, month.monthKey))
+  })
+
+  return workbook
+}
+
 function buildWorkExportPrintDocument(months, work) {
+  const branding = getWorkDocumentBranding(work)
+  const workDisplayName = getWorkExportDisplayName(work, 'Obra')
   const sections = months.map(month => {
     const grid = buildMonthlyGrid(month)
     const summary = buildMonthlySummary(month)
-    const printHeaders = ['Trabalhador', ...grid.headers.slice(1, 32), 'Horas']
+    const printHeaders = ['', ...grid.headers.slice(1, 32), 'Horas']
+    const monthHeaderLabel = formatPdfMonthHeader(month.monthKey, month.label)
     const headHtml = printHeaders
       .map((header, index) => {
         const isDayColumn = index > 0 && index <= 31
@@ -820,7 +1101,7 @@ function buildWorkExportPrintDocument(months, work) {
           return `<tr>${rowCells.map(cell => `<td>${escapeHtml(cell)}</td>`).join('')}</tr>`
         })
         .join('')
-      : `<tr><td colspan="${printHeaders.length}">Sem registos para este mÃªs.</td></tr>`
+      : `<tr><td colspan="${printHeaders.length}">Sem registos para este mês.</td></tr>`
 
     const roleCalculationRowsHtml = summary.roleRows.length > 0
       ? summary.roleRows
@@ -833,14 +1114,22 @@ function buildWorkExportPrintDocument(months, work) {
           `,
         )
         .join('')
-      : '<p class="role-calc-empty">Sem horas aprovadas para calcular neste mÃªs.</p>'
+      : '<p class="role-calc-empty">Sem horas aprovadas para calcular neste mês.</p>'
+
+    const brandingHtml = branding.logoUrl
+      ? `
+          <div class="sheet-brand">
+            <img class="sheet-brand-logo" src="${escapeHtml(branding.logoUrl)}" alt="${escapeHtml(branding.label || 'Marca da empresa')}" />
+          </div>
+        `
+      : '<div class="sheet-brand-spacer"></div>'
 
     return `
       <section class="sheet">
         <div class="sheet-header">
-          <div class="sheet-date">Data: ${escapeHtml(month.label)}</div>
-          <h1>${escapeHtml(work?.name || 'Obra')}</h1>
-          <div class="sheet-spacer"></div>
+          <div class="sheet-date">${escapeHtml(monthHeaderLabel)}</div>
+          <h1>${escapeHtml(workDisplayName)}</h1>
+          ${brandingHtml}
         </div>
         <table>
           <thead>
@@ -851,14 +1140,9 @@ function buildWorkExportPrintDocument(months, work) {
           </tbody>
         </table>
         <div class="role-calc-box">
-          <h2>Cálculo</h2>
-          <div class="role-calc-head">
-            <span>Cálculo</span>
-            <span>Total</span>
-          </div>
           ${roleCalculationRowsHtml}
           <div class="role-calc-total">
-            <span>Total geral</span>
+            <span>TOTAL</span>
             <strong>${escapeHtml(formatGridNumber(summary.totalValue))}</strong>
           </div>
         </div>
@@ -871,7 +1155,7 @@ function buildWorkExportPrintDocument(months, work) {
     <html lang="pt">
       <head>
         <meta charset="utf-8" />
-        <title>${escapeHtml(work?.name || 'Obra')}</title>
+        <title>${escapeHtml(workDisplayName)}</title>
         <style>
           body {
             font-family: Arial, sans-serif;
@@ -898,7 +1182,18 @@ function buildWorkExportPrintDocument(months, work) {
             font-weight: 700;
             text-align: left;
           }
-          .sheet-spacer {
+          .sheet-brand {
+            justify-self: end;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+          }
+          .sheet-brand-logo {
+            max-width: 140px;
+            max-height: 42px;
+            object-fit: contain;
+          }
+          .sheet-brand-spacer {
             min-height: 1px;
           }
           h1 {
@@ -934,38 +1229,40 @@ function buildWorkExportPrintDocument(months, work) {
           }
           .role-calc-box {
             margin-top: 18px;
+            margin-left: auto;
+            width: calc((((100% - 238px) / 31) * 5) + 58px);
+            max-width: 100%;
             border: 2px solid #738178;
             border-radius: 16px;
             overflow: hidden;
+            box-sizing: border-box;
           }
-          .role-calc-box h2 {
-            margin: 0;
-            padding: 10px 14px;
-            font-size: 14px;
-            background: #eef3ef;
-          }
-          .role-calc-head,
           .role-calc-row,
           .role-calc-total {
             display: grid;
-            grid-template-columns: minmax(160px, 1fr) 104px;
+            grid-template-columns: minmax(0, 1fr) 72px;
           }
-          .role-calc-head span,
+          .role-calc-row span,
+          .role-calc-row strong,
+          .role-calc-total span,
+          .role-calc-total strong {
+            padding: 6px 6px;
+            font-size: 10px;
+            text-align: center;
+            word-break: break-word;
+          }
           .role-calc-row span,
           .role-calc-row strong,
           .role-calc-total span,
           .role-calc-total strong {
             border-top: 2px solid #738178;
-            padding: 8px 10px;
-            font-size: 11px;
-            text-align: center;
+          }
+          .role-calc-row:first-child span,
+          .role-calc-row:first-child strong {
+            border-top: none;
           }
           .role-calc-total span:first-child {
             text-align: left;
-          }
-          .role-calc-head span {
-            font-weight: 700;
-            background: #e4e7e2;
           }
           .role-calc-total span,
           .role-calc-total strong {
@@ -988,15 +1285,11 @@ export default function WorkDetailPage() {
   const params = useParams()
   const workId = Array.isArray(params.id) ? params.id[0] : params.id
   const [work, setWork] = useState(null)
-  const [people, setPeople] = useState([])
   const [assignments, setAssignments] = useState([])
   const [showClientModal, setShowClientModal] = useState(false)
   const [showExportModal, setShowExportModal] = useState(false)
-  const [showSpecialPricingModal, setShowSpecialPricingModal] = useState(false)
   const [selectedExportMonth, setSelectedExportMonth] = useState('')
-  const [specialPricingForm, setSpecialPricingForm] = useState({})
   const [exporting, setExporting] = useState('')
-  const [savingSpecialPricing, setSavingSpecialPricing] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
 
@@ -1010,24 +1303,19 @@ export default function WorkDetailPage() {
       setError('')
 
       try {
-        const [workResponse, assignmentsResponse, peopleResponse] = await Promise.all([
+        const [workResponse, assignmentsResponse] = await Promise.all([
           fetch(`/api/works/${workId}`),
           fetch(`/api/work-assignments?workId=${workId}`),
-          fetch('/api/people'),
         ])
 
         const workData = await workResponse.json()
         const assignmentsData = await assignmentsResponse.json()
-        const peopleData = await peopleResponse.json()
 
         if (!workResponse.ok) throw new Error(workData.error || 'Erro ao carregar obra')
-        if (!assignmentsResponse.ok) throw new Error(assignmentsData.error || 'Erro ao carregar afetaÃ§Ãµes')
-        if (!peopleResponse.ok) throw new Error(peopleData.error || 'Erro ao carregar pessoas')
+        if (!assignmentsResponse.ok) throw new Error(assignmentsData.error || 'Erro ao carregar afetações')
 
         setWork(workData)
         setAssignments(assignmentsData)
-        setPeople(peopleData)
-        setSpecialPricingForm(workData.specialPersonHourlyCosts || {})
       } catch (err) {
         setError(err.message)
       } finally {
@@ -1101,20 +1389,8 @@ export default function WorkDetailPage() {
       }))
   }, [assignments])
 
-  const specialPricingEntries = useMemo(() => {
-    return Object.entries(work?.specialPersonHourlyCosts || {})
-      .map(([personId, hourlyCost]) => {
-        const person = people.find(item => String(item.id) === String(personId))
-        return {
-          personId: String(personId),
-          name: person?.name || `Pessoa ${personId}`,
-          hourlyCost: Number(hourlyCost) || 0,
-        }
-      })
-      .sort((left, right) => left.name.localeCompare(right.name, 'pt-PT'))
-  }, [people, work])
-
   const client = work?.client ?? null
+  const hasSpecialPricingCases = Object.keys(work?.specialPersonHourlyCosts || {}).length > 0
 
   useEffect(() => {
     if (assignmentsByMonth.length === 0) {
@@ -1149,111 +1425,6 @@ export default function WorkDetailPage() {
     setShowExportModal(false)
   }
 
-  function openSpecialPricingModal() {
-    if (!work) return
-    setSpecialPricingForm(work.specialPersonHourlyCosts || {})
-    setShowSpecialPricingModal(true)
-  }
-
-  function closeSpecialPricingModal() {
-    if (savingSpecialPricing) return
-    setShowSpecialPricingModal(false)
-  }
-
-  function handleSpecialPersonHourlyCostChange(personId, value) {
-    setSpecialPricingForm(current => ({
-      ...current,
-      [String(personId)]: value,
-    }))
-  }
-
-  function handleSpecialPersonSelectionChange(currentPersonId, nextPersonId) {
-    if (!nextPersonId || String(currentPersonId) === String(nextPersonId)) {
-      return
-    }
-
-    setSpecialPricingForm(current => {
-      const nextSpecialPrices = { ...current }
-      const currentValue = nextSpecialPrices[String(currentPersonId)] ?? ''
-      delete nextSpecialPrices[String(currentPersonId)]
-      nextSpecialPrices[String(nextPersonId)] = currentValue
-      return nextSpecialPrices
-    })
-  }
-
-  function handleAddSpecialPersonHourlyCost() {
-    setSpecialPricingForm(current => {
-      const usedPersonIds = new Set(Object.keys(current))
-      const nextPerson = people.find(person => !usedPersonIds.has(String(person.id)))
-
-      if (!nextPerson) {
-        return current
-      }
-
-      return {
-        ...current,
-        [String(nextPerson.id)]: '',
-      }
-    })
-  }
-
-  function handleRemoveSpecialPersonHourlyCost(personId) {
-    setSpecialPricingForm(current => {
-      const nextSpecialPrices = { ...current }
-      delete nextSpecialPrices[String(personId)]
-      return nextSpecialPrices
-    })
-  }
-
-  async function saveSpecialPricing() {
-    if (!work) return
-
-    setSavingSpecialPricing(true)
-    setError('')
-
-    try {
-      const sanitizedSpecialPricing = Object.fromEntries(
-        Object.entries(specialPricingForm || {})
-          .filter(([, value]) => value !== '' && value !== null && value !== undefined)
-          .map(([personId, value]) => [personId, Number(value)])
-          .filter(([, value]) => !Number.isNaN(value) && value >= 0),
-      )
-
-      const response = await fetch(`/api/works/${work.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          number: work.number,
-          name: work.name,
-          clientId: work.clientId,
-          location: work.location,
-          status: work.status,
-          budget: work.budget,
-          defaultHourlyCost: work.defaultHourlyCost,
-          roleHourlyCosts: work.roleHourlyCosts || {},
-          specialPersonHourlyCosts: sanitizedSpecialPricing,
-          startDate: work.startDate,
-          endDate: work.endDate,
-          workingDays: work.workingDays,
-          notes: work.notes,
-        }),
-      })
-
-      const data = await response.json()
-      if (!response.ok) {
-        throw new Error(data.error || 'Erro ao guardar preços especiais')
-      }
-
-      setWork(data)
-      setSpecialPricingForm(data.specialPersonHourlyCosts || {})
-      setShowSpecialPricingModal(false)
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setSavingSpecialPricing(false)
-    }
-  }
-
   function getSelectedExportMonths() {
     return assignmentsByMonth.filter(month => month.monthKey === selectedExportMonth)
   }
@@ -1265,12 +1436,19 @@ export default function WorkDetailPage() {
     setExporting('excel')
 
     try {
-      const content = buildWorkExportExcelDocument(monthsToExport, work, workId)
-      const blob = new Blob([content], { type: 'application/vnd.ms-excel;charset=utf-8;' })
+      const workbook = buildWorkExportExcelWorkbook(monthsToExport, work, workId)
+      const workbookBytes = XLSX.write(workbook, {
+        bookType: 'xlsx',
+        cellStyles: true,
+        type: 'array',
+      })
+      const blob = new Blob([workbookBytes], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      })
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
-      link.download = `obra-${work.number || workId}-${selectedExportMonth}-mapa.xls`
+      link.download = `obra-${work.number || workId}-${selectedExportMonth}-mapa.xlsx`
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
@@ -1330,7 +1508,7 @@ export default function WorkDetailPage() {
       <div style={shellStyle}>
         <section style={heroPanelStyle}>
           <Link href="/works" style={{ color: 'var(--vp-accent)', textDecoration: 'none', fontWeight: 700 }}>
-            Voltar Ã  gestÃ£o de obra
+            Voltar à gestão de obra
           </Link>
 
           {loading && <p style={{ marginTop: '18px' }}>A carregar obra...</p>}
@@ -1338,9 +1516,6 @@ export default function WorkDetailPage() {
 
           {!loading && !error && work && (
             <>
-              <p style={{ margin: '18px 0 0', textTransform: 'uppercase', letterSpacing: '0.12em', fontSize: '12px', color: 'var(--vp-text-soft)' }}>
-                Obra #{work.number}
-              </p>
               <h1 style={{ margin: '10px 0 12px', fontSize: '44px', lineHeight: 1.05 }}>
                 {work.name}
               </h1>
@@ -1354,10 +1529,10 @@ export default function WorkDetailPage() {
             <section style={statGridStyle}>
               <article style={statCardStyle}>
                 <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>Estado</div>
-                <div style={{ marginTop: '8px', fontSize: '28px', fontWeight: 700 }}>{work.status}</div>
+                <div style={{ marginTop: '8px', fontSize: '28px', fontWeight: 700 }}>{getWorkStatusLabel(work.status)}</div>
               </article>
               <article style={statCardStyle}>
-                <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>PreÃ§o hora por defeito</div>
+                <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>Preço hora por defeito</div>
                 <div style={{ marginTop: '8px', fontSize: '28px', fontWeight: 700 }}>{work.defaultHourlyCost || 0}/h</div>
               </article>
               <article style={statCardStyle}>
@@ -1371,7 +1546,7 @@ export default function WorkDetailPage() {
             </section>
 
             <section style={{ ...panelStyle, position: 'relative' }}>
-              <h2 style={{ marginTop: 0 }}>InformaÃ§Ã£o da obra</h2>
+              <h2 style={{ marginTop: 0 }}>Informação da obra</h2>
               <Link
                 href={`/works?edit=${work.id}`}
                 style={{ ...editPencilButtonStyle, position: 'absolute', top: '22px', right: '22px' }}
@@ -1391,65 +1566,41 @@ export default function WorkDetailPage() {
                     'Sem cliente'
                   )}
                 </p>
-                <p style={{ margin: 0 }}><strong>LocalizaÃ§Ã£o:</strong> {work.location || 'Sem localizaÃ§Ã£o'}</p>
-                <p style={{ margin: 0 }}><strong>Data de comeÃ§o:</strong> {work.startDate || 'Sem data'}</p>
-                <p style={{ margin: 0 }}><strong>Data de finalizaÃ§Ã£o:</strong> {work.endDate || 'Em aberto'}</p>
-                <p style={{ margin: 0 }}><strong>OrÃ§amento:</strong> {work.budget || 0}</p>
+                <p style={{ margin: 0 }}><strong>Localização:</strong> {work.location || 'Sem localização'}</p>
+                <p style={{ margin: 0 }}><strong>Data de começo:</strong> {work.startDate || 'Sem data'}</p>
+                <p style={{ margin: 0 }}><strong>Data de finalização:</strong> {work.endDate || 'Em aberto'}</p>
+                <p style={{ margin: 0 }}><strong>Orçamento:</strong> {work.budget || 0}</p>
                 <p style={{ margin: 0 }}><strong>Notas:</strong> {work.notes || 'Sem notas'}</p>
               </div>
             </section>
 
-            <section style={panelStyle}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '12px' }}>
-                <div>
-                  <h2 style={{ margin: 0 }}>PreÃ§os especiais por pessoa</h2>
-                  <p style={{ margin: '6px 0 0', color: 'var(--vp-text-muted)' }}>
-                    Define aqui as exceÃ§Ãµes desta obra sem entrares no editar geral.
-                  </p>
-                </div>
-                <button type="button" onClick={openSpecialPricingModal} style={primaryButtonStyle}>
-                  Gerir preÃ§os especiais
-                </button>
-              </div>
-
-              {specialPricingEntries.length === 0 && (
-                <p style={{ margin: 0, color: 'var(--vp-text-muted)' }}>
-                  Sem preÃ§os especiais definidos. A obra continua a usar o preÃ§o por role e, se faltar, o preÃ§o por defeito.
-                </p>
-              )}
-
-              {specialPricingEntries.length > 0 && (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
-                  {specialPricingEntries.map(entry => (
-                    <article
-                      key={entry.personId}
-                      style={{
-                        border: '1px solid var(--vp-border)',
-                        borderRadius: '16px',
-                        padding: '14px',
-                        background: 'var(--vp-surface)',
-                      }}
-                    >
-                      <strong style={{ display: 'block' }}>{entry.name}</strong>
-                      <span style={{ display: 'block', marginTop: '6px', color: 'var(--vp-text-muted)' }}>
-                        {entry.hourlyCost}/h
-                      </span>
-                    </article>
-                  ))}
-                </div>
-              )}
-            </section>
+            {hasSpecialPricingCases && (
+              <section style={panelStyle}>
+                <Link
+                  href={`/works/${work.id}/special-pricing`}
+                  style={{
+                    ...primaryButtonStyle,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    textDecoration: 'none',
+                  }}
+                >
+                  Preços especiais por pessoa
+                </Link>
+              </section>
+            )}
 
             <section style={panelStyle}>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '12px' }}>
-                <h2 style={{ margin: 0 }}>AfetaÃ§Ãµes desta obra por mÃªs</h2>
+                <h2 style={{ margin: 0 }}>Afetações desta obra por mês</h2>
                 {assignments.length > 0 && (
                   <button type="button" onClick={openExportModal} style={primaryButtonStyle}>
                     Exportar
                   </button>
                 )}
               </div>
-              {assignments.length === 0 && <p>Sem afetaÃ§Ãµes registadas para esta obra.</p>}
+              {assignments.length === 0 && <p>Sem afetações registadas para esta obra.</p>}
               {assignments.length > 0 && (
                 <div style={{ display: 'grid', gap: '12px' }}>
 
@@ -1549,113 +1700,6 @@ export default function WorkDetailPage() {
         </div>
       )}
 
-      {showSpecialPricingModal && work && (
-        <div style={modalBackdropStyle} onClick={closeSpecialPricingModal}>
-          <section style={modalCardStyle} onClick={(event) => event.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
-              <div>
-                <p style={{ margin: 0, textTransform: 'uppercase', letterSpacing: '0.12em', fontSize: '12px', color: 'var(--vp-text-soft)' }}>
-                  PreÃ§os especiais
-                </p>
-                <h2 style={{ margin: '10px 0 0', fontSize: '34px', lineHeight: 1.1 }}>
-                  {work.name}
-                </h2>
-              </div>
-              <button type="button" onClick={closeSpecialPricingModal} style={secondaryButtonStyle} disabled={savingSpecialPricing}>
-                Fechar
-              </button>
-            </div>
-
-            <div style={{ display: 'grid', gap: '16px', marginTop: '22px' }}>
-              <p style={{ margin: 0, color: 'var(--vp-text-muted)' }}>
-                Hierarquia usada no plano diÃ¡rio: preÃ§o manual da afetaÃ§Ã£o, depois preÃ§o especial desta obra, depois preÃ§o por role e por fim preÃ§o por defeito.
-              </p>
-
-              {Object.entries(specialPricingForm || {}).length === 0 && (
-                <p style={{ margin: 0, color: 'var(--vp-text-muted)' }}>
-                  Ainda nÃ£o tens exceÃ§Ãµes definidas para esta obra.
-                </p>
-              )}
-
-              {Object.entries(specialPricingForm || {}).map(([personId, value]) => (
-                <div
-                  key={personId}
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'minmax(0, 1.6fr) minmax(160px, 220px) auto',
-                    gap: '12px',
-                    alignItems: 'end',
-                  }}
-                >
-                  <label style={{ display: 'block', fontSize: '14px', fontWeight: 700 }}>
-                    Pessoa
-                    <select
-                      value={personId}
-                      onChange={(event) => handleSpecialPersonSelectionChange(personId, event.target.value)}
-                      style={selectStyle}
-                      disabled={savingSpecialPricing}
-                    >
-                      {people
-                        .filter(person =>
-                          String(person.id) === String(personId) ||
-                          specialPricingForm[String(person.id)] === undefined,
-                        )
-                        .sort((left, right) => String(left.name || '').localeCompare(String(right.name || ''), 'pt-PT'))
-                        .map(person => (
-                          <option key={person.id} value={person.id}>
-                            {person.name}
-                          </option>
-                        ))}
-                    </select>
-                  </label>
-
-                  <label style={{ display: 'block', fontSize: '14px', fontWeight: 700 }}>
-                    PreÃ§o hora
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={value}
-                      onChange={(event) => handleSpecialPersonHourlyCostChange(personId, event.target.value)}
-                      placeholder="Usar preÃ§o automÃ¡tico"
-                      style={inputStyle}
-                      disabled={savingSpecialPricing}
-                    />
-                  </label>
-
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveSpecialPersonHourlyCost(personId)}
-                    style={dangerButtonStyle}
-                    disabled={savingSpecialPricing}
-                  >
-                    Remover
-                  </button>
-                </div>
-              ))}
-
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
-                <button
-                  type="button"
-                  onClick={handleAddSpecialPersonHourlyCost}
-                  disabled={savingSpecialPricing || people.length === 0 || Object.keys(specialPricingForm || {}).length >= people.length}
-                  style={
-                    savingSpecialPricing || people.length === 0 || Object.keys(specialPricingForm || {}).length >= people.length
-                      ? { ...secondaryButtonStyle, opacity: 0.5, cursor: 'not-allowed' }
-                      : secondaryButtonStyle
-                  }
-                >
-                  Adicionar preÃ§o especial
-                </button>
-
-                <button type="button" onClick={saveSpecialPricing} style={primaryButtonStyle} disabled={savingSpecialPricing}>
-                  {savingSpecialPricing ? 'A guardar...' : 'Guardar preÃ§os especiais'}
-                </button>
-              </div>
-            </div>
-          </section>
-        </div>
-      )}
 
       {showExportModal && (
         <div style={modalBackdropStyle} onClick={closeExportModal}>
@@ -1663,10 +1707,10 @@ export default function WorkDetailPage() {
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
               <div>
                 <p style={{ margin: 0, textTransform: 'uppercase', letterSpacing: '0.12em', fontSize: '12px', color: 'var(--vp-text-soft)' }}>
-                  ExportaÃ§Ã£o
+                  Exportação
                 </p>
                 <h2 style={{ margin: '10px 0 0', fontSize: '34px', lineHeight: 1.1 }}>
-                  Escolher mÃªs
+                  Escolher mês
                 </h2>
               </div>
               <button type="button" onClick={closeExportModal} style={secondaryButtonStyle} disabled={Boolean(exporting)}>
@@ -1676,7 +1720,7 @@ export default function WorkDetailPage() {
 
             <div style={{ display: 'grid', gap: '18px', marginTop: '22px' }}>
               <label style={{ display: 'block', fontSize: '14px', fontWeight: 700 }}>
-                MÃªs
+                Mês
                 <select
                   value={selectedExportMonth}
                   onChange={(event) => setSelectedExportMonth(event.target.value)}

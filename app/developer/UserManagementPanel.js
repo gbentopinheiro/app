@@ -280,7 +280,6 @@ export default function UserManagementPanel() {
     return (
       <section style={panelStyle}>
         <h2 style={titleStyle}>Gestão de Contas</h2>
-        <p style={textStyle}>A carregar utilizadores...</p>
       </section>
     )
   }
@@ -289,10 +288,6 @@ export default function UserManagementPanel() {
     <>
       <section style={panelStyle}>
         <h2 style={titleStyle}>Gestão de Contas</h2>
-        <p style={textStyle}>
-          Gerir utilizadores: admins, programadores e staff operacional. Vê os ultimos logins
-          e reseta palavras-passe quando necessario.
-        </p>
 
         {error && <div style={messageStyle('error')}>{error}</div>}
 
@@ -390,12 +385,7 @@ export default function UserManagementPanel() {
           <div style={modalStyle} onClick={e => e.stopPropagation()}>
             <h3 style={modalTitleStyle}>Redefinir Palavra-passe</h3>
             <p style={modalTextStyle}>
-              Tem a certeza que quer redefinir a palavra-passe de <strong>{resetModal.name}</strong> (
-              {resetModal.username})?
-            </p>
-            <p style={modalTextStyle}>
-              Uma palavra-passe temporaria sera gerada. O utilizador devera altera-la no proximo
-              login.
+              <strong>{resetModal.name}</strong> ({resetModal.username})
             </p>
 
             {resetMessage && resetMessage.type === 'success' && (
@@ -407,10 +397,6 @@ export default function UserManagementPanel() {
                   Palavra-passe temporária:
                 </p>
                 <div style={codeBlockStyle}>{resetMessage.tempPassword}</div>
-                <p style={modalTextStyle}>
-                  Partilhe esta palavra-passe com o utilizador de forma segura. Sera valida ate
-                  ele fazer login.
-                </p>
               </div>
             )}
 

@@ -1,10 +1,13 @@
 ﻿import Link from 'next/link'
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
+import PersonDocumentsPanel from './PersonDocumentsPanel.js'
 import { getAccessIdentityByPersonId } from '../../../lib/access-identities.js'
 import { getAllDailyWorkNotes } from '../../../lib/daily-work-notes.js'
+import { getPersonDocumentReminders } from '../../../lib/person-document-reminders.js'
 import { getPersonById } from '../../../lib/people.js'
 import { getApprovedAssignmentTotalCost, isAssignmentApproved } from '../../../lib/work-assignment-approval.js'
-import { getRoleLabel, roleRequiresAppAccess, roleUsesWorkScope } from '../../../lib/roles.js'
+import { getRoleLabel, isResponsavelRole, roleRequiresAppAccess, roleUsesWorkScope } from '../../../lib/roles.js'
+import { getServerSession } from '../../../lib/server-session.js'
 import { getAllWorkAssignments } from '../../../lib/work-assignments.js'
 
 export const dynamic = 'force-dynamic'
@@ -278,11 +281,35 @@ function ActivitySection({ title, events = [], emptyText }) {
 }
 
 export default async function PersonDetailPage({ params }) {
+  const session = await getServerSession()
+
+  if (!session) {
+    redirect('/login')
+  }
+
   const { id } = await params
   const person = getPersonById(id)
 
   if (!person) {
     notFound()
+  }
+
+  const personDocuments = getPersonDocumentReminders(id)
+
+  if (isResponsavelRole(session.role)) {
+    return (
+      <main style={pageStyle}>
+        <div style={shellStyle}>
+          <section style={heroStyle}>
+            <Link href="/people" style={{ color: 'var(--vp-accent)', textDecoration: 'none', fontWeight: 700 }}>
+              Voltar à gestão de pessoas
+            </Link>
+            <h1 style={{ margin: '10px 0 0', fontSize: '46px', lineHeight: 1.05 }}>{person.name}</h1>
+          </section>
+          <PersonDocumentsPanel personId={person.id} initialDocuments={personDocuments} />
+        </div>
+      </main>
+    )
   }
 
   const accessIdentity = getAccessIdentityByPersonId(id)
@@ -395,9 +422,6 @@ export default async function PersonDetailPage({ params }) {
           <div style={{ display: 'grid', gap: '12px' }}>
             <div>
               <h2 style={{ margin: 0, fontSize: '24px' }}>Histórico mensal</h2>
-              <p style={{ margin: '6px 0 0', color: 'var(--vp-text-muted)' }}>
-                Horas agrupadas por mês, com detalhe por dia e por obra.
-              </p>
             </div>
 
             {monthlyAssignmentSummary.length === 0 && (
@@ -407,7 +431,6 @@ export default async function PersonDetailPage({ params }) {
             {monthlyAssignmentSummary.map(month => (
               <details
                 key={month.monthKey}
-                open={monthlyAssignmentSummary[0]?.monthKey === month.monthKey}
                 style={{
                   border: '1px solid var(--vp-border)',
                   borderRadius: '18px',
@@ -459,6 +482,10 @@ export default async function PersonDetailPage({ params }) {
               </details>
             ))}
           </div>
+        </section>
+
+        <section id="documentos">
+          <PersonDocumentsPanel personId={person.id} initialDocuments={personDocuments} />
         </section>
 
         {(

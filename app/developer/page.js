@@ -7,7 +7,6 @@ import DataIntegrityPanel from './DataIntegrityPanel'
 import SystemDiagnosticsPanel from './SystemDiagnosticsPanel'
 import AuditTrailPanel from './AuditTrailPanel'
 import DataManagementPanel from './DataManagementPanel'
-import TestDataGeneratorPanel from './TestDataGeneratorPanel'
 import { getDeveloperDashboardData } from '../../lib/developer-dashboard.js'
 import { getFeatureFlagDefinitions } from '../../lib/feature-flags.js'
 import { getServerSession } from '../../lib/server-session.js'
@@ -99,14 +98,6 @@ const heroTitleStyle = {
   fontWeight: 900,
 }
 
-const heroTextStyle = {
-  margin: '14px 0 0',
-  maxWidth: '700px',
-  color: 'rgba(226, 232, 240, 0.82)',
-  fontSize: '16px',
-  lineHeight: 1.75,
-}
-
 const chipGridStyle = {
   display: 'grid',
   gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
@@ -135,35 +126,6 @@ const chipValueStyle = {
   fontSize: '16px',
   lineHeight: 1.5,
   fontWeight: 800,
-}
-
-const sectionGridStyle = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-  gap: '18px',
-}
-
-const sectionStyle = {
-  borderRadius: '30px',
-  padding: '24px',
-  background: '#ffffff',
-  border: '1px solid rgba(148, 163, 184, 0.18)',
-  boxShadow: '0 18px 42px rgba(15, 23, 42, 0.08)',
-}
-
-const sectionTitleStyle = {
-  margin: 0,
-  color: '#10233e',
-  fontSize: '24px',
-  fontWeight: 900,
-  letterSpacing: '-0.04em',
-}
-
-const sectionTextStyle = {
-  margin: '10px 0 0',
-  color: '#52637a',
-  fontSize: '15px',
-  lineHeight: 1.7,
 }
 
 const metricGridStyle = {
@@ -198,11 +160,26 @@ const metricValueStyle = {
   letterSpacing: '-0.06em',
 }
 
-const metricHelperStyle = {
-  margin: '10px 0 0',
-  color: '#52637a',
-  fontSize: '14px',
-  lineHeight: 1.6,
+const sectionGridStyle = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+  gap: '18px',
+}
+
+const sectionStyle = {
+  borderRadius: '30px',
+  padding: '24px',
+  background: '#ffffff',
+  border: '1px solid rgba(148, 163, 184, 0.18)',
+  boxShadow: '0 18px 42px rgba(15, 23, 42, 0.08)',
+}
+
+const sectionTitleStyle = {
+  margin: 0,
+  color: '#10233e',
+  fontSize: '24px',
+  fontWeight: 900,
+  letterSpacing: '-0.04em',
 }
 
 const issueListStyle = {
@@ -246,23 +223,11 @@ const rowStyle = {
   border: '1px solid rgba(148, 163, 184, 0.18)',
 }
 
-const rowLabelWrapStyle = {
-  display: 'grid',
-  gap: '4px',
-}
-
 const rowLabelStyle = {
   margin: 0,
   color: '#10233e',
   fontSize: '15px',
   fontWeight: 800,
-}
-
-const rowHelperStyle = {
-  margin: 0,
-  color: '#64748b',
-  fontSize: '13px',
-  lineHeight: 1.5,
 }
 
 const rowValueStyle = {
@@ -296,13 +261,6 @@ const quickTitleStyle = {
   color: '#10233e',
   fontSize: '17px',
   fontWeight: 900,
-}
-
-const quickTextStyle = {
-  margin: 0,
-  color: '#52637a',
-  fontSize: '14px',
-  lineHeight: 1.65,
 }
 
 function formatDate(value) {
@@ -375,7 +333,6 @@ function MetricCard({ item }) {
     <article style={metricCardStyle}>
       <p style={metricLabelStyle}>{item.label}</p>
       <p style={metricValueStyle}>{item.value}</p>
-      <p style={metricHelperStyle}>{item.helper}</p>
     </article>
   )
 }
@@ -383,10 +340,7 @@ function MetricCard({ item }) {
 function SummaryRow({ item }) {
   return (
     <div style={rowStyle}>
-      <div style={rowLabelWrapStyle}>
-        <p style={rowLabelStyle}>{item.label}</p>
-        <p style={rowHelperStyle}>{item.helper}</p>
-      </div>
+      <p style={rowLabelStyle}>{item.label}</p>
       <p style={rowValueStyle}>{item.value}</p>
     </div>
   )
@@ -414,7 +368,7 @@ export default async function DeveloperPage() {
             <span style={badgeStyle}>BenPin · Painel do programador</span>
             <div style={actionRowStyle}>
               <Link href="/activity-history" style={linkButtonStyle}>
-                Historico
+                Histórico
               </Link>
               <Link href="/account-settings" style={linkButtonStyle}>
                 Conta
@@ -436,18 +390,13 @@ export default async function DeveloperPage() {
           <div style={heroGridStyle}>
             <div>
               <h1 style={heroTitleStyle}>
-                Centro tecnico da <span style={{ color: '#ff8c00' }}>aplicacao</span>
+                Centro técnico da <span style={{ color: '#ff8c00' }}>aplicação</span>
               </h1>
-              <p style={heroTextStyle}>
-                Esta area junta o que um programador precisa para acompanhar a saude da app:
-                contagem dos dados, qualidade dos acessos, atividade recente e atalhos para
-                diagnostico rapido.
-              </p>
             </div>
 
             <div style={chipGridStyle}>
               <div style={chipStyle}>
-                <p style={chipLabelStyle}>Sessao ativa</p>
+                <p style={chipLabelStyle}>Sessão ativa</p>
                 <p style={chipValueStyle}>{session.name}</p>
               </div>
               <div style={chipStyle}>
@@ -455,23 +404,23 @@ export default async function DeveloperPage() {
                 <p style={chipValueStyle}>{session.username}</p>
               </div>
               <div style={chipStyle}>
-                <p style={chipLabelStyle}>Ultima atividade</p>
+                <p style={chipLabelStyle}>Última atividade</p>
                 <p style={chipValueStyle}>{formatDateTime(dashboard.highlights.lastActivityAt)}</p>
               </div>
               <div style={chipStyle}>
-                <p style={chipLabelStyle}>Ultimo login</p>
+                <p style={chipLabelStyle}>Último login</p>
                 <p style={chipValueStyle}>{formatDateTime(dashboard.highlights.latestLoginAt)}</p>
               </div>
               <div style={chipStyle}>
-                <p style={chipLabelStyle}>Sessao expira</p>
+                <p style={chipLabelStyle}>Sessão expira</p>
                 <p style={chipValueStyle}>{formatDateTime(session.expiresAt)}</p>
               </div>
               <div style={chipStyle}>
-                <p style={chipLabelStyle}>Ultimo plano diario</p>
+                <p style={chipLabelStyle}>Último plano diário</p>
                 <p style={chipValueStyle}>{formatDate(dashboard.highlights.latestPlanDate)}</p>
               </div>
               <div style={chipStyle}>
-                <p style={chipLabelStyle}>Submissoes bloqueadas</p>
+                <p style={chipLabelStyle}>Submissões bloqueadas</p>
                 <p style={chipValueStyle}>{dashboard.highlights.submittedAssignments}</p>
               </div>
             </div>
@@ -486,10 +435,7 @@ export default async function DeveloperPage() {
 
         <section style={sectionGridStyle}>
           <section style={sectionStyle}>
-            <h2 style={sectionTitleStyle}>Alertas tecnicos</h2>
-            <p style={sectionTextStyle}>
-              Vista rapida sobre incoerencias de acesso, configuracao e dados que merecem revisao.
-            </p>
+            <h2 style={sectionTitleStyle}>Alertas técnicos</h2>
             {dashboard.issues.length > 0 ? (
               <div style={issueListStyle}>
                 {dashboard.issues.map(issue => (
@@ -502,31 +448,18 @@ export default async function DeveloperPage() {
             ) : (
               <div style={{ ...getIssueStyle('low'), marginTop: '18px' }}>
                 <p style={issueTitleStyle}>Sem alertas abertos</p>
-                <p style={issueTextStyle}>
-                  Nao foram encontradas inconsistencias principais entre perfis, acessos e estruturas
-                  dos dados.
-                </p>
               </div>
             )}
           </section>
 
           <section style={sectionStyle}>
             <h2 style={sectionTitleStyle}>Atalhos do programador</h2>
-            <p style={sectionTextStyle}>
-              Entradas seguras para acompanhar a aplicacao sem invadir a area operacional do admin.
-            </p>
             <div style={quickGridStyle}>
               <Link href="/activity-history" style={quickCardStyle}>
-                <p style={quickTitleStyle}>Historico da aplicacao</p>
-                <p style={quickTextStyle}>
-                  Consulta os ultimos registos de submissao de horas e notas diarias.
-                </p>
+                <p style={quickTitleStyle}>Histórico da aplicação</p>
               </Link>
               <Link href="/account-settings" style={quickCardStyle}>
-                <p style={quickTitleStyle}>Conta e seguranca</p>
-                <p style={quickTextStyle}>
-                  Altera a palavra-passe do programador e confirma os dados da sessao ativa.
-                </p>
+                <p style={quickTitleStyle}>Conta e segurança</p>
               </Link>
             </div>
             <div style={listStyle}>
@@ -543,103 +476,11 @@ export default async function DeveloperPage() {
 
         <DataIntegrityPanel />
 
-        <SystemDiagnosticsPanel />
+        <DataManagementPanel />
 
         <AuditTrailPanel />
 
-        <DataManagementPanel />
-
-        <TestDataGeneratorPanel />
-
-        <section style={sectionGridStyle}>
-          <section style={sectionStyle}>
-            <h2 style={sectionTitleStyle}>Estado das obras</h2>
-            <p style={sectionTextStyle}>
-              Distribuicao do pipeline atual para perceber rapidamente em que fase esta a operacao.
-            </p>
-            <div style={listStyle}>
-              {dashboard.workStatus.map(item => (
-                <SummaryRow key={item.key} item={item} />
-              ))}
-            </div>
-          </section>
-
-          <section style={sectionStyle}>
-            <h2 style={sectionTitleStyle}>Perfis e acessos</h2>
-            <p style={sectionTextStyle}>
-              Contagem dos perfis relevantes para o software e respetiva disponibilidade de acesso.
-            </p>
-            <div style={listStyle}>
-              {dashboard.peopleSummary.map(item => (
-                <SummaryRow key={item.label} item={item} />
-              ))}
-            </div>
-          </section>
-        </section>
-
-        <section style={sectionStyle}>
-          <h2 style={sectionTitleStyle}>Logins recentes</h2>
-          <p style={sectionTextStyle}>
-            Historico das ultimas entradas na aplicacao para acompanhares quem entrou e com que perfil.
-          </p>
-          {dashboard.loginSummary.recentLogins.length > 0 ? (
-            <div style={listStyle}>
-              {dashboard.loginSummary.recentLogins.map(login => (
-                <article key={login.id} style={rowStyle}>
-                  <div style={rowLabelWrapStyle}>
-                    <p style={rowLabelStyle}>
-                      {login.name} · {login.username}
-                    </p>
-                    <p style={rowHelperStyle}>
-                      {login.roleLabel} · {login.accountTypeLabel}
-                    </p>
-                  </div>
-                  <p style={{ ...rowValueStyle, fontSize: '15px', whiteSpace: 'normal', textAlign: 'right' }}>
-                    {formatDateTime(login.loginAt)}
-                  </p>
-                </article>
-              ))}
-            </div>
-          ) : (
-            <div style={{ ...rowStyle, marginTop: '18px' }}>
-              <div style={rowLabelWrapStyle}>
-                <p style={rowLabelStyle}>Sem logins registados</p>
-                <p style={rowHelperStyle}>Os proximos logins vao passar a aparecer aqui automaticamente.</p>
-              </div>
-            </div>
-          )}
-        </section>
-
-        <section style={sectionStyle}>
-          <h2 style={sectionTitleStyle}>Atividade recente</h2>
-          <p style={sectionTextStyle}>
-            Ultimos eventos tecnicamente uteis para perceber o que esta a acontecer na aplicacao.
-          </p>
-          {dashboard.recentEvents.length > 0 ? (
-            <div style={listStyle}>
-              {dashboard.recentEvents.map(event => (
-                <article key={event.id} style={rowStyle}>
-                  <div style={rowLabelWrapStyle}>
-                    <p style={rowLabelStyle}>
-                      {event.type} · {event.actor}
-                    </p>
-                    <p style={rowHelperStyle}>{event.text}</p>
-                  </div>
-                  <p style={{ ...rowValueStyle, fontSize: '15px', whiteSpace: 'normal', textAlign: 'right' }}>
-                    {formatDateTime(event.date)}
-                  </p>
-                </article>
-              ))}
-            </div>
-          ) : (
-            <div style={{ ...rowStyle, marginTop: '18px' }}>
-              <div style={rowLabelWrapStyle}>
-                <p style={rowLabelStyle}>Sem atividade recente</p>
-                <p style={rowHelperStyle}>Ainda nao existem eventos suficientes para mostrar aqui.</p>
-              </div>
-            </div>
-          )}
-        </section>
+        <SystemDiagnosticsPanel />
       </div>
     </main>
   )
