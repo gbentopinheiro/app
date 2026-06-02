@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getAdminByUsername, updateAdminPassword } from '../../../../lib/admins.js'
 import { getAccessIdentityByUsername, updateAccessIdentity } from '../../../../lib/access-identities.js'
+import { ACCOUNT_TYPE_ADMIN, ACCOUNT_TYPE_DEVELOPER, ACCOUNT_TYPE_OPERATIONAL } from '../../../../lib/account-types.js'
 import { createSessionToken, getDefaultPathForRole, getSessionCookieOptions, SESSION_COOKIE_NAME } from '../../../../lib/auth.js'
 import { getDeveloperByUsername, updateDeveloperPassword } from '../../../../lib/developers.js'
 import { readProtectedRequestJson } from '../../../../lib/login-transport.js'
@@ -16,6 +17,7 @@ function buildAdminSession(admin) {
     username: admin.username,
     name: admin.name || admin.username,
     role: 'admin',
+    accountType: ACCOUNT_TYPE_ADMIN,
     workIds: [],
   }
 }
@@ -27,6 +29,7 @@ function buildDeveloperSession(developer) {
     username: developer.username,
     name: developer.name || developer.username,
     role: ROLE_DEVELOPER,
+    accountType: ACCOUNT_TYPE_DEVELOPER,
     workIds: [],
   }
 }
@@ -38,6 +41,7 @@ function buildAccessIdentitySession(identity) {
     username: identity.username,
     name: identity.person?.name || identity.username,
     role: identity.person?.role || identity.role,
+    accountType: ACCOUNT_TYPE_OPERATIONAL,
     workIds: Array.isArray(identity.works) ? identity.works.map(work => work.id) : [],
   }
 }
@@ -149,6 +153,7 @@ export async function POST(request) {
       role: session.role,
       username: session.username,
       name: session.name,
+      accountType: session.accountType,
       redirectTo: getDefaultPathForRole(session.role),
     })
 

@@ -1,5 +1,23 @@
 [
   {
+    "id": 80,
+    "username": "admin",
+    "name": "Administrador",
+    "role": "admin",
+    "accountType": "admin",
+    "loginAt": "2026-06-02T15:56:10.223Z",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+  },
+  {
+    "id": 79,
+    "username": "admin",
+    "name": "Administrador",
+    "role": "admin",
+    "accountType": "admin",
+    "loginAt": "2026-05-31T11:12:10.959Z",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0"
+  },
+  {
     "id": 78,
     "username": "admin",
     "name": "Administrador",

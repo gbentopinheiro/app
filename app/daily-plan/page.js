@@ -481,6 +481,12 @@ export default function DailyPlanPage() {
     isChefRole(selectedPerson.role) &&
     selectedWorkChefAssignments.length > 1,
   )
+  const canChooseChefWorkAccessOnAdd = Boolean(
+    !assignmentForm.id &&
+    assignmentForm.workId &&
+    selectedPerson &&
+    isChefRole(selectedPerson.role),
+  )
   const selectedWorkAccessChef = useMemo(() => {
     const chefAccessAssignmentId = getChefAccessAssignmentId(selectedWorkChefAssignments)
 
@@ -777,6 +783,10 @@ export default function DailyPlanPage() {
           nextForm.manualHourlyCost = false
           nextForm.hourlyCost = ''
         }
+
+        if (!isChefRole(nextPerson?.role)) {
+          nextForm.hasWorkAccess = false
+        }
       }
 
       return nextForm
@@ -922,6 +932,7 @@ export default function DailyPlanPage() {
             manualHourlyCost: assignmentForm.manualHourlyCost === true,
             hourlyCost: assignmentForm.manualHourlyCost ? selectedHourlyCost : undefined,
             notes: assignmentForm.notes,
+            hasWorkAccess: selectedPerson && isChefRole(selectedPerson.role) ? assignmentForm.hasWorkAccess === true : false,
           }
 
       const response = await fetch(assignmentForm.id ? `/api/work-assignments/${assignmentForm.id}` : '/api/work-assignments', {
@@ -1524,27 +1535,59 @@ export default function DailyPlanPage() {
                 </label>
               </div>
 
-              {shouldSuggestChefAccessOnAdd && (
+              {canChooseChefWorkAccessOnAdd && (
                 <div
                   style={{
                     padding: '14px 16px',
                     borderRadius: '14px',
-                    border: '1px solid var(--vp-border)',
-                    background: 'var(--vp-surface)',
+                    border: `1px solid ${assignmentForm.hasWorkAccess ? 'var(--vp-accent)' : 'var(--vp-border)'}`,
+                    background: assignmentForm.hasWorkAccess ? 'var(--vp-highlight)' : 'var(--vp-surface)',
                     display: 'grid',
-                    gap: '8px',
+                    gap: '10px',
                   }}
                 >
-                  <strong style={{ fontWeight: 900 }}>Proposta automática para chefes</strong>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <div>
+                      <strong style={{ fontWeight: 900 }}>Acesso do chefe à obra</strong>
+                    </div>
+                    <span style={chefAccessStarButtonStyle(assignmentForm.hasWorkAccess === true)}>
+                      {assignmentForm.hasWorkAccess ? '★' : '☆'}
+                    </span>
+                  </div>
+
+                  {selectedWorkChefAssignments.length > 0 && (
+                    <p style={{ margin: 0, color: 'var(--vp-text-muted)', fontSize: '13px' }}>
+                      Chefes já nesta obra:{' '}
+                      {selectedWorkChefAssignments.map(assignment => assignment.person?.name || `Pessoa ${assignment.personId}`).join(', ')}.
+                    </p>
+                  )}
+
                   <p style={{ margin: 0, color: 'var(--vp-text-muted)', fontSize: '13px' }}>
-                    Chefes já nesta obra:{' '}
-                    {selectedWorkChefAssignments.map(assignment => assignment.person?.name || `Pessoa ${assignment.personId}`).join(', ')}.
+                    {shouldSuggestChefAccessOnAdd
+                      ? `Como estás a preparar mais um chefe para esta obra, por defeito o acesso vai ficar com ${selectedWorkAccessChef?.person?.name || 'o chefe que vinha dos dias anteriores'}.`
+                      : 'Se este chefe ficar com estrela, será ele a entrar nesta obra na aplicação.'}
                   </p>
-                  <p style={{ margin: 0, color: 'var(--vp-text-muted)', fontSize: '13px' }}>
-                    {selectedPerson && isChefRole(selectedPerson.role)
-                      ? `Como estás a preparar mais um chefe para esta obra, por defeito o acesso vai ficar com ${selectedWorkAccessChef?.person?.name || 'o chefe que vinha dos dias anteriores'}. Depois podes mudar isso no Editar e dar a estrela ao chefe certo.`
-                      : `Se adicionares outro chefe a esta obra, por defeito o acesso vai ficar com ${selectedWorkAccessChef?.person?.name || 'o chefe que vinha dos dias anteriores'}. Depois podes mudar isso no Editar e dar a estrela ao chefe certo.`}
-                  </p>
+
+                  {assignmentForm.hasWorkAccess ? (
+                    <p style={{ margin: 0, color: 'var(--vp-highlight-text)', fontSize: '13px', fontWeight: 700 }}>
+                      Este é o chefe que fica com acesso a esta obra.
+                    </p>
+                  ) : (
+                    <div>
+                      <button
+                        type="button"
+                        onClick={() => setAssignmentForm(current => ({ ...current, hasWorkAccess: true }))}
+                        style={secondaryButtonStyle}
+                      >
+                        Dar estrela a este chefe
+                      </button>
+                      {shouldSuggestChefAccessOnAdd && (
+                        <p style={{ margin: '8px 0 0', color: 'var(--vp-text-muted)', fontSize: '13px' }}>
+                          Por defeito, fica selecionado o chefe que já vinha dos dias anteriores nesta obra.
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -1591,17 +1634,6 @@ export default function DailyPlanPage() {
                   )}
                 </div>
               )}
-
-              <label style={labelStyle}>
-                Notas
-                <textarea
-                  name="notes"
-                  value={assignmentForm.notes}
-                  onChange={handleAssignmentChange}
-                  rows={4}
-                  style={{ ...inputStyle, resize: 'vertical', maxWidth: '100%', boxSizing: 'border-box' }}
-                />
-              </label>
 
               {canUseManualHourlyCost && (
                 <div
@@ -1670,11 +1702,11 @@ export default function DailyPlanPage() {
 
               <div style={{ padding: '14px 16px', borderRadius: '14px', background: 'var(--vp-highlight)', color: 'var(--vp-highlight-text)' }}>
                 <strong>Resumo:</strong>{' '}
-                {selectedWork ? `Obra ${selectedWork.name}` : 'Escolhe uma obra'}
+                {selectedPerson ? selectedPerson.name : 'Escolhe uma pessoa'}
                 {' | '}
-                {selectedPerson ? `Pessoa: ${selectedPerson.name}` : 'Escolhe uma pessoa'}
+                {selectedWork ? `Obra: ${selectedWork.name}` : 'Escolhe uma obra'}
                 {' | '}
-                {selectedWork ? `Preço/hora: ${selectedHourlyCost}/h (${selectedHourlyCostSource})` : 'Preço/hora automático pela obra'}
+                {selectedWork ? `Preço: ${selectedHourlyCost}/h (${selectedHourlyCostSource})` : 'Preço automático pela obra'}
               </div>
 
               <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>

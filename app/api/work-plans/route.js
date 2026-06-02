@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { resolveCompanyId } from '../../../lib/companies.js'
 import { getDefaultHoursForDate } from '../../../lib/default-hours.js'
 import { isDailyPlanLocked } from '../../../lib/daily-plan-lock.js'
 import { createWorkAssignment, deleteWorkAssignment, getAllWorkAssignments } from '../../../lib/work-assignments.js'
@@ -16,6 +17,7 @@ export async function POST(request) {
   try {
     const body = await request.json()
     const { date, clonePreviousDay } = body
+    const companyId = resolveCompanyId(body.companyId)
     let sourceWorkPlan = null
     let previousAssignments = []
 
@@ -31,7 +33,7 @@ export async function POST(request) {
     }
 
     if (clonePreviousDay) {
-      sourceWorkPlan = getLatestPreviousWorkPlanWithAssignments(date)
+      sourceWorkPlan = getLatestPreviousWorkPlanWithAssignments(date, companyId)
 
       if (!sourceWorkPlan) {
         return NextResponse.json(
@@ -43,8 +45,8 @@ export async function POST(request) {
       previousAssignments = getAllWorkAssignments({ workPlanId: sourceWorkPlan.id })
     }
 
-    const existingWorkPlan = getWorkPlanByDate(date)
-    const workPlan = existingWorkPlan || createWorkPlan({ date })
+    const existingWorkPlan = getWorkPlanByDate(date, companyId)
+    const workPlan = existingWorkPlan || createWorkPlan({ date, companyId })
 
     if (!clonePreviousDay) {
       let clearedAssignments = 0
@@ -112,11 +114,13 @@ export async function POST(request) {
   }
 }
 
-function getLatestPreviousWorkPlanWithAssignments(date) {
+function getLatestPreviousWorkPlanWithAssignments(date, companyId) {
   const targetDate = new Date(date)
+  const normalizedCompanyId = resolveCompanyId(companyId)
 
   return (
     getAllWorkPlans()
+      .filter(workPlan => resolveCompanyId(workPlan.companyId) === normalizedCompanyId)
       .filter(workPlan => new Date(workPlan.date) < targetDate)
       .sort((left, right) => new Date(right.date).getTime() - new Date(left.date).getTime())
       .find(workPlan => getAllWorkAssignments({ workPlanId: workPlan.id }).length > 0) || null

@@ -36,8 +36,7 @@ function filterNotesForSession(notes, session) {
 
   return notes.filter(note => {
     if (!canAccessWork(session, note.workId)) return false
-    if (canManageEntireApp(session.role)) return true
-    return Number(note.authorId) === Number(session.personId || session.userId)
+    return true
   })
 }
 

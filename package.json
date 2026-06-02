@@ -7,7 +7,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test": "node scripts/run-critical-tests.mjs",
+    "test:critical": "node scripts/run-critical-tests.mjs"
   },
   "keywords": [],
   "author": "",

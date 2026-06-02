@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server'
 import { getAccessIdentityById, updateAccessIdentity } from '../../../../lib/access-identities.js'
+import { ACCOUNT_TYPE_ADMIN, ACCOUNT_TYPE_DEVELOPER, ACCOUNT_TYPE_OPERATIONAL, inferAccountType } from '../../../../lib/account-types.js'
 import { getAdminById, updateAdminPassword } from '../../../../lib/admins.js'
 import { getDeveloperById, updateDeveloperPassword } from '../../../../lib/developers.js'
 import { readProtectedRequestJson } from '../../../../lib/login-transport.js'
 import { getPasswordPolicyError, verifyPassword } from '../../../../lib/passwords.js'
-import { isDeveloperRole } from '../../../../lib/roles.js'
 import { getServerSession } from '../../../../lib/server-session.js'
 
 function validatePasswordPayload({ currentPassword, newPassword, confirmPassword }) {
@@ -42,12 +42,13 @@ export async function PATCH(request) {
     const newPassword = String(body.newPassword || '')
     const confirmPassword = String(body.confirmPassword || '')
     const validationError = validatePasswordPayload({ currentPassword, newPassword, confirmPassword })
+    const accountType = inferAccountType(session)
 
     if (validationError) {
       return NextResponse.json({ error: validationError }, { status: 400 })
     }
 
-    if (isDeveloperRole(session.role)) {
+    if (accountType === ACCOUNT_TYPE_DEVELOPER) {
       const developer = getDeveloperById(session.userId)
 
       if (!developer) {
@@ -62,7 +63,8 @@ export async function PATCH(request) {
       return NextResponse.json({ message: 'Palavra-passe atualizada com sucesso.' })
     }
 
-    const accessIdentity = session.personId ? getAccessIdentityById(session.userId) : null
+    const accessIdentity =
+      accountType === ACCOUNT_TYPE_OPERATIONAL && session.personId ? getAccessIdentityById(session.userId) : null
 
     if (accessIdentity) {
       if (!(await verifyPassword(currentPassword, accessIdentity.password))) {
@@ -71,6 +73,10 @@ export async function PATCH(request) {
 
       updateAccessIdentity(accessIdentity.id, { password: newPassword })
       return NextResponse.json({ message: 'Palavra-passe atualizada com sucesso.' })
+    }
+
+    if (accountType !== ACCOUNT_TYPE_ADMIN) {
+      return NextResponse.json({ error: 'Conta nao encontrada.' }, { status: 404 })
     }
 
     const admin = getAdminById(session.userId)

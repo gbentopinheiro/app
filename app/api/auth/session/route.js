@@ -16,6 +16,7 @@ export async function GET() {
       username: session.username,
       name: session.name,
       role: session.role,
+      accountType: session.accountType,
       workIds: session.workIds,
     },
   })
