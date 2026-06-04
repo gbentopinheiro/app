@@ -4,10 +4,10 @@ import LogoutButton from './components/LogoutButton'
 import { isFeatureEnabled } from '../lib/feature-flags.js'
 import { getServerSession } from '../lib/server-session.js'
 import { isChefRole, isResponsavelRole } from '../lib/roles.js'
-import { getAllPeople } from '../lib/people.js'
+import { getAllPeopleData } from '../lib/people.js'
 import { getAllWorkAssignments } from '../lib/work-assignments.js'
 import { isAssignmentApproved } from '../lib/work-assignment-approval.js'
-import { getAllWorks, WorkStatus } from '../lib/works.js'
+import { getAllWorksData, WorkStatus } from '../lib/works.js'
 import { getAllDailyWorkNotes } from '../lib/daily-work-notes.js'
 import { getBelgianHolidays } from '../lib/belgian-holidays.js'
 import { getAllCalendarEvents } from '../lib/calendar-events.js'
@@ -1135,8 +1135,8 @@ function getCalendarOverview(username) {
   }
 }
 
-function getDashboardStats() {
-  const people = getAllPeople()
+async function getDashboardStats() {
+  const people = await getAllPeopleData()
   const currentYear = new Date().getFullYear()
   const yearAssignments = getAllWorkAssignments().filter(assignment => {
     const assignmentYear = assignment.date ? new Date(`${assignment.date}T00:00:00`).getFullYear() : null
@@ -1171,8 +1171,8 @@ function getDashboardStats() {
   ]
 }
 
-function getWorkSubmissionStatus() {
-  const works = getAllWorks()
+async function getWorkSubmissionStatus() {
+  const works = await getAllWorksData()
   const todayAssignments = getAllWorkAssignments({ date: getTodayDate() })
 
   return works
@@ -1201,12 +1201,12 @@ export default async function Home() {
     redirect('/daily-hours')
   }
 
-  const dashboardStats = getDashboardStats().filter(item =>
+  const dashboardStats = (await getDashboardStats()).filter(item =>
     !isResponsavelRole(session.role) ||
     (item.label !== 'Faturação anual' && item.label !== 'Pessoas'),
   )
   const isResponsavel = isResponsavelRole(session.role)
-  const workSubmissionStatus = getWorkSubmissionStatus()
+  const workSubmissionStatus = await getWorkSubmissionStatus()
   const notifications = isResponsavel
     ? getOperationNotifications({ audience: 'responsavel', limit: 3 })
     : getRecentNotifications()

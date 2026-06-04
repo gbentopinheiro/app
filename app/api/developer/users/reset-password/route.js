@@ -1,9 +1,7 @@
 import { NextResponse } from 'next/server'
-import { getAccessIdentityById, updateAccessIdentity } from '../../../../../lib/access-identities.js'
-import { getAdminById, updateAdminPassword } from '../../../../../lib/admins.js'
-import { getDeveloperById, updateDeveloperPassword } from '../../../../../lib/developers.js'
 import { isDeveloperRole } from '../../../../../lib/roles.js'
 import { getServerSession } from '../../../../../lib/server-session.js'
+import { getUserByIdData, updateUserPasswordData } from '../../../../../lib/users.js'
 
 function generateTemporaryPassword() {
   const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
@@ -47,27 +45,22 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Parametros invalidos.' }, { status: 400 })
     }
 
+    const user = await getUserByIdData(userId, { accountType: type })
+
+    if (!user) {
+      return NextResponse.json({ error: 'Utilizador nao encontrado.' }, { status: 404 })
+    }
+
     const tempPassword = generateTemporaryPassword()
 
     try {
-      if (type === 'admin') {
-        const admin = getAdminById(userId)
-        if (!admin) {
-          return NextResponse.json({ error: 'Admin nao encontrado.' }, { status: 404 })
-        }
-        updateAdminPassword(admin.id, tempPassword, { enforcePolicy: false })
-      } else if (type === 'developer') {
-        const developer = getDeveloperById(userId)
-        if (!developer) {
-          return NextResponse.json({ error: 'Programador nao encontrado.' }, { status: 404 })
-        }
-        updateDeveloperPassword(developer.id, tempPassword, { enforcePolicy: false })
-      } else if (type === 'operational') {
-        const identity = getAccessIdentityById(userId)
-        if (!identity) {
-          return NextResponse.json({ error: 'Utilizador operacional nao encontrado.' }, { status: 404 })
-        }
-        updateAccessIdentity(identity.id, { password: tempPassword }, { enforcePolicy: false })
+      const updatedUser = await updateUserPasswordData(user.id, tempPassword, {
+        enforcePolicy: false,
+        accountType: type,
+      })
+
+      if (!updatedUser) {
+        return NextResponse.json({ error: 'Utilizador nao encontrado.' }, { status: 404 })
       }
 
       return NextResponse.json({

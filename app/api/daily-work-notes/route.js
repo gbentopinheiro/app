@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server'
 import { canManageEntireApp } from '../../../lib/auth.js'
 import { buildChefPreviewSession, getChefPreviewIdentity } from '../../../lib/chef-preview.js'
-import { getAllDailyWorkNotes, removeDailyWorkNotes, upsertDailyWorkNote } from '../../../lib/daily-work-notes.js'
+import {
+  getAllDailyWorkNotesData,
+  removeDailyWorkNotesData,
+  upsertDailyWorkNoteData,
+} from '../../../lib/daily-work-notes.js'
 import { isFeatureEnabled } from '../../../lib/feature-flags.js'
 import { getServerSession } from '../../../lib/server-session.js'
 
@@ -11,7 +15,7 @@ function canAccessWork(session, workId) {
   return session.workIds.includes(Number(workId))
 }
 
-function resolvePreviewScopedSession(session, searchParams) {
+async function resolvePreviewScopedSession(session, searchParams) {
   if (!session || !canManageEntireApp(session.role)) {
     return session
   }
@@ -23,7 +27,7 @@ function resolvePreviewScopedSession(session, searchParams) {
     return session
   }
 
-  const previewIdentity = getChefPreviewIdentity({
+  const previewIdentity = await getChefPreviewIdentity({
     personId: previewPersonId,
     username: previewChef,
   })
@@ -53,13 +57,13 @@ export async function GET(request) {
     }
 
     const { searchParams } = new URL(request.url)
-    const scopedSession = resolvePreviewScopedSession(session, searchParams)
+    const scopedSession = await resolvePreviewScopedSession(session, searchParams)
     const filters = {
       date: searchParams.get('date'),
       workId: searchParams.get('workId'),
     }
 
-    const notes = filterNotesForSession(getAllDailyWorkNotes(filters), scopedSession)
+    const notes = filterNotesForSession(await getAllDailyWorkNotesData(filters), scopedSession)
     return NextResponse.json(notes)
   } catch (error) {
     return NextResponse.json({ error: 'Erro ao obter notas.' }, { status: 500 })
@@ -85,7 +89,7 @@ export async function PUT(request) {
       return NextResponse.json({ error: 'Sem permissão para esta obra.' }, { status: 403 })
     }
 
-    const note = upsertDailyWorkNote({
+    const note = await upsertDailyWorkNoteData({
       date: body.date,
       workId,
       note: body.note,
@@ -118,7 +122,7 @@ export async function DELETE(request) {
 
     const body = await request.json()
     const ids = Array.isArray(body?.ids) ? body.ids : []
-    const removedCount = removeDailyWorkNotes(ids)
+    const removedCount = await removeDailyWorkNotesData(ids)
 
     return NextResponse.json({ removedCount })
   } catch (error) {

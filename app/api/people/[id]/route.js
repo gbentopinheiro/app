@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server'
-import { deletePerson, getPersonById, updatePerson } from '../../../../lib/people.js'
+import { deletePersonData, getPersonByIdData, updatePersonData } from '../../../../lib/people.js'
 import {
-  createAccessIdentity,
-  deleteAccessIdentityByPersonId,
-  getAccessIdentityByPersonId,
-  getAccessIdentityByUsername,
-  updateAccessIdentity,
+  createAccessIdentityData,
+  deleteAccessIdentityByPersonIdData,
+  getAccessIdentityByPersonIdData,
+  getAccessIdentityByUsernameData,
+  updateAccessIdentityData,
 } from '../../../../lib/access-identities.js'
 import { canManageEntireApp } from '../../../../lib/auth.js'
 import { roleRequiresAppAccess, roleUsesWorkScope } from '../../../../lib/roles.js'
@@ -51,15 +51,15 @@ function getAccessPayload(personId, role, accessIdentity, existingAccessIdentity
   }
 }
 
-function syncAccessIdentityForPerson(personId, role, accessIdentity) {
+async function syncAccessIdentityForPerson(personId, role, accessIdentity) {
   if (!roleRequiresAppAccess(role)) {
-    deleteAccessIdentityByPersonId(personId)
+    await deleteAccessIdentityByPersonIdData(personId)
     return null
   }
 
-  const currentAccessIdentity = getAccessIdentityByPersonId(personId)
+  const currentAccessIdentity = await getAccessIdentityByPersonIdData(personId)
   const unlinkedIdentityWithUsername = accessIdentity?.username
-    ? getAccessIdentityByUsername(accessIdentity.username)
+    ? await getAccessIdentityByUsernameData(accessIdentity.username)
     : null
   const reusableAccessIdentity =
     currentAccessIdentity ||
@@ -74,8 +74,8 @@ function syncAccessIdentityForPerson(personId, role, accessIdentity) {
   const payload = getAccessPayload(personId, role, accessIdentity, reusableAccessIdentity)
 
   return reusableAccessIdentity
-    ? updateAccessIdentity(reusableAccessIdentity.id, payload)
-    : createAccessIdentity(payload)
+    ? updateAccessIdentityData(reusableAccessIdentity.id, payload)
+    : createAccessIdentityData(payload)
 }
 
 function getErrorStatus(error) {
@@ -113,7 +113,7 @@ export async function GET(request, { params }) {
     }
 
     const { id } = await params
-    const person = getPersonById(id)
+    const person = await getPersonByIdData(id)
 
     if (!person) {
       return NextResponse.json({ error: 'Pessoa não encontrada' }, { status: 404 })
@@ -140,7 +140,7 @@ export async function PUT(request, { params }) {
     const { id } = await params
     const body = await readProtectedRequestJson(request)
     const { name, price, monthlyPrice, role, accessIdentity } = body
-    const currentPerson = getPersonById(id)
+    const currentPerson = await getPersonByIdData(id)
 
     if (!currentPerson) {
       return NextResponse.json({ error: 'Pessoa não encontrada' }, { status: 404 })
@@ -154,16 +154,16 @@ export async function PUT(request, { params }) {
       return NextResponse.json({ error: 'monthlyPrice não pode ser negativo' }, { status: 400 })
     }
 
-    const updatedPerson = updatePerson(id, { name, price, monthlyPrice, role })
+    const updatedPerson = await updatePersonData(id, { name, price, monthlyPrice, role })
 
     if (!updatedPerson) {
       return NextResponse.json({ error: 'Pessoa não encontrada' }, { status: 404 })
     }
 
     try {
-      syncAccessIdentityForPerson(updatedPerson.id, updatedPerson.role, accessIdentity)
+      await syncAccessIdentityForPerson(updatedPerson.id, updatedPerson.role, accessIdentity)
     } catch (error) {
-      updatePerson(id, {
+      await updatePersonData(id, {
         name: currentPerson.name,
         price: currentPerson.price,
         monthlyPrice: currentPerson.monthlyPrice,
@@ -195,14 +195,14 @@ export async function DELETE(request, { params }) {
     }
 
     const { id } = await params
-    const person = getPersonById(id)
+    const person = await getPersonByIdData(id)
 
     if (!person) {
       return NextResponse.json({ error: 'Pessoa não encontrada' }, { status: 404 })
     }
 
-    deleteAccessIdentityByPersonId(id)
-    const deleted = deletePerson(id)
+    await deleteAccessIdentityByPersonIdData(id)
+    const deleted = await deletePersonData(id)
 
     if (!deleted) {
       return NextResponse.json({ error: 'Pessoa não encontrada' }, { status: 404 })

@@ -894,6 +894,35 @@ export default function DailyHoursPage() {
     setEditedApprovedHours({ [entryId]: String(currentApprovedHours || '') })
   }
 
+  function cancelApprovedHoursEdit(entryId) {
+    setEditingApprovedHours(null)
+    setEditedApprovedHours(current => {
+      if (!(entryId in current)) {
+        return current
+      }
+
+      const nextState = { ...current }
+      delete nextState[entryId]
+      return nextState
+    })
+  }
+
+  function resolveApprovedHoursForEntry(entry) {
+    const editingValue =
+      editingApprovedHours === entry.id ? editedApprovedHours[entry.id] : undefined
+    const fallbackValue =
+      approvalValues[entry.id] ??
+      entry.approvedHours ??
+      entry.dailyHours ??
+      entry.hours ??
+      0
+    const rawValue =
+      editingValue !== undefined && editingValue !== '' ? editingValue : fallbackValue
+    const numericValue = Number(rawValue)
+
+    return Number.isNaN(numericValue) ? NaN : numericValue
+  }
+
   async function handleSaveApprovedHoursEdit(entryId) {
     setError('')
     setSuccess('')
@@ -919,7 +948,7 @@ export default function DailyHoursPage() {
       }
 
       setSuccess('Horas aprovadas atualizadas com sucesso.')
-      setEditingApprovedHours(null)
+      cancelApprovedHoursEdit(entryId)
       await loadPageData(selectedDate)
     } catch (err) {
       setError(err.message)
@@ -933,7 +962,11 @@ export default function DailyHoursPage() {
 
     try {
       const approvePromises = selectedWorkEntries.map(entry => {
-        const approvedHours = entry.hours || entry.dailyHours || 0
+        const approvedHours = resolveApprovedHoursForEntry(entry)
+
+        if (Number.isNaN(approvedHours) || approvedHours < 0) {
+          throw new Error('Horas aprovadas têm de ser um número igual ou maior que 0.')
+        }
 
         return fetch(`/api/work-assignments/${entry.id}/approve`, {
           method: 'PUT',
@@ -1630,7 +1663,7 @@ export default function DailyHoursPage() {
                             </button>
                             <button
                               type="button"
-                              onClick={() => setEditingApprovedHours(null)}
+                              onClick={() => cancelApprovedHoursEdit(entry.id)}
                               style={{
                                 ...secondaryButtonStyle,
                                 fontSize: '11px',

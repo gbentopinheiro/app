@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createChef, getAllChefs, getChefWorkOptions } from '../../../lib/chefs.js'
+import { createChefData, getAllChefsData, getChefWorkOptionsData } from '../../../lib/chefs.js'
 import { readProtectedRequestJson } from '../../../lib/login-transport.js'
 
 function hidePassword(identity) {
@@ -11,15 +11,16 @@ export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url)
     const includeWorks = searchParams.get('includeWorks') === 'true'
+    const chefs = await getAllChefsData()
 
     if (includeWorks) {
       return NextResponse.json({
-        items: getAllChefs().map(hidePassword),
-        works: getChefWorkOptions(),
+        items: chefs.map(hidePassword),
+        works: await getChefWorkOptionsData(),
       })
     }
 
-    return NextResponse.json(getAllChefs().map(hidePassword))
+    return NextResponse.json(chefs.map(hidePassword))
   } catch (error) {
     return NextResponse.json({ error: 'Erro ao obter identidades' }, { status: 500 })
   }
@@ -30,7 +31,7 @@ export async function POST(request) {
     const body = await readProtectedRequestJson(request)
     const { personId, username, password, works } = body
 
-    const identity = createChef({ personId, username, password, works })
+    const identity = await createChefData({ personId, username, password, works })
     return NextResponse.json(hidePassword(identity), { status: 201 })
   } catch (error) {
     if (error.message?.includes('protecao') || error.message?.includes('protegido')) {

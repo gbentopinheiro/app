@@ -1,10 +1,8 @@
 import { NextResponse } from 'next/server'
-import { getAllAccessIdentities } from '../../../../lib/access-identities.js'
-import { getAllAdmins } from '../../../../lib/admins.js'
-import { getAllDevelopers } from '../../../../lib/developers.js'
 import { getAllLoginEvents } from '../../../../lib/login-audit.js'
 import { isDeveloperRole } from '../../../../lib/roles.js'
 import { getServerSession } from '../../../../lib/server-session.js'
+import { getAllUsersData } from '../../../../lib/users.js'
 
 function getLastLoginForUser(username, loginEvents) {
   const events = loginEvents
@@ -14,15 +12,16 @@ function getLastLoginForUser(username, loginEvents) {
   return events[0]?.loginAt || null
 }
 
-function enrichUserWithLoginInfo(user, type, loginEvents) {
+function enrichUserWithLoginInfo(user, loginEvents) {
   return {
     id: user.id,
     username: user.username,
     name: user.name || user.username,
-    type,
-    role: user.role || (type === 'admin' ? 'admin' : type === 'developer' ? 'developer' : user.role),
-    lastLoginAt: getLastLoginForUser(user.username, loginEvents),
+    type: user.accountType,
+    role: user.person?.role || user.role || '',
+    lastLoginAt: user.lastLoginAt || getLastLoginForUser(user.username, loginEvents),
     createdAt: null,
+    active: user.active !== false,
   }
 }
 
@@ -38,28 +37,21 @@ export async function GET() {
       return NextResponse.json({ error: 'Apenas o programador pode aceder a esta informacao.' }, { status: 403 })
     }
 
-    const admins = getAllAdmins()
-    const developers = getAllDevelopers()
-    const identities = getAllAccessIdentities()
+    const users = await getAllUsersData()
     const loginEvents = getAllLoginEvents()
-
-    const users = [
-      ...admins.map(admin => enrichUserWithLoginInfo(admin, 'admin', loginEvents)),
-      ...developers.map(dev => enrichUserWithLoginInfo(dev, 'developer', loginEvents)),
-      ...identities.map(identity => enrichUserWithLoginInfo(identity, 'operational', loginEvents)),
-    ]
+    const enrichedUsers = users.map(user => enrichUserWithLoginInfo(user, loginEvents))
 
     return NextResponse.json({
-      users: users.sort((a, b) => {
+      users: enrichedUsers.sort((a, b) => {
         const aLogin = a.lastLoginAt ? new Date(a.lastLoginAt).getTime() : 0
         const bLogin = b.lastLoginAt ? new Date(b.lastLoginAt).getTime() : 0
         return bLogin - aLogin
       }),
       summary: {
-        total: users.length,
-        admins: admins.length,
-        developers: developers.length,
-        operational: identities.length,
+        total: enrichedUsers.length,
+        admins: enrichedUsers.filter(user => user.type === 'admin').length,
+        developers: enrichedUsers.filter(user => user.type === 'developer').length,
+        operational: enrichedUsers.filter(user => user.type === 'operational').length,
       },
     })
   } catch (error) {

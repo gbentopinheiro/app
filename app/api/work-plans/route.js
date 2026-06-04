@@ -2,12 +2,16 @@ import { NextResponse } from 'next/server'
 import { resolveCompanyId } from '../../../lib/companies.js'
 import { getDefaultHoursForDate } from '../../../lib/default-hours.js'
 import { isDailyPlanLocked } from '../../../lib/daily-plan-lock.js'
-import { createWorkAssignment, deleteWorkAssignment, getAllWorkAssignments } from '../../../lib/work-assignments.js'
-import { createWorkPlan, getAllWorkPlans, getWorkPlanByDate } from '../../../lib/work-plans.js'
+import {
+  createWorkAssignmentData,
+  deleteWorkAssignmentData,
+  getAllWorkAssignmentsData,
+} from '../../../lib/work-assignments.js'
+import { createWorkPlanData, getAllWorkPlansData, getWorkPlanByDateData } from '../../../lib/work-plans.js'
 
 export async function GET() {
   try {
-    return NextResponse.json(getAllWorkPlans())
+    return NextResponse.json(await getAllWorkPlansData())
   } catch (error) {
     return NextResponse.json({ error: 'Erro ao obter work plans' }, { status: 500 })
   }
@@ -33,7 +37,7 @@ export async function POST(request) {
     }
 
     if (clonePreviousDay) {
-      sourceWorkPlan = getLatestPreviousWorkPlanWithAssignments(date, companyId)
+      sourceWorkPlan = await getLatestPreviousWorkPlanWithAssignments(date, companyId)
 
       if (!sourceWorkPlan) {
         return NextResponse.json(
@@ -42,21 +46,21 @@ export async function POST(request) {
         )
       }
 
-      previousAssignments = getAllWorkAssignments({ workPlanId: sourceWorkPlan.id })
+      previousAssignments = await getAllWorkAssignmentsData({ workPlanId: sourceWorkPlan.id })
     }
 
-    const existingWorkPlan = getWorkPlanByDate(date, companyId)
-    const workPlan = existingWorkPlan || createWorkPlan({ date, companyId })
+    const existingWorkPlan = await getWorkPlanByDateData(date, companyId)
+    const workPlan = existingWorkPlan || await createWorkPlanData({ date, companyId })
 
     if (!clonePreviousDay) {
       let clearedAssignments = 0
 
       if (existingWorkPlan) {
-        const currentAssignments = getAllWorkAssignments({ workPlanId: existingWorkPlan.id })
+        const currentAssignments = await getAllWorkAssignmentsData({ workPlanId: existingWorkPlan.id })
         clearedAssignments = currentAssignments.length
 
         for (const assignment of currentAssignments) {
-          deleteWorkAssignment(assignment.id)
+          await deleteWorkAssignmentData(assignment.id)
         }
       }
 
@@ -72,15 +76,15 @@ export async function POST(request) {
     }
 
     if (existingWorkPlan) {
-      const currentAssignments = getAllWorkAssignments({ workPlanId: existingWorkPlan.id })
+      const currentAssignments = await getAllWorkAssignmentsData({ workPlanId: existingWorkPlan.id })
 
       for (const assignment of currentAssignments) {
-        deleteWorkAssignment(assignment.id)
+        await deleteWorkAssignmentData(assignment.id)
       }
     }
 
     for (const assignment of previousAssignments) {
-      createWorkAssignment({
+      await createWorkAssignmentData({
         workPlanId: workPlan.id,
         workId: assignment.workId,
         personId: assignment.personId,
@@ -114,15 +118,21 @@ export async function POST(request) {
   }
 }
 
-function getLatestPreviousWorkPlanWithAssignments(date, companyId) {
+async function getLatestPreviousWorkPlanWithAssignments(date, companyId) {
   const targetDate = new Date(date)
   const normalizedCompanyId = resolveCompanyId(companyId)
+  const workPlans = await getAllWorkPlansData({ companyId: normalizedCompanyId })
+  const orderedWorkPlans = workPlans
+    .filter(workPlan => new Date(workPlan.date) < targetDate)
+    .sort((left, right) => new Date(right.date).getTime() - new Date(left.date).getTime())
 
-  return (
-    getAllWorkPlans()
-      .filter(workPlan => resolveCompanyId(workPlan.companyId) === normalizedCompanyId)
-      .filter(workPlan => new Date(workPlan.date) < targetDate)
-      .sort((left, right) => new Date(right.date).getTime() - new Date(left.date).getTime())
-      .find(workPlan => getAllWorkAssignments({ workPlanId: workPlan.id }).length > 0) || null
-  )
+  for (const workPlan of orderedWorkPlans) {
+    const assignments = await getAllWorkAssignmentsData({ workPlanId: workPlan.id })
+
+    if (assignments.length > 0) {
+      return workPlan
+    }
+  }
+
+  return null
 }

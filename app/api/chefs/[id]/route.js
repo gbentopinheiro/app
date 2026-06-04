@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { deleteChef, getChefById, updateChef } from '../../../../lib/chefs.js'
+import { deleteChefData, getChefByIdData, updateChefData } from '../../../../lib/chefs.js'
 import { readProtectedRequestJson } from '../../../../lib/login-transport.js'
 
 function hidePassword(identity) {
@@ -10,7 +10,7 @@ function hidePassword(identity) {
 export async function GET(request, { params }) {
   try {
     const { id } = await params
-    const identity = getChefById(id)
+    const identity = await getChefByIdData(id)
 
     if (!identity) {
       return NextResponse.json({ error: 'Identidade não encontrada' }, { status: 404 })
@@ -28,7 +28,7 @@ export async function PUT(request, { params }) {
     const body = await readProtectedRequestJson(request)
     const { personId, username, password, works } = body
 
-    const identity = updateChef(id, { personId, username, password, works })
+    const identity = await updateChefData(id, { personId, username, password, works })
 
     if (!identity) {
       return NextResponse.json({ error: 'Identidade não encontrada' }, { status: 404 })
@@ -59,7 +59,7 @@ export async function PUT(request, { params }) {
 export async function DELETE(request, { params }) {
   try {
     const { id } = await params
-    const deleted = deleteChef(id)
+    const deleted = await deleteChefData(id)
 
     if (!deleted) {
       return NextResponse.json({ error: 'Identidade não encontrada' }, { status: 404 })

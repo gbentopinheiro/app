@@ -19,7 +19,7 @@ export async function GET() {
     return NextResponse.json({ error: 'Apenas o programador pode exportar este relatorio.' }, { status: 403 })
   }
 
-  const dashboard = getDeveloperDashboardData()
+  const dashboard = await getDeveloperDashboardData()
   const pdf = buildDeveloperDashboardPdf({
     dashboard,
     developerName: session.name,

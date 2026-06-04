@@ -8,7 +8,11 @@ import {
   isChefPersonAllowedForWork,
   isDailyPlanStructureUpdate,
 } from '../../../../lib/work-assignment-policy.js'
-import { deleteWorkAssignment, getWorkAssignmentById, updateWorkAssignment } from '../../../../lib/work-assignments.js'
+import {
+  deleteWorkAssignmentData,
+  getWorkAssignmentByIdData,
+  updateWorkAssignmentData,
+} from '../../../../lib/work-assignments.js'
 
 export async function GET(request, { params }) {
   try {
@@ -19,7 +23,7 @@ export async function GET(request, { params }) {
     }
 
     const { id } = await params
-    const assignment = getWorkAssignmentById(id)
+    const assignment = await getWorkAssignmentByIdData(id)
 
     if (!assignment) {
       return NextResponse.json({ error: 'Afetacao nao encontrada' }, { status: 404 })
@@ -44,7 +48,7 @@ export async function PUT(request, { params }) {
     }
 
     const { id } = await params
-    const currentAssignment = getWorkAssignmentById(id)
+    const currentAssignment = await getWorkAssignmentByIdData(id)
 
     if (!currentAssignment) {
       return NextResponse.json({ error: 'Afetacao nao encontrada' }, { status: 404 })
@@ -73,12 +77,12 @@ export async function PUT(request, { params }) {
       return NextResponse.json({ error: 'Sem permissao para mover a afetacao para essa obra.' }, { status: 403 })
     }
 
-    if (!isChefPersonAllowedForWork(session, {
+    if (!(await isChefPersonAllowedForWork(session, {
       workPlanId: targetWorkPlanId,
       date: targetDate,
       workId: targetWorkId,
       personId: targetPersonId,
-    })) {
+    }))) {
       return NextResponse.json(
         { error: 'O chefe so pode registar pessoas colocadas pelo administrador no plano diario dessa obra.' },
         { status: 403 },
@@ -113,7 +117,7 @@ export async function PUT(request, { params }) {
       ? currentAssignment.submittedBy || session.name || session.id || 'Administrador'
       : undefined
 
-    const assignment = updateWorkAssignment(id, {
+    const assignment = await updateWorkAssignmentData(id, {
       workPlanId,
       workId,
       personId,
@@ -126,6 +130,8 @@ export async function PUT(request, { params }) {
       submitted: shouldAutoSubmitFromAdmin ? true : undefined,
       submittedAt,
       submittedBy,
+    }, {
+      actorSession: shouldAutoSubmitFromAdmin ? session : null,
     })
 
     if (!assignment) {
@@ -148,7 +154,7 @@ export async function DELETE(request, { params }) {
     }
 
     const { id } = await params
-    const assignment = getWorkAssignmentById(id)
+    const assignment = await getWorkAssignmentByIdData(id)
 
     if (!assignment) {
       return NextResponse.json({ error: 'Afetacao nao encontrada' }, { status: 404 })
@@ -165,7 +171,7 @@ export async function DELETE(request, { params }) {
       )
     }
 
-    const deleted = deleteWorkAssignment(id)
+    const deleted = await deleteWorkAssignmentData(id)
 
     if (!deleted) {
       return NextResponse.json({ error: 'Afetacao nao encontrada' }, { status: 404 })

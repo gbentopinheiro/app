@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server'
-import { createClient, getAllClients } from '../../../lib/clients.js'
+import { createClientData, getAllClientsData } from '../../../lib/clients.js'
 
 export async function GET() {
   try {
-    return NextResponse.json(getAllClients())
+    return NextResponse.json(await getAllClientsData())
   } catch (error) {
     return NextResponse.json({ error: 'Erro ao obter clientes' }, { status: 500 })
   }
@@ -18,7 +18,7 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Nome do cliente é obrigatório' }, { status: 400 })
     }
 
-    const client = createClient({ name, vatNumber, contactName, email, phone, notes })
+    const client = await createClientData({ name, vatNumber, contactName, email, phone, notes })
     return NextResponse.json(client, { status: 201 })
   } catch (error) {
     return NextResponse.json({ error: 'Erro ao criar cliente' }, { status: 500 })

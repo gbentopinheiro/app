@@ -21,7 +21,7 @@ export default async function ChefMobileDailyHoursPage({ searchParams }) {
   const previewMode = canManageEntireApp(session.role)
   const resolvedSearchParams = (await searchParams) || {}
   const previewIdentity = previewMode
-    ? getChefPreviewIdentity({
+    ? await getChefPreviewIdentity({
         personId: resolvedSearchParams.previewPersonId,
         username: resolvedSearchParams.previewChef,
       })

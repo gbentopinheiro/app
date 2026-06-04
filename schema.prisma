@@ -1,0 +1,251 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+enum Role {
+  admin
+  developer
+  responsavel
+  chef_primeira
+  chef_segunda
+  carpinteiro
+  ferrajeiro
+  trolha
+  gruista
+}
+
+enum AccountType {
+  operational
+  admin
+  developer
+}
+
+enum WorkStatus {
+  planned
+  in_progress
+  paused
+  completed
+}
+
+enum WorkingDay {
+  monday
+  tuesday
+  wednesday
+  thursday
+  friday
+  saturday
+  sunday
+}
+
+model Company {
+  id              Int        @id
+  holdingId       Int        @map("holding_id")
+  name            String
+  slug            String     @unique
+  countryCode     String     @map("country_code") @db.Char(2)
+  documentMark    String?    @map("document_mark") @db.VarChar(32)
+  documentLabel   String?    @map("document_label")
+  documentLogoUrl String?    @map("document_logo_url") @db.Text
+  active          Boolean    @default(true)
+  clients         Client[]
+  works           Work[]
+  people          Person[]
+  workPlans       WorkPlan[]
+
+  @@map("companies")
+}
+
+model Client {
+  id          Int      @id
+  companyId   Int      @map("company_id")
+  name        String
+  vatNumber   String?  @map("vat_number") @db.VarChar(64)
+  contactName String?  @map("contact_name")
+  email       String?  @db.VarChar(191)
+  phone       String?  @db.VarChar(64)
+  notes       String?  @db.Text
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  works       Work[]
+
+  @@unique([companyId, name])
+  @@map("clients")
+}
+
+model Person {
+  id               Int                  @id
+  companyId        Int                  @map("company_id")
+  name             String
+  price            Decimal              @default(0) @db.Decimal(10, 2)
+  monthlyPrice     Decimal              @default(0) @map("monthly_price") @db.Decimal(10, 2)
+  isMonthlyBilling Boolean              @default(false) @map("is_monthly_billing")
+  role             Role
+  company          Company              @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  user             User?
+  workAssignments  WorkAssignment[]
+  workHourlyCosts  WorkPersonHourlyCost[]
+  authoredNotes    DailyWorkNote[]
+  loginEvents      LoginEvent[]
+
+  @@index([companyId, role])
+  @@map("people")
+}
+
+model Work {
+  id                 Int                  @id
+  number             Int
+  companyId          Int                  @map("company_id")
+  clientId           Int                  @map("client_id")
+  name               String
+  location           String?
+  status             WorkStatus           @default(planned)
+  budget             Decimal              @default(0) @db.Decimal(12, 2)
+  defaultHourlyCost  Decimal              @default(0) @map("default_hourly_cost") @db.Decimal(10, 2)
+  startDate          DateTime?            @map("start_date") @db.Date
+  endDate            DateTime?            @map("end_date") @db.Date
+  notes              String?              @db.Text
+  company            Company              @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  client             Client               @relation(fields: [clientId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  workingDays        WorkWorkingDay[]
+  roleHourlyCosts    WorkRoleHourlyCost[]
+  personHourlyCosts  WorkPersonHourlyCost[]
+  workAssignments    WorkAssignment[]
+  dailyWorkNotes     DailyWorkNote[]
+
+  @@unique([companyId, number])
+  @@map("works")
+}
+
+model WorkWorkingDay {
+  id     Int        @id @default(autoincrement())
+  workId Int        @map("work_id")
+  day    WorkingDay
+  work   Work       @relation(fields: [workId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@unique([workId, day])
+  @@map("work_working_days")
+}
+
+model WorkRoleHourlyCost {
+  id         Int     @id @default(autoincrement())
+  workId     Int     @map("work_id")
+  role       Role
+  hourlyCost Decimal @map("hourly_cost") @db.Decimal(10, 2)
+  work       Work    @relation(fields: [workId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@unique([workId, role])
+  @@map("work_role_hourly_costs")
+}
+
+model WorkPersonHourlyCost {
+  id         Int     @id @default(autoincrement())
+  workId     Int     @map("work_id")
+  personId   Int     @map("person_id")
+  hourlyCost Decimal @map("hourly_cost") @db.Decimal(10, 2)
+  work       Work    @relation(fields: [workId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  person     Person  @relation(fields: [personId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@unique([workId, personId])
+  @@map("work_person_hourly_costs")
+}
+
+model WorkPlan {
+  id              Int              @id
+  companyId       Int              @map("company_id")
+  date            DateTime         @db.Date
+  company         Company          @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  workAssignments WorkAssignment[]
+
+  @@unique([companyId, date])
+  @@map("work_plans")
+}
+
+model User {
+  id                  Int               @id
+  personId            Int?              @unique @map("person_id")
+  username            String            @unique
+  passwordHash        String            @map("password_hash") @db.Text
+  role                Role?
+  accountType         AccountType       @map("account_type")
+  name                String?
+  active              Boolean           @default(true)
+  deactivatedAt       DateTime?         @map("deactivated_at")
+  deletedAt           DateTime?         @map("deleted_at")
+  lastLoginAt         DateTime?         @map("last_login_at")
+  legacySource        String?           @map("legacy_source") @db.VarChar(64)
+  legacySourceId      Int?              @map("legacy_source_id")
+  person              Person?           @relation(fields: [personId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  submittedAssignments WorkAssignment[] @relation("SubmittedByUser")
+  approvedAssignments WorkAssignment[]  @relation("ApprovedByUser")
+  loginEvents         LoginEvent[]
+
+  @@index([accountType, active])
+  @@map("users")
+}
+
+model WorkAssignment {
+  id                    Int       @id
+  workPlanId            Int       @map("work_plan_id")
+  workId                Int       @map("work_id")
+  personId              Int       @map("person_id")
+  hours                 Decimal   @default(0) @db.Decimal(8, 2)
+  dailyHours            Decimal   @default(0) @map("daily_hours") @db.Decimal(8, 2)
+  approvedHours         Decimal?  @map("approved_hours") @db.Decimal(8, 2)
+  adminApprovedAt       DateTime? @map("admin_approved_at")
+  adminApprovedByUserId Int?      @map("admin_approved_by_user_id")
+  adminApprovedByName   String?   @map("admin_approved_by_name")
+  submitted             Boolean   @default(false)
+  submittedAt           DateTime? @map("submitted_at")
+  submittedByUserId     Int?      @map("submitted_by_user_id")
+  submittedByName       String?   @map("submitted_by_name")
+  hourlyCost            Decimal   @default(0) @map("hourly_cost") @db.Decimal(10, 2)
+  manualHourlyCost      Boolean   @default(false) @map("manual_hourly_cost")
+  notes                 String?   @db.Text
+  hasWorkAccess         Boolean   @default(false) @map("has_work_access")
+  workPlan              WorkPlan  @relation(fields: [workPlanId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  work                  Work      @relation(fields: [workId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  person                Person    @relation(fields: [personId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  submittedByUser       User?     @relation("SubmittedByUser", fields: [submittedByUserId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  approvedByUser        User?     @relation("ApprovedByUser", fields: [adminApprovedByUserId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  @@unique([workPlanId, workId, personId])
+  @@index([workPlanId])
+  @@index([workId])
+  @@index([personId])
+  @@map("work_assignments")
+}
+
+model DailyWorkNote {
+  id         Int       @id
+  date       DateTime  @db.Date
+  workId     Int       @map("work_id")
+  authorId   Int?      @map("author_id")
+  authorName String?   @map("author_name")
+  note       String    @db.Text
+  updatedAt  DateTime  @map("updated_at")
+  work       Work      @relation(fields: [workId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  author     Person?   @relation(fields: [authorId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  @@unique([date, workId])
+  @@map("daily_work_notes")
+}
+
+model LoginEvent {
+  id          Int         @id
+  userId      Int?        @map("user_id")
+  personId    Int?        @map("person_id")
+  username    String
+  name        String?
+  role        Role?
+  accountType AccountType @map("account_type")
+  loginAt     DateTime    @map("login_at")
+  userAgent   String?     @map("user_agent") @db.Text
+  user        User?       @relation(fields: [userId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  person      Person?     @relation(fields: [personId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  @@index([loginAt])
+  @@map("login_events")
+}

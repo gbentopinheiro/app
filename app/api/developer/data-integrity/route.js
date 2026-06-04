@@ -1,15 +1,15 @@
 import { NextResponse } from 'next/server'
-import { getAllAccessIdentities } from '../../../../lib/access-identities.js'
-import { getAllAdmins } from '../../../../lib/admins.js'
-import { getAllClients } from '../../../../lib/clients.js'
-import { getAllDailyWorkNotes } from '../../../../lib/daily-work-notes.js'
-import { getAllDevelopers } from '../../../../lib/developers.js'
-import { getAllPeople } from '../../../../lib/people.js'
+import { getAllAccessIdentitiesData } from '../../../../lib/access-identities.js'
+import { getAllAdminsData } from '../../../../lib/admins.js'
+import { getAllClientsData } from '../../../../lib/clients.js'
+import { getAllDailyWorkNotesData } from '../../../../lib/daily-work-notes.js'
+import { getAllDevelopersData } from '../../../../lib/developers.js'
+import { getAllPeopleData } from '../../../../lib/people.js'
 import { isDeveloperRole } from '../../../../lib/roles.js'
 import { getServerSession } from '../../../../lib/server-session.js'
-import { getAllWorkAssignments } from '../../../../lib/work-assignments.js'
-import { getAllWorkPlans } from '../../../../lib/work-plans.js'
-import { getAllWorks } from '../../../../lib/works.js'
+import { getAllWorkAssignmentsData } from '../../../../lib/work-assignments.js'
+import { getAllWorkPlansData } from '../../../../lib/work-plans.js'
+import { getAllWorksData } from '../../../../lib/works.js'
 
 export async function GET() {
   try {
@@ -26,15 +26,15 @@ export async function GET() {
     const issues = []
 
     // Load all data
-    const admins = getAllAdmins()
-    const developers = getAllDevelopers()
-    const identities = getAllAccessIdentities()
-    const people = getAllPeople()
-    const works = getAllWorks()
-    const clients = getAllClients()
-    const assignments = getAllWorkAssignments()
-    const workPlans = getAllWorkPlans()
-    const dailyNotes = getAllDailyWorkNotes()
+    const admins = await getAllAdminsData()
+    const developers = await getAllDevelopersData()
+    const identities = await getAllAccessIdentitiesData()
+    const people = await getAllPeopleData()
+    const works = await getAllWorksData()
+    const clients = await getAllClientsData()
+    const assignments = await getAllWorkAssignmentsData()
+    const workPlans = await getAllWorkPlansData()
+    const dailyNotes = await getAllDailyWorkNotesData()
 
     // Create lookup maps
     const personMap = new Map(people.map(p => [p.id, p]))

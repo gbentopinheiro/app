@@ -3,7 +3,7 @@ import * as xlsx from 'xlsx'
 import { existsSync } from 'fs'
 import { join } from 'path'
 import { replaceAllPeople } from '../../../lib/people.js'
-import { pruneAccessIdentitiesByValidPersonIds } from '../../../lib/access-identities.js'
+import { pruneAccessIdentitiesByValidPersonIdsData } from '../../../lib/access-identities.js'
 
 const { read, readFile, utils } = xlsx
 
@@ -83,7 +83,7 @@ export async function POST(request) {
     const workbook = read(buffer, { type: 'buffer' })
     const result = parsePeopleSheet(workbook)
     const updatedPeople = replaceAllPeople(result.people)
-    pruneAccessIdentitiesByValidPersonIds(updatedPeople.map(person => person.id))
+    await pruneAccessIdentitiesByValidPersonIdsData(updatedPeople.map(person => person.id))
 
     return NextResponse.json({
       message: 'Dados atualizados com sucesso',

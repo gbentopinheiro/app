@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server'
-import { createPerson, deletePerson, getAllPeople } from '../../../lib/people.js'
+import { createPersonData, deletePersonData, getAllPeopleData } from '../../../lib/people.js'
 import {
-  createAccessIdentity,
-  getAccessIdentityByPersonId,
-  getAccessIdentityByUsername,
-  updateAccessIdentity,
+  createAccessIdentityData,
+  getAccessIdentityByPersonIdData,
+  getAccessIdentityByUsernameData,
+  updateAccessIdentityData,
 } from '../../../lib/access-identities.js'
 import { canAccessPeopleManagement, canManageEntireApp } from '../../../lib/auth.js'
 import { getAllPersonDocumentReminders } from '../../../lib/person-document-reminders.js'
@@ -51,14 +51,14 @@ function getAccessPayload(personId, role, accessIdentity, existingAccessIdentity
   }
 }
 
-function syncAccessIdentityForPerson(personId, role, accessIdentity) {
+async function syncAccessIdentityForPerson(personId, role, accessIdentity) {
   if (!roleRequiresAppAccess(role)) {
     return null
   }
 
-  const currentAccessIdentity = getAccessIdentityByPersonId(personId)
+  const currentAccessIdentity = await getAccessIdentityByPersonIdData(personId)
   const unlinkedIdentityWithUsername = accessIdentity?.username
-    ? getAccessIdentityByUsername(accessIdentity.username)
+    ? await getAccessIdentityByUsernameData(accessIdentity.username)
     : null
   const reusableAccessIdentity =
     currentAccessIdentity ||
@@ -73,8 +73,8 @@ function syncAccessIdentityForPerson(personId, role, accessIdentity) {
   const payload = getAccessPayload(personId, role, accessIdentity, reusableAccessIdentity)
 
   return reusableAccessIdentity
-    ? updateAccessIdentity(reusableAccessIdentity.id, payload)
-    : createAccessIdentity(payload)
+    ? updateAccessIdentityData(reusableAccessIdentity.id, payload)
+    : createAccessIdentityData(payload)
 }
 
 function getErrorStatus(error) {
@@ -180,7 +180,7 @@ export async function GET() {
       return NextResponse.json({ error: 'Sem permissao para consultar pessoas.' }, { status: 403 })
     }
 
-    const people = getAllPeople()
+    const people = await getAllPeopleData()
 
     return NextResponse.json(isResponsavelRole(session.role) ? getPeopleListForResponsavel(people) : people)
   } catch (error) {
@@ -208,7 +208,7 @@ export async function POST(request) {
         return NextResponse.json({ error: 'Nome obrigatorio.' }, { status: 400 })
       }
 
-      const newPerson = createPerson({
+      const newPerson = await createPersonData({
         name,
         price: 0,
         monthlyPrice: 0,
@@ -234,12 +234,12 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Preço e monthlyPrice não podem ser negativos' }, { status: 400 })
     }
 
-    const newPerson = createPerson({ name, price, monthlyPrice, role })
+    const newPerson = await createPersonData({ name, price, monthlyPrice, role })
 
     try {
-      syncAccessIdentityForPerson(newPerson.id, newPerson.role, accessIdentity)
+      await syncAccessIdentityForPerson(newPerson.id, newPerson.role, accessIdentity)
     } catch (error) {
-      deletePerson(newPerson.id)
+      await deletePersonData(newPerson.id)
       throw error
     }
 

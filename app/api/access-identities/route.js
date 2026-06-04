@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getAllAccessIdentities, getAccessIdentityWorkOptions } from '../../../lib/access-identities.js'
+import { getAllAccessIdentitiesData, getAccessIdentityWorkOptionsData } from '../../../lib/access-identities.js'
 import { canManageEntireApp } from '../../../lib/auth.js'
 import { getServerSession } from '../../../lib/server-session.js'
 
@@ -22,15 +22,16 @@ export async function GET(request) {
 
     const { searchParams } = new URL(request.url)
     const includeWorks = searchParams.get('includeWorks') === 'true'
+    const items = await getAllAccessIdentitiesData()
 
     if (includeWorks) {
       return NextResponse.json({
-        items: getAllAccessIdentities().map(hidePassword),
-        works: getAccessIdentityWorkOptions(),
+        items: items.map(hidePassword),
+        works: await getAccessIdentityWorkOptionsData(),
       })
     }
 
-    return NextResponse.json(getAllAccessIdentities().map(hidePassword))
+    return NextResponse.json(items.map(hidePassword))
   } catch (error) {
     return NextResponse.json({ error: 'Erro ao obter acessos' }, { status: 500 })
   }

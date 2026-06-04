@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server'
-import { createWork, getAllWorks } from '../../../lib/works.js'
-import { getClientById } from '../../../lib/clients.js'
+import { createWorkData, getAllWorksData } from '../../../lib/works.js'
+import { getClientByIdData } from '../../../lib/clients.js'
 
 export async function GET() {
   try {
-    const works = getAllWorks()
+    const works = await getAllWorksData()
     return NextResponse.json(works)
   } catch (error) {
     return NextResponse.json({ error: 'Erro ao obter obras' }, { status: 500 })
@@ -20,7 +20,7 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Nome da obra é obrigatório' }, { status: 400 })
     }
 
-    if (!clientId || !getClientById(clientId)) {
+    if (!clientId || !(await getClientByIdData(clientId))) {
       return NextResponse.json({ error: 'A obra tem de pertencer a um cliente' }, { status: 400 })
     }
 
@@ -36,7 +36,7 @@ export async function POST(request) {
       return NextResponse.json({ error: 'endDate tem de ser uma data válida' }, { status: 400 })
     }
 
-    const newWork = createWork({
+    const newWork = await createWorkData({
       name,
       clientId,
       location,

@@ -1,14 +1,14 @@
 ﻿import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import PersonDocumentsPanel from './PersonDocumentsPanel.js'
-import { getAccessIdentityByPersonId } from '../../../lib/access-identities.js'
-import { getAllDailyWorkNotes } from '../../../lib/daily-work-notes.js'
+import { getAccessIdentityByPersonIdData } from '../../../lib/access-identities.js'
+import { getAllDailyWorkNotesData } from '../../../lib/daily-work-notes.js'
 import { getPersonDocumentReminders } from '../../../lib/person-document-reminders.js'
-import { getPersonById } from '../../../lib/people.js'
+import { getPersonByIdData } from '../../../lib/people.js'
 import { getApprovedAssignmentTotalCost, isAssignmentApproved } from '../../../lib/work-assignment-approval.js'
 import { getRoleLabel, isResponsavelRole, roleRequiresAppAccess, roleUsesWorkScope } from '../../../lib/roles.js'
 import { getServerSession } from '../../../lib/server-session.js'
-import { getAllWorkAssignments } from '../../../lib/work-assignments.js'
+import { getAllWorkAssignmentsData } from '../../../lib/work-assignments.js'
 
 export const dynamic = 'force-dynamic'
 
@@ -217,8 +217,8 @@ function buildMonthlyAssignmentSummary(assignments) {
     }))
 }
 
-function buildPersonActivityGroups(person, assignments) {
-  const notes = getAllDailyWorkNotes({ authorId: person.id })
+async function buildPersonActivityGroups(person, assignments) {
+  const notes = await getAllDailyWorkNotesData({ authorId: person.id })
 
   const submittedEvents = sortActivityEvents(
     assignments
@@ -288,7 +288,7 @@ export default async function PersonDetailPage({ params }) {
   }
 
   const { id } = await params
-  const person = getPersonById(id)
+  const person = await getPersonByIdData(id)
 
   if (!person) {
     notFound()
@@ -312,10 +312,10 @@ export default async function PersonDetailPage({ params }) {
     )
   }
 
-  const accessIdentity = getAccessIdentityByPersonId(id)
-  const assignments = getAllWorkAssignments({ personId: id })
+  const accessIdentity = await getAccessIdentityByPersonIdData(id)
+  const assignments = await getAllWorkAssignmentsData({ personId: id })
   const monthlyAssignmentSummary = buildMonthlyAssignmentSummary(assignments)
-  const activityGroups = buildPersonActivityGroups(person, assignments)
+  const activityGroups = await buildPersonActivityGroups(person, assignments)
   const totalHours = Number(assignments.reduce((sum, assignment) => sum + (Number(assignment.hours) || 0), 0).toFixed(2))
   const totalCost = Number(assignments.reduce((sum, assignment) => sum + getApprovedAssignmentTotalCost(assignment), 0).toFixed(2))
   const workedDays = new Set(assignments.map(assignment => assignment.date).filter(Boolean)).size

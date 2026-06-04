@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server'
-import { getWorkAssignmentById, updateWorkAssignment } from '../../../../../lib/work-assignments.js'
+import {
+  getWorkAssignmentByIdData,
+  updateWorkAssignmentData,
+} from '../../../../../lib/work-assignments.js'
 import { canApproveHours } from '../../../../../lib/auth.js'
 import { isFeatureEnabled } from '../../../../../lib/feature-flags.js'
 import { getServerSession } from '../../../../../lib/server-session.js'
@@ -25,7 +28,7 @@ export async function PUT(request, { params }) {
     }
 
     const { id } = await params
-    const currentAssignment = getWorkAssignmentById(id)
+    const currentAssignment = await getWorkAssignmentByIdData(id)
 
     if (!currentAssignment) {
       return NextResponse.json({ error: 'Afetação não encontrada' }, { status: 404 })
@@ -45,10 +48,12 @@ export async function PUT(request, { params }) {
       )
     }
 
-    const assignment = updateWorkAssignment(id, {
+    const assignment = await updateWorkAssignmentData(id, {
       approvedHours: Number(approvedHours),
       adminApprovedAt: new Date().toISOString(),
       adminApprovedBy: session.name || session.username || session.userId,
+    }, {
+      actorSession: session,
     })
 
     if (!assignment) {

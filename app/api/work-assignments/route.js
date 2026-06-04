@@ -12,7 +12,11 @@ import {
   resolveDailyPlanDate,
   resolvePreviewScopedSession,
 } from '../../../lib/work-assignment-policy.js'
-import { createWorkAssignment, getAllWorkAssignments, getAssignmentDefaults } from '../../../lib/work-assignments.js'
+import {
+  createWorkAssignmentData,
+  getAllWorkAssignmentsData,
+  getAssignmentDefaultsData,
+} from '../../../lib/work-assignments.js'
 
 export async function GET(request) {
   try {
@@ -23,7 +27,7 @@ export async function GET(request) {
     }
 
     const { searchParams } = new URL(request.url)
-    const scopedSession = resolvePreviewScopedSession(session, searchParams)
+    const scopedSession = await resolvePreviewScopedSession(session, searchParams)
 
     if (!canAccessAssignmentsRoute(scopedSession)) {
       return NextResponse.json({ error: 'Sem permissao para consultar afetacoes.' }, { status: 403 })
@@ -41,15 +45,17 @@ export async function GET(request) {
       return NextResponse.json({ error: 'Sem permissao para esta obra.' }, { status: 403 })
     }
 
-    const assignments = filterAssignmentsForSession(getAllWorkAssignments(filters), scopedSession)
+    const assignments = filterAssignmentsForSession(await getAllWorkAssignmentsData(filters), scopedSession)
 
     if (includeDefaults) {
+      const defaults = await getAssignmentDefaultsData()
+
       return NextResponse.json({
         items: assignments,
         defaults:
           isChefRole(scopedSession.role)
-            ? extendDefaultsForChef(getAssignmentDefaults(), scopedSession, filters)
-            : filterDefaultsForSession(getAssignmentDefaults(), scopedSession),
+            ? await extendDefaultsForChef(defaults, scopedSession, filters)
+            : filterDefaultsForSession(defaults, scopedSession),
       })
     }
 
@@ -73,7 +79,7 @@ export async function POST(request) {
 
     const body = await request.json()
     const { workPlanId, workId, personId, date, hours, hourlyCost, manualHourlyCost, notes, hasWorkAccess } = body
-    const targetDate = resolveDailyPlanDate({ workPlanId, date })
+    const targetDate = await resolveDailyPlanDate({ workPlanId, date })
 
     if (!workId || !personId || (!workPlanId && !date)) {
       return NextResponse.json({ error: 'workPlanId, workId e personId sao obrigatorios' }, { status: 400 })
@@ -90,7 +96,7 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Sem permissao para registar horas nesta obra.' }, { status: 403 })
     }
 
-    if (!isChefPersonAllowedForWork(session, { workPlanId, date, workId, personId })) {
+    if (!(await isChefPersonAllowedForWork(session, { workPlanId, date, workId, personId }))) {
       return NextResponse.json(
         { error: 'O chefe so pode registar pessoas colocadas pelo administrador no plano diario dessa obra.' },
         { status: 403 },
@@ -109,7 +115,17 @@ export async function POST(request) {
       return NextResponse.json({ error: 'hourlyCost nao pode ser negativo' }, { status: 400 })
     }
 
-    const assignment = createWorkAssignment({ workPlanId, workId, personId, date, hours, hourlyCost, manualHourlyCost, notes, hasWorkAccess })
+    const assignment = await createWorkAssignmentData({
+      workPlanId,
+      workId,
+      personId,
+      date,
+      hours,
+      hourlyCost,
+      manualHourlyCost,
+      notes,
+      hasWorkAccess,
+    })
     return NextResponse.json(assignment, { status: 201 })
   } catch (error) {
     const status = String(error.message || '').includes('nao encontrado') ? 404 : 500

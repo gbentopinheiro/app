@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server'
-import { getWorkAssignmentById, submitWorkAssignment } from '../../../../../lib/work-assignments.js'
+import {
+  getWorkAssignmentByIdData,
+  submitWorkAssignmentData,
+} from '../../../../../lib/work-assignments.js'
 import { isFeatureEnabled } from '../../../../../lib/feature-flags.js'
 import { getServerSession } from '../../../../../lib/server-session.js'
 import { isChefRole } from '../../../../../lib/roles.js'
@@ -18,7 +21,7 @@ export async function PATCH(request, { params }) {
     }
 
     const { id } = await params
-    const currentAssignment = getWorkAssignmentById(id)
+    const currentAssignment = await getWorkAssignmentByIdData(id)
 
     if (!currentAssignment) {
       return NextResponse.json({ error: 'Afetação não encontrada' }, { status: 404 })
@@ -42,7 +45,9 @@ export async function PATCH(request, { params }) {
       )
     }
 
-    const assignment = submitWorkAssignment(id, session.name || session.id)
+    const assignment = await submitWorkAssignmentData(id, session.name || session.id, {
+      actorSession: session,
+    })
 
     if (!assignment) {
       return NextResponse.json({ error: 'Afetação não encontrada' }, { status: 404 })

@@ -4,7 +4,7 @@ import {
   createPersonDocumentReminder,
   getPersonDocumentReminders,
 } from '../../../../../lib/person-document-reminders.js'
-import { getPersonById } from '../../../../../lib/people.js'
+import { getPersonByIdData } from '../../../../../lib/people.js'
 import { getServerSession } from '../../../../../lib/server-session.js'
 
 function getErrorStatus(error) {
@@ -34,7 +34,7 @@ export async function GET(request, { params }) {
     }
 
     const { id } = await params
-    const person = getPersonById(id)
+    const person = await getPersonByIdData(id)
 
     if (!person) {
       return NextResponse.json({ error: 'Pessoa nao encontrada.' }, { status: 404 })
@@ -59,7 +59,7 @@ export async function POST(request, { params }) {
     }
 
     const { id } = await params
-    const person = getPersonById(id)
+    const person = await getPersonByIdData(id)
 
     if (!person) {
       return NextResponse.json({ error: 'Pessoa nao encontrada.' }, { status: 404 })

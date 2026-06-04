@@ -357,7 +357,7 @@ export default async function DeveloperPage() {
     redirect('/')
   }
 
-  const dashboard = getDeveloperDashboardData()
+  const dashboard = await getDeveloperDashboardData()
   const featureFlags = getFeatureFlagDefinitions()
 
   return (

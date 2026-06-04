@@ -1,11 +1,9 @@
 import { NextResponse } from 'next/server'
-import { getAccessIdentityById, updateAccessIdentity } from '../../../../lib/access-identities.js'
-import { ACCOUNT_TYPE_ADMIN, ACCOUNT_TYPE_DEVELOPER, ACCOUNT_TYPE_OPERATIONAL, inferAccountType } from '../../../../lib/account-types.js'
-import { getAdminById, updateAdminPassword } from '../../../../lib/admins.js'
-import { getDeveloperById, updateDeveloperPassword } from '../../../../lib/developers.js'
+import { inferAccountType } from '../../../../lib/account-types.js'
 import { readProtectedRequestJson } from '../../../../lib/login-transport.js'
 import { getPasswordPolicyError, verifyPassword } from '../../../../lib/passwords.js'
 import { getServerSession } from '../../../../lib/server-session.js'
+import { getUserByUsernameData, updateUserPasswordData } from '../../../../lib/users.js'
 
 function validatePasswordPayload({ currentPassword, newPassword, confirmPassword }) {
   if (!currentPassword || !newPassword || !confirmPassword) {
@@ -48,52 +46,26 @@ export async function PATCH(request) {
       return NextResponse.json({ error: validationError }, { status: 400 })
     }
 
-    if (accountType === ACCOUNT_TYPE_DEVELOPER) {
-      const developer = getDeveloperById(session.userId)
+    const user = await getUserByUsernameData(session.username)
 
-      if (!developer) {
-        return NextResponse.json({ error: 'Conta nao encontrada.' }, { status: 404 })
-      }
-
-      if (!(await verifyPassword(currentPassword, developer.password))) {
-        return NextResponse.json({ error: 'A palavra-passe atual esta incorreta.' }, { status: 400 })
-      }
-
-      updateDeveloperPassword(developer.id, newPassword)
-      return NextResponse.json({ message: 'Palavra-passe atualizada com sucesso.' })
-    }
-
-    const accessIdentity =
-      accountType === ACCOUNT_TYPE_OPERATIONAL && session.personId ? getAccessIdentityById(session.userId) : null
-
-    if (accessIdentity) {
-      if (!(await verifyPassword(currentPassword, accessIdentity.password))) {
-        return NextResponse.json({ error: 'A palavra-passe atual esta incorreta.' }, { status: 400 })
-      }
-
-      updateAccessIdentity(accessIdentity.id, { password: newPassword })
-      return NextResponse.json({ message: 'Palavra-passe atualizada com sucesso.' })
-    }
-
-    if (accountType !== ACCOUNT_TYPE_ADMIN) {
+    if (!user) {
       return NextResponse.json({ error: 'Conta nao encontrada.' }, { status: 404 })
     }
 
-    const admin = getAdminById(session.userId)
-
-    if (!admin) {
-      return NextResponse.json({ error: 'Conta nao encontrada.' }, { status: 404 })
-    }
-
-    if (!(await verifyPassword(currentPassword, admin.password))) {
+    if (!(await verifyPassword(currentPassword, user.passwordHash || user.password))) {
       return NextResponse.json({ error: 'A palavra-passe atual esta incorreta.' }, { status: 400 })
     }
 
-    updateAdminPassword(admin.id, newPassword)
+    const updatedUser = await updateUserPasswordData(user.id, newPassword, { accountType })
+
+    if (!updatedUser) {
+      return NextResponse.json({ error: 'Conta nao encontrada.' }, { status: 404 })
+    }
+
     return NextResponse.json({ message: 'Palavra-passe atualizada com sucesso.' })
   } catch (error) {
     if (error.message?.includes('protecao') || error.message?.includes('protegido')) {
-      return NextResponse.json({ error: 'Pedido sensível não protegido.' }, { status: 400 })
+      return NextResponse.json({ error: 'Pedido sensivel nao protegido.' }, { status: 400 })
     }
 
     return NextResponse.json({ error: error.message || 'Erro ao atualizar palavra-passe.' }, { status: 500 })

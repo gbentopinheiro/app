@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { canAccessPeopleManagement } from '../../../../../../lib/auth.js'
 import { deletePersonDocumentReminder } from '../../../../../../lib/person-document-reminders.js'
-import { getPersonById } from '../../../../../../lib/people.js'
+import { getPersonByIdData } from '../../../../../../lib/people.js'
 import { getServerSession } from '../../../../../../lib/server-session.js'
 
 export async function DELETE(request, { params }) {
@@ -17,7 +17,7 @@ export async function DELETE(request, { params }) {
     }
 
     const { id, documentId } = await params
-    const person = getPersonById(id)
+    const person = await getPersonByIdData(id)
 
     if (!person) {
       return NextResponse.json({ error: 'Pessoa nao encontrada.' }, { status: 404 })

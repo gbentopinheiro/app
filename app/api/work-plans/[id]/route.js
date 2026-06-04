@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server'
-import { deleteWorkPlan, getWorkPlanById, updateWorkPlan } from '../../../../lib/work-plans.js'
-import { getAllWorkAssignments } from '../../../../lib/work-assignments.js'
+import { deleteWorkPlanData, getWorkPlanByIdData, updateWorkPlanData } from '../../../../lib/work-plans.js'
+import { getAllWorkAssignmentsData } from '../../../../lib/work-assignments.js'
 
 export async function GET(request, { params }) {
   try {
     const { id } = await params
-    const workPlan = getWorkPlanById(id)
+    const workPlan = await getWorkPlanByIdData(id)
 
     if (!workPlan) {
       return NextResponse.json({ error: 'Work plan não encontrado' }, { status: 404 })
@@ -23,7 +23,7 @@ export async function PUT(request, { params }) {
     const body = await request.json()
     const { date } = body
 
-    const workPlan = updateWorkPlan(id, { date })
+    const workPlan = await updateWorkPlanData(id, { date })
 
     if (!workPlan) {
       return NextResponse.json({ error: 'Work plan não encontrado' }, { status: 404 })
@@ -39,7 +39,7 @@ export async function PUT(request, { params }) {
 export async function DELETE(request, { params }) {
   try {
     const { id } = await params
-    const linkedAssignments = getAllWorkAssignments({ workPlanId: id })
+    const linkedAssignments = await getAllWorkAssignmentsData({ workPlanId: id })
 
     if (linkedAssignments.length > 0) {
       return NextResponse.json(
@@ -48,7 +48,7 @@ export async function DELETE(request, { params }) {
       )
     }
 
-    const deleted = deleteWorkPlan(id)
+    const deleted = await deleteWorkPlanData(id)
 
     if (!deleted) {
       return NextResponse.json({ error: 'Work plan não encontrado' }, { status: 404 })

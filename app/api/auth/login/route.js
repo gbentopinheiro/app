@@ -1,48 +1,47 @@
 import { NextResponse } from 'next/server'
-import { getAdminByUsername, updateAdminPassword } from '../../../../lib/admins.js'
-import { getAccessIdentityByUsername, updateAccessIdentity } from '../../../../lib/access-identities.js'
+import { getAccessIdentityByPersonIdData, getAccessIdentityByUsernameData } from '../../../../lib/access-identities.js'
 import { ACCOUNT_TYPE_ADMIN, ACCOUNT_TYPE_DEVELOPER, ACCOUNT_TYPE_OPERATIONAL } from '../../../../lib/account-types.js'
 import { createSessionToken, getDefaultPathForRole, getSessionCookieOptions, SESSION_COOKIE_NAME } from '../../../../lib/auth.js'
-import { getDeveloperByUsername, updateDeveloperPassword } from '../../../../lib/developers.js'
 import { readProtectedRequestJson } from '../../../../lib/login-transport.js'
 import { clearFailedLoginAttempts, getLoginBlockState, recordFailedLoginAttempt } from '../../../../lib/login-attempts.js'
 import { recordLoginEvent } from '../../../../lib/login-audit.js'
 import { isBcryptPassword, verifyPassword } from '../../../../lib/passwords.js'
 import { ROLE_DEVELOPER, canRoleSignIn } from '../../../../lib/roles.js'
+import { getUserByUsernameData, touchUserLastLoginData, updateUserPasswordData } from '../../../../lib/users.js'
 
-function buildAdminSession(admin) {
+function buildAdminSession(user) {
   return {
-    userId: admin.id,
+    userId: user.id,
     personId: 0,
-    username: admin.username,
-    name: admin.name || admin.username,
+    username: user.username,
+    name: user.name || user.username,
     role: 'admin',
     accountType: ACCOUNT_TYPE_ADMIN,
     workIds: [],
   }
 }
 
-function buildDeveloperSession(developer) {
+function buildDeveloperSession(user) {
   return {
-    userId: developer.id,
+    userId: user.id,
     personId: 0,
-    username: developer.username,
-    name: developer.name || developer.username,
+    username: user.username,
+    name: user.name || user.username,
     role: ROLE_DEVELOPER,
     accountType: ACCOUNT_TYPE_DEVELOPER,
     workIds: [],
   }
 }
 
-function buildAccessIdentitySession(identity) {
+function buildAccessIdentitySession(identity, user) {
   return {
-    userId: identity.id,
-    personId: identity.person?.id || identity.personId || 0,
-    username: identity.username,
-    name: identity.person?.name || identity.username,
-    role: identity.person?.role || identity.role,
+    userId: user.id,
+    personId: identity?.person?.id || identity?.personId || user.personId || 0,
+    username: user.username,
+    name: identity?.person?.name || user.name || user.username,
+    role: identity?.person?.role || identity?.role || user.person?.role || user.role,
     accountType: ACCOUNT_TYPE_OPERATIONAL,
-    workIds: Array.isArray(identity.works) ? identity.works.map(work => work.id) : [],
+    workIds: Array.isArray(identity?.works) ? identity.works.map(work => work.id) : [],
   }
 }
 
@@ -79,7 +78,7 @@ export async function POST(request) {
     const password = String(body.password || '')
 
     if (!username || !password) {
-      return NextResponse.json({ error: 'Username e password são obrigatórios.' }, { status: 400 })
+      return NextResponse.json({ error: 'Username e password sao obrigatorios.' }, { status: 400 })
     }
 
     const currentBlockState = getLoginBlockState(username)
@@ -88,64 +87,84 @@ export async function POST(request) {
       return buildBlockedLoginResponse(currentBlockState.retryAfterSeconds)
     }
 
-    const accessIdentity = getAccessIdentityByUsername(username)
-    const developer = accessIdentity ? null : getDeveloperByUsername(username)
-    const admin = accessIdentity || developer ? null : getAdminByUsername(username)
-    const user = accessIdentity || developer || admin
+    const user = await getUserByUsernameData(username)
 
-    if (!user || !(await verifyPassword(password, user.password))) {
+    if (!user || !(await verifyPassword(password, user.passwordHash || user.password))) {
       const failedAttemptState = recordFailedLoginAttempt(username)
 
       if (failedAttemptState.blocked) {
         return buildBlockedLoginResponse(failedAttemptState.retryAfterSeconds)
       }
 
-      return NextResponse.json({ error: 'Credenciais inválidas.' }, { status: 401 })
+      return NextResponse.json({ error: 'Credenciais invalidas.' }, { status: 401 })
     }
 
     clearFailedLoginAttempts(username)
 
-    if (!isBcryptPassword(user.password)) {
-      const migrationOptions = { enforcePolicy: false }
-
-      if (accessIdentity) updateAccessIdentity(accessIdentity.id, { password }, migrationOptions)
-      if (developer) updateDeveloperPassword(developer.id, password, migrationOptions)
-      if (admin) updateAdminPassword(admin.id, password, migrationOptions)
+    if (user.active === false || user.deletedAt) {
+      return NextResponse.json(
+        { error: 'Esta conta nao esta disponivel para iniciar sessao.' },
+        { status: 403 },
+      )
     }
+
+    if (!isBcryptPassword(user.passwordHash || user.password)) {
+      await updateUserPasswordData(user.id, password, {
+        enforcePolicy: false,
+        accountType: user.accountType,
+      })
+    }
+
+    const accessIdentity =
+      user.accountType === ACCOUNT_TYPE_OPERATIONAL
+        ? (await getAccessIdentityByPersonIdData(user.personId)) || (await getAccessIdentityByUsernameData(user.username))
+        : null
 
     if (
-      accessIdentity?.personId &&
-      (!accessIdentity.person || accessIdentity.person.missing || accessIdentity.person.role !== accessIdentity.role)
+      user.accountType === ACCOUNT_TYPE_OPERATIONAL &&
+      user.personId &&
+      (!accessIdentity ||
+        !accessIdentity.person ||
+        accessIdentity.person.missing ||
+        accessIdentity.person.role !== (user.person?.role || user.role))
     ) {
       return NextResponse.json(
-        { error: 'O acesso desta pessoa não está corretamente ligado ao role configurado.' },
+        { error: 'O acesso desta pessoa nao esta corretamente ligado ao role configurado.' },
         { status: 403 },
       )
     }
 
-    if (accessIdentity && !canRoleSignIn(accessIdentity.role)) {
+    const signInRole = user.person?.role || accessIdentity?.role || user.role
+
+    if (user.accountType === ACCOUNT_TYPE_OPERATIONAL && !canRoleSignIn(signInRole)) {
       return NextResponse.json(
-        { error: 'Este perfil ainda não tem acesso à aplicação.' },
+        { error: 'Este perfil ainda nao tem acesso a aplicacao.' },
         { status: 403 },
       )
     }
 
-    const session = developer
-      ? buildDeveloperSession(developer)
-      : admin
-        ? buildAdminSession(admin)
-        : buildAccessIdentitySession(accessIdentity)
+    const session = user.accountType === ACCOUNT_TYPE_DEVELOPER
+      ? buildDeveloperSession(user)
+      : user.accountType === ACCOUNT_TYPE_ADMIN
+        ? buildAdminSession(user)
+        : buildAccessIdentitySession(accessIdentity, user)
 
     try {
       recordLoginEvent(
         buildLoginAuditPayload({
           session,
-          accountType: developer ? 'developer' : admin ? 'admin' : 'operational',
+          accountType: user.accountType,
           request,
         }),
       )
     } catch (auditError) {
       console.error('Error recording login event:', auditError.message)
+    }
+
+    try {
+      await touchUserLastLoginData(user.id)
+    } catch (touchError) {
+      console.error('Error updating last login timestamp:', touchError.message)
     }
 
     const token = await createSessionToken(session)
@@ -161,9 +180,9 @@ export async function POST(request) {
     return response
   } catch (error) {
     if (error.message?.includes('protecao') || error.message?.includes('protegido')) {
-      return NextResponse.json({ error: 'Pedido de login não protegido.' }, { status: 400 })
+      return NextResponse.json({ error: 'Pedido de login nao protegido.' }, { status: 400 })
     }
 
-    return NextResponse.json({ error: 'Erro ao iniciar sessão.' }, { status: 500 })
+    return NextResponse.json({ error: 'Erro ao iniciar sessao.' }, { status: 500 })
   }
 }

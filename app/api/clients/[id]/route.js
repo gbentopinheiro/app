@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server'
-import { deleteClient, getClientById, updateClient } from '../../../../lib/clients.js'
-import { getAllWorks } from '../../../../lib/works.js'
+import { deleteClientData, getClientByIdData, updateClientData } from '../../../../lib/clients.js'
+import { getAllWorksData } from '../../../../lib/works.js'
 
 export async function GET(request, { params }) {
   try {
     const { id } = await params
-    const client = getClientById(id)
+    const client = await getClientByIdData(id)
 
     if (!client) {
       return NextResponse.json({ error: 'Cliente não encontrado' }, { status: 404 })
@@ -23,7 +23,7 @@ export async function PUT(request, { params }) {
     const body = await request.json()
     const { name, vatNumber, contactName, email, phone, notes } = body
 
-    const client = updateClient(id, { name, vatNumber, contactName, email, phone, notes })
+    const client = await updateClientData(id, { name, vatNumber, contactName, email, phone, notes })
 
     if (!client) {
       return NextResponse.json({ error: 'Cliente não encontrado' }, { status: 404 })
@@ -38,7 +38,7 @@ export async function PUT(request, { params }) {
 export async function DELETE(request, { params }) {
   try {
     const { id } = await params
-    const linkedWorks = getAllWorks().filter(work => work.clientId === parseInt(id))
+    const linkedWorks = (await getAllWorksData()).filter(work => work.clientId === parseInt(id))
 
     if (linkedWorks.length > 0) {
       return NextResponse.json(
@@ -47,7 +47,7 @@ export async function DELETE(request, { params }) {
       )
     }
 
-    const deleted = deleteClient(id)
+    const deleted = await deleteClientData(id)
 
     if (!deleted) {
       return NextResponse.json({ error: 'Cliente não encontrado' }, { status: 404 })

@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server'
-import { deleteWork, getWorkById, updateWork } from '../../../../lib/works.js'
-import { getClientById } from '../../../../lib/clients.js'
-import { repriceWorkAssignmentsForWork } from '../../../../lib/work-assignments.js'
+import { deleteWorkData, getWorkByIdData, updateWorkData } from '../../../../lib/works.js'
+import { getClientByIdData } from '../../../../lib/clients.js'
+import { repriceWorkAssignmentsForWorkData } from '../../../../lib/work-assignments.js'
 
 export async function GET(request, { params }) {
   try {
     const { id } = await params
-    const work = getWorkById(id)
+    const work = await getWorkByIdData(id)
 
     if (!work) {
       return NextResponse.json({ error: 'Obra não encontrada' }, { status: 404 })
@@ -39,7 +39,7 @@ export async function PUT(request, { params }) {
       pricingChangeApplication,
     } = body
 
-    if (clientId !== undefined && (!clientId || !getClientById(clientId))) {
+    if (clientId !== undefined && (!clientId || !(await getClientByIdData(clientId)))) {
       return NextResponse.json({ error: 'A obra tem de pertencer a um cliente válido' }, { status: 400 })
     }
 
@@ -59,7 +59,7 @@ export async function PUT(request, { params }) {
       return NextResponse.json({ error: 'A data de aplicacao da tarifa e invalida' }, { status: 400 })
     }
 
-    const updatedWork = updateWork(id, {
+    const updatedWork = await updateWorkData(id, {
       name,
       clientId,
       location,
@@ -80,7 +80,7 @@ export async function PUT(request, { params }) {
     }
 
     const repricedAssignmentsCount = pricingChangeApplication?.startDate
-      ? repriceWorkAssignmentsForWork(id, pricingChangeApplication.startDate)
+      ? await repriceWorkAssignmentsForWorkData(id, pricingChangeApplication.startDate)
       : 0
 
     return NextResponse.json({
@@ -97,7 +97,7 @@ export async function PUT(request, { params }) {
 export async function DELETE(request, { params }) {
   try {
     const { id } = await params
-    const deleted = deleteWork(id)
+    const deleted = await deleteWorkData(id)
 
     if (!deleted) {
       return NextResponse.json({ error: 'Obra não encontrada' }, { status: 404 })

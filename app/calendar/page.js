@@ -5,7 +5,7 @@ import { canAccessCalendarManagement } from '../../lib/auth.js'
 import { getAllCalendarEvents } from '../../lib/calendar-events.js'
 import { markCalendarNotificationsSeen } from '../../lib/calendar-notifications.js'
 import { isFeatureEnabled } from '../../lib/feature-flags.js'
-import { getAllPeople } from '../../lib/people.js'
+import { getAllPeopleData } from '../../lib/people.js'
 import { getServerSession } from '../../lib/server-session.js'
 
 const pageStyle = {
@@ -74,7 +74,7 @@ export default async function CalendarPage() {
   const initialMonthKey = `${currentYear}-${String(currentMonth).padStart(2, '0')}`
   const todayDate = formatDateKey(currentYear, currentMonth, today.getDate())
   const initialEvents = getAllCalendarEvents({ year: currentYear, month: currentMonth }).map(event => ({ ...event }))
-  const peopleNames = getAllPeople()
+  const peopleNames = (await getAllPeopleData())
     .map(person => person.name)
     .filter(Boolean)
     .sort((left, right) => left.localeCompare(right, 'pt-PT'))

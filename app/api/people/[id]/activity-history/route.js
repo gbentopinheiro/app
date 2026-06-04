@@ -1,7 +1,7 @@
 ﻿import { NextResponse } from 'next/server'
 import { canManageEntireApp } from '../../../../../lib/auth.js'
 import { getAllDailyWorkNotes } from '../../../../../lib/daily-work-notes.js'
-import { getPersonById } from '../../../../../lib/people.js'
+import { getPersonByIdData } from '../../../../../lib/people.js'
 import { getServerSession } from '../../../../../lib/server-session.js'
 import { getAllWorkAssignments } from '../../../../../lib/work-assignments.js'
 
@@ -364,7 +364,7 @@ export async function GET(request, { params }) {
   }
 
   const { id } = await params
-  const person = getPersonById(id)
+  const person = await getPersonByIdData(id)
 
   if (!person) {
     return NextResponse.json({ error: 'Pessoa nÃ£o encontrada.' }, { status: 404 })
