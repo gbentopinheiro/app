@@ -485,7 +485,8 @@ export default function DailyPlanPage() {
     !assignmentForm.id &&
     assignmentForm.workId &&
     selectedPerson &&
-    isChefRole(selectedPerson.role),
+    isChefRole(selectedPerson.role) &&
+    selectedWorkChefAssignments.length > 0,
   )
   const selectedWorkAccessChef = useMemo(() => {
     const chefAccessAssignmentId = getChefAccessAssignmentId(selectedWorkChefAssignments)
@@ -772,18 +773,28 @@ export default function DailyPlanPage() {
     const { name, value } = event.target
 
     setAssignmentForm(current => {
+      const nextPersonId = name === 'personId' ? value : current.personId
+      const nextWorkId = name === 'workId' ? value : current.workId
+      const nextPerson = defaults.people.find(person => String(person.id) === String(nextPersonId))
+      const nextWorkChefAssignments = assignments.filter(
+        assignment =>
+          String(assignment.workId) === String(nextWorkId) &&
+          isChefRole(assignment.person?.role) &&
+          (!current.id || String(assignment.id) !== String(current.id)),
+      )
       const nextForm = {
         ...current,
         [name]: value,
       }
 
-      if (name === 'personId') {
-        const nextPerson = defaults.people.find(person => String(person.id) === String(value))
-        if (!canRoleUseManualHourlyCost(nextPerson?.role)) {
-          nextForm.manualHourlyCost = false
-          nextForm.hourlyCost = ''
-        }
+      if (!canRoleUseManualHourlyCost(nextPerson?.role)) {
+        nextForm.manualHourlyCost = false
+        nextForm.hourlyCost = ''
+      }
 
+      if (!current.id) {
+        nextForm.hasWorkAccess = isChefRole(nextPerson?.role) ? nextWorkChefAssignments.length === 0 : false
+      } else if (name === 'personId') {
         if (!isChefRole(nextPerson?.role)) {
           nextForm.hasWorkAccess = false
         }

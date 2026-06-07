@@ -27,5 +27,12 @@
       "2026-06-03T21:24:45.812Z"
     ],
     "blockedUntil": ""
+  },
+  {
+    "username": "chef",
+    "failedAt": [
+      "2026-06-04T20:44:19.096Z"
+    ],
+    "blockedUntil": ""
   }
 ]

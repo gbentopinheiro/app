@@ -2,6 +2,12 @@ import { NextResponse } from 'next/server'
 import { createWorkData, getAllWorksData } from '../../../lib/works.js'
 import { getClientByIdData } from '../../../lib/clients.js'
 
+function getWorkMutationErrorResponse(error, fallbackMessage) {
+  const message = String(error?.message || fallbackMessage).trim() || fallbackMessage
+  const status = message === 'Ja existe uma obra com esse numero nesta empresa' ? 409 : 500
+  return NextResponse.json({ error: message }, { status })
+}
+
 export async function GET() {
   try {
     const works = await getAllWorksData()
@@ -54,6 +60,6 @@ export async function POST(request) {
 
     return NextResponse.json(newWork, { status: 201 })
   } catch (error) {
-    return NextResponse.json({ error: 'Erro ao criar obra' }, { status: 500 })
+    return getWorkMutationErrorResponse(error, 'Erro ao criar obra')
   }
 }

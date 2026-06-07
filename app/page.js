@@ -5,7 +5,7 @@ import { isFeatureEnabled } from '../lib/feature-flags.js'
 import { getServerSession } from '../lib/server-session.js'
 import { isChefRole, isResponsavelRole } from '../lib/roles.js'
 import { getAllPeopleData } from '../lib/people.js'
-import { getAllWorkAssignments } from '../lib/work-assignments.js'
+import { getAllWorkAssignmentsData } from '../lib/work-assignments.js'
 import { isAssignmentApproved } from '../lib/work-assignment-approval.js'
 import { getAllWorksData, WorkStatus } from '../lib/works.js'
 import { getAllDailyWorkNotes } from '../lib/daily-work-notes.js'
@@ -17,28 +17,28 @@ import { getOperationNotifications } from '../lib/operation-notifications.js'
 const modules = [
   {
     href: '/daily-hours',
-    title: 'Registo diário de horas',
+    title: 'Horas',
     accent: 'linear-gradient(135deg, rgba(37, 99, 235, 0.18) 0%, rgba(59, 130, 246, 0.08) 100%)',
     bar: 'linear-gradient(90deg, #2563eb 0%, #60a5fa 100%)',
     label: 'Operação diária',
   },
   {
     href: '/works',
-    title: 'Gestão de obra',
+    title: 'Clientes/Obras',
     accent: 'linear-gradient(135deg, rgba(37, 99, 235, 0.18) 0%, rgba(59, 130, 246, 0.08) 100%)',
     bar: 'linear-gradient(90deg, #2563eb 0%, #60a5fa 100%)',
     label: 'Planeamento',
   },
   {
     href: '/people',
-    title: 'Gestão de pessoas',
+    title: 'Pessoas',
     accent: 'linear-gradient(135deg, rgba(37, 99, 235, 0.18) 0%, rgba(59, 130, 246, 0.08) 100%)',
     bar: 'linear-gradient(90deg, #2563eb 0%, #60a5fa 100%)',
     label: 'Recursos',
   },
   {
     href: '/daily-plan',
-    title: 'Plano diário',
+    title: 'Planeamento',
     accent: 'linear-gradient(135deg, rgba(37, 99, 235, 0.18) 0%, rgba(59, 130, 246, 0.08) 100%)',
     bar: 'linear-gradient(90deg, #2563eb 0%, #60a5fa 100%)',
     label: 'Coordenação',
@@ -1138,7 +1138,7 @@ function getCalendarOverview(username) {
 async function getDashboardStats() {
   const people = await getAllPeopleData()
   const currentYear = new Date().getFullYear()
-  const yearAssignments = getAllWorkAssignments().filter(assignment => {
+  const yearAssignments = (await getAllWorkAssignmentsData()).filter(assignment => {
     const assignmentYear = assignment.date ? new Date(`${assignment.date}T00:00:00`).getFullYear() : null
     return assignmentYear === currentYear
   })
@@ -1173,7 +1173,7 @@ async function getDashboardStats() {
 
 async function getWorkSubmissionStatus() {
   const works = await getAllWorksData()
-  const todayAssignments = getAllWorkAssignments({ date: getTodayDate() })
+  const todayAssignments = await getAllWorkAssignmentsData({ date: getTodayDate() })
 
   return works
     .filter(work => work.status !== WorkStatus.COMPLETED)
@@ -1290,7 +1290,7 @@ export default async function Home() {
             <div style={dashboardGridStyle}>
               {!isResponsavel && (
                 <div style={workStatusTableStyle}>
-                  <h3 style={workStatusTitleStyle}>Estado das obras hoje</h3>
+                  <h3 style={workStatusTitleStyle}>Estado operacional</h3>
                   <div style={workStatusListStyle}>
                     {workSubmissionStatus.map(work => (
                       <div key={work.id} style={workStatusRowStyle}>

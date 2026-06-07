@@ -3,6 +3,12 @@ import { deleteWorkData, getWorkByIdData, updateWorkData } from '../../../../lib
 import { getClientByIdData } from '../../../../lib/clients.js'
 import { repriceWorkAssignmentsForWorkData } from '../../../../lib/work-assignments.js'
 
+function getWorkMutationErrorResponse(error, fallbackMessage) {
+  const message = String(error?.message || fallbackMessage).trim() || fallbackMessage
+  const status = message === 'Ja existe uma obra com esse numero nesta empresa' ? 409 : 500
+  return NextResponse.json({ error: message }, { status })
+}
+
 export async function GET(request, { params }) {
   try {
     const { id } = await params
@@ -90,7 +96,7 @@ export async function PUT(request, { params }) {
       pricingApplicationMode: pricingChangeApplication?.mode || null,
     })
   } catch (error) {
-    return NextResponse.json({ error: 'Erro ao atualizar obra' }, { status: 500 })
+    return getWorkMutationErrorResponse(error, 'Erro ao atualizar obra')
   }
 }
 

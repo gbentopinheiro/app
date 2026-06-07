@@ -2256,20 +2256,25 @@ export default function PeoplePage() {
 
     try {
       const hoursGrid = buildPeopleHoursGrid(exportMonthKey, exportPeople, assignments)
-      const excelDocument = buildPeopleExcelDocument(
+      const workbook = buildPeopleExcelWorkbook(
         rows,
         exportSummary,
         formatDateLabel(getExportDateLabel()),
         hoursGrid,
       )
-      const blob = new Blob([`\ufeff${excelDocument}`], {
-        type: 'application/vnd.ms-excel;charset=utf-8',
+      const workbookBytes = XLSX.write(workbook, {
+        bookType: 'xlsx',
+        cellStyles: true,
+        type: 'array',
+      })
+      const blob = new Blob([workbookBytes], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       })
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
 
       link.href = url
-      link.download = `pessoas-${getExportDateLabel()}-${exportMonthKey}.xls`
+      link.download = `pessoas-${getExportDateLabel()}-${exportMonthKey}.xlsx`
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)

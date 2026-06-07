@@ -137,10 +137,10 @@ export default function HoursApprovalPage() {
 
       setAssignments(data)
       
-      // Initialize approval values with dailyHours
+      // Initialize approval values with the chef-reported hours
       const initialValues = {}
       data.forEach(a => {
-        initialValues[a.id] = a.approvedHours ?? a.dailyHours ?? a.hours
+        initialValues[a.id] = a.approvedHours ?? a.hours ?? a.dailyHours
       })
       setApprovalValues(initialValues)
     } catch (err) {
@@ -232,7 +232,7 @@ export default function HoursApprovalPage() {
           <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>
             Horas Diárias
           </div>
-          <div style={{ fontWeight: 700 }}>{assignment.dailyHours}h</div>
+          <div style={{ fontWeight: 700 }}>{assignment.hours ?? assignment.dailyHours}h</div>
         </div>
 
         <div>
@@ -375,7 +375,7 @@ export default function HoursApprovalPage() {
                     <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>
                       Horas Diárias
                     </div>
-                    <div style={{ fontWeight: 700 }}>{assignment.dailyHours}h</div>
+                    <div style={{ fontWeight: 700 }}>{assignment.hours ?? assignment.dailyHours}h</div>
                   </div>
 
                   <div>

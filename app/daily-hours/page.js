@@ -180,6 +180,11 @@ function chefHoursInputStyle(disabled) {
   }
 }
 
+function resolveChefReportedHours(entry) {
+  if (!entry) return 0
+  return entry.hours ?? entry.dailyHours ?? 0
+}
+
 const reminderCardStyle = {
   borderRadius: '20px',
   padding: '16px 18px',
@@ -913,8 +918,8 @@ export default function DailyHoursPage() {
     const fallbackValue =
       approvalValues[entry.id] ??
       entry.approvedHours ??
-      entry.dailyHours ??
       entry.hours ??
+      entry.dailyHours ??
       0
     const rawValue =
       editingValue !== undefined && editingValue !== '' ? editingValue : fallbackValue
@@ -1623,10 +1628,10 @@ export default function DailyHoursPage() {
                           </div>
                         ) : (
                           <div style={{ display: 'flex', gap: '8px', alignItems: 'center', justifyContent: 'center' }}>
-                            <span style={{ fontWeight: 700 }}>{entry.dailyHours}h</span>
+                            <span style={{ fontWeight: 700 }}>{resolveChefReportedHours(entry)}h</span>
                             <button
                               type="button"
-                              onClick={() => handleEditChefHours(entry.id, entry.dailyHours)}
+                              onClick={() => handleEditChefHours(entry.id, resolveChefReportedHours(entry))}
                               style={editPencilButtonStyle}
                               title="Editar horas do chefe"
                               aria-label="Editar horas do chefe"
@@ -1689,11 +1694,11 @@ export default function DailyHoursPage() {
                         ) : (
                           <div style={{ display: 'flex', gap: '8px', alignItems: 'center', justifyContent: 'center' }}>
                             <span style={{ fontWeight: 700, color: 'var(--vp-text-soft)' }}>
-                              {entry.dailyHours}h
+                              {resolveChefReportedHours(entry)}h
                             </span>
                             <button
                               type="button"
-                              onClick={() => handleEditApprovedHours(entry.id, entry.dailyHours)}
+                              onClick={() => handleEditApprovedHours(entry.id, resolveChefReportedHours(entry))}
                               style={editPencilButtonStyle}
                               title="Editar horas aprovadas"
                               aria-label="Editar horas aprovadas"

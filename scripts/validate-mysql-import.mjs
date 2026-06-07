@@ -1,41 +1,29 @@
 import { PrismaClient } from '@prisma/client'
 import { createPrismaAdapter } from '../lib/prisma-adapter.js'
 import {
-  buildMysqlMigrationSnapshot,
-  readMysqlMigrationSnapshot,
-  snapshotFilePath,
-  writeMysqlMigrationSnapshot,
-} from './mysql-migration-utils.mjs'
+  buildMysqlValidationBaselineFromCounts,
+  getMysqlCountSnapshot,
+  readMysqlValidationBaseline,
+  validationBaselineFilePath,
+  writeMysqlValidationBaseline,
+} from './mysql-validation-baseline-utils.mjs'
 
 const prisma = new PrismaClient({
   adapter: createPrismaAdapter(),
 })
 
 async function main() {
-  const snapshot = await loadSnapshot()
-
   await prisma.$connect()
 
-  const actualCounts = {
-    companies: await prisma.company.count(),
-    clients: await prisma.client.count(),
-    people: await prisma.person.count(),
-    works: await prisma.work.count(),
-    workWorkingDays: await prisma.workWorkingDay.count(),
-    workRoleHourlyCosts: await prisma.workRoleHourlyCost.count(),
-    workPersonHourlyCosts: await prisma.workPersonHourlyCost.count(),
-    workPlans: await prisma.workPlan.count(),
-    users: await prisma.user.count(),
-    workAssignments: await prisma.workAssignment.count(),
-    dailyWorkNotes: await prisma.dailyWorkNote.count(),
-    loginEvents: await prisma.loginEvent.count(),
-  }
+  const actualCounts = await getMysqlCountSnapshot(prisma)
+  const baseline = await loadValidationBaseline(actualCounts)
 
-  const expectedCounts = snapshot.targetCounts
+  const expectedCounts = baseline.targetCounts
   const mismatches = Object.entries(expectedCounts).filter(
     ([key, expectedValue]) => actualCounts[key] !== expectedValue,
   )
 
+  console.log(`Baseline de validacao: ${validationBaselineFilePath}`)
   console.log('Contagens esperadas:')
   console.log(JSON.stringify(expectedCounts, null, 2))
   console.log('Contagens atuais em MySQL:')
@@ -53,14 +41,14 @@ async function main() {
   console.log('Validacao MySQL concluida sem divergencias.')
 }
 
-async function loadSnapshot() {
+async function loadValidationBaseline(actualCounts) {
   try {
-    return await readMysqlMigrationSnapshot()
+    return await readMysqlValidationBaseline()
   } catch (error) {
-    const snapshot = await buildMysqlMigrationSnapshot()
-    await writeMysqlMigrationSnapshot(snapshot)
-    console.log(`Snapshot criado automaticamente em ${snapshotFilePath}`)
-    return snapshot
+    const baseline = buildMysqlValidationBaselineFromCounts(actualCounts)
+    await writeMysqlValidationBaseline(baseline)
+    console.log(`Baseline de validacao criada automaticamente em ${validationBaselineFilePath}`)
+    return baseline
   }
 }
 

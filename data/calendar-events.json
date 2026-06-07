@@ -74,5 +74,24 @@
     "createdBy": "Maria Helena Gonçalves Nunes Bento",
     "createdAt": "2026-05-28T19:12:12.067Z",
     "updatedAt": "2026-05-28T19:12:29.957Z"
+  },
+  {
+    "id": 5,
+    "date": "2026-06-06",
+    "title": "Abel Martins Pinheiro",
+    "type": "viagem",
+    "transport": "aviao",
+    "airport": "charleroi",
+    "destination": "Porto",
+    "departureDate": "2026-06-06",
+    "arrivalDate": "2026-06-09",
+    "departureTime": "21:03",
+    "arrivalTime": "21:03",
+    "outboundFlightReference": "",
+    "returnFlightReference": "",
+    "color": "#2563eb",
+    "createdBy": "Administrador",
+    "createdAt": "2026-06-05T15:04:00.922Z",
+    "updatedAt": "2026-06-05T15:04:00.922Z"
   }
 ]

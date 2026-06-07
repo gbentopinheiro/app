@@ -1507,8 +1507,11 @@ export default function WorkDetailPage() {
     <main style={pageStyle}>
       <div style={shellStyle}>
         <section style={heroPanelStyle}>
-          <Link href="/works" style={{ color: 'var(--vp-accent)', textDecoration: 'none', fontWeight: 700 }}>
-            Voltar à gestão de obra
+          <Link
+            href={work?.clientId ? `/works/client/${work.clientId}` : '/works'}
+            style={{ color: 'var(--vp-accent)', textDecoration: 'none', fontWeight: 700 }}
+          >
+            {work?.clientId ? 'Voltar ao cliente' : 'Voltar à gestão de obra'}
           </Link>
 
           {loading && <p style={{ marginTop: '18px' }}>A carregar obra...</p>}

@@ -1,0 +1,21 @@
+{
+  "generatedAt": "2026-06-07T21:32:50.307Z",
+  "source": "mysql-runtime-baseline",
+  "targetCounts": {
+    "accessProfiles": 5,
+    "permissions": 63,
+    "accessProfilePermissions": 82,
+    "companies": 1,
+    "clients": 4,
+    "people": 74,
+    "works": 3,
+    "workWorkingDays": 16,
+    "workRoleHourlyCosts": 6,
+    "workPersonHourlyCosts": 0,
+    "workPlans": 26,
+    "users": 17,
+    "workAssignments": 124,
+    "dailyWorkNotes": 0,
+    "loginEvents": 80
+  }
+}
