@@ -215,11 +215,36 @@ model User {
   person              Person?           @relation(fields: [personId], references: [id], onDelete: SetNull, onUpdate: Cascade)
   submittedAssignments WorkAssignment[] @relation("SubmittedByUser")
   approvedAssignments WorkAssignment[]  @relation("ApprovedByUser")
+  developerOverrideEvents DeveloperOverrideEvent[]
   loginEvents         LoginEvent[]
 
   @@index([accessProfileId])
   @@index([accountType, active])
   @@map("users")
+}
+
+model DeveloperOverrideEvent {
+  id                Int       @id @default(autoincrement())
+  developerUserId   Int?      @map("developer_user_id")
+  developerUsername String    @map("developer_username") @db.VarChar(191)
+  permissionKeyUsed String    @map("permission_key_used") @db.VarChar(191)
+  overrideType      String    @map("override_type") @db.VarChar(64)
+  entityType        String    @map("entity_type") @db.VarChar(64)
+  entityId          Int?      @map("entity_id")
+  targetDate        DateTime? @map("target_date") @db.Date
+  action            String    @db.VarChar(64)
+  reason            String    @db.Text
+  beforeState       Json?     @map("before_state")
+  afterState        Json?     @map("after_state")
+  result            String    @db.VarChar(32)
+  errorMessage      String?   @map("error_message") @db.Text
+  createdAt         DateTime  @default(now()) @map("created_at")
+  developerUser     User?     @relation(fields: [developerUserId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  @@index([developerUserId])
+  @@index([createdAt])
+  @@index([overrideType, entityType])
+  @@map("developer_override_events")
 }
 
 model WorkAssignment {

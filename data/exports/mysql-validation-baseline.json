@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-06-08T12:36:50.317Z",
+  "generatedAt": "2026-06-08T16:05:06.961Z",
   "source": "mysql-runtime-baseline",
   "targetCounts": {
     "accessProfiles": 5,
-    "permissions": 64,
-    "accessProfilePermissions": 83,
+    "permissions": 66,
+    "accessProfilePermissions": 85,
     "companies": 1,
     "clients": 4,
     "people": 74,
@@ -16,6 +16,7 @@
     "users": 17,
     "workAssignments": 132,
     "dailyWorkNotes": 0,
+    "developerOverrideEvents": 0,
     "loginEvents": 80
   }
 }
