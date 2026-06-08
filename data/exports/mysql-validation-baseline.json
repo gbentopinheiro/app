@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-07T22:20:03.826Z",
+  "generatedAt": "2026-06-08T12:36:50.317Z",
   "source": "mysql-runtime-baseline",
   "targetCounts": {
     "accessProfiles": 5,
@@ -12,9 +12,9 @@
     "workWorkingDays": 16,
     "workRoleHourlyCosts": 6,
     "workPersonHourlyCosts": 0,
-    "workPlans": 26,
+    "workPlans": 27,
     "users": 17,
-    "workAssignments": 124,
+    "workAssignments": 132,
     "dailyWorkNotes": 0,
     "loginEvents": 80
   }
