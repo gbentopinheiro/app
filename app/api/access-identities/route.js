@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getAllAccessIdentitiesData, getAccessIdentityWorkOptionsData } from '../../../lib/access-identities.js'
-import { canManageEntireApp } from '../../../lib/auth.js'
+import { hasPermission } from '../../../lib/permissions.js'
 import { getServerSession } from '../../../lib/server-session.js'
 
 function hidePassword(identity) {
@@ -16,7 +16,7 @@ export async function GET(request) {
       return NextResponse.json({ error: 'Sessao obrigatoria.' }, { status: 401 })
     }
 
-    if (!canManageEntireApp(session.role)) {
+    if (!hasPermission(session, 'access_identities.read')) {
       return NextResponse.json({ error: 'Sem permissao para consultar acessos.' }, { status: 403 })
     }
 

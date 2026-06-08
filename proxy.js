@@ -1,5 +1,12 @@
 import { NextResponse } from 'next/server'
-import { canAccessPath, getDefaultPathForRole, readSessionToken, SESSION_COOKIE_NAME } from './lib/auth.js'
+import {
+  canAccessPath,
+  canAccessPathByPermission,
+  getDefaultPathForRole,
+  readSessionToken,
+  SESSION_COOKIE_NAME,
+  shouldUsePermissionPathGuard,
+} from './lib/auth.js'
 import { isChefRole, isDeveloperRole } from './lib/roles.js'
 
 function isPublicPath(pathname) {
@@ -94,7 +101,11 @@ export async function proxy(request) {
     return NextResponse.redirect(new URL('/developer', request.url))
   }
 
-  if (!canAccessPath(session, pathname)) {
+  const hasAccess = shouldUsePermissionPathGuard(session, pathname)
+    ? canAccessPathByPermission(session, pathname)
+    : canAccessPath(session, pathname)
+
+  if (!hasAccess) {
     return buildForbiddenResponse(request, session)
   }
 

@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import MaterialsClient from './MaterialsClient'
-import { canAccessMaterialsManagement } from '../../lib/auth.js'
+import { hasPermission } from '../../lib/permissions.js'
 import { getServerSession } from '../../lib/server-session.js'
 
 export default async function MaterialsPage() {
@@ -10,7 +10,7 @@ export default async function MaterialsPage() {
     redirect('/login')
   }
 
-  if (!canAccessMaterialsManagement(session.role)) {
+  if (!hasPermission(session, 'materials.read')) {
     redirect('/')
   }
 

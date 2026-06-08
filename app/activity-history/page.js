@@ -1,8 +1,8 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { canManageEntireApp } from '../../lib/auth.js'
 import { getAllDailyWorkNotes } from '../../lib/daily-work-notes.js'
 import { isFeatureEnabled } from '../../lib/feature-flags.js'
+import { hasPermission } from '../../lib/permissions.js'
 import { isDeveloperRole } from '../../lib/roles.js'
 import { getServerSession } from '../../lib/server-session.js'
 import { getAllWorkAssignments } from '../../lib/work-assignments.js'
@@ -206,7 +206,7 @@ export default async function ActivityHistoryPage() {
 
   const developerView = isDeveloperRole(session.role)
 
-  if (!developerView && !canManageEntireApp(session.role)) {
+  if (!hasPermission(session, 'activity_history.read_global')) {
     redirect('/')
   }
 
