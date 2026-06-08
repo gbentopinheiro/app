@@ -1,24 +1,42 @@
 import { NextResponse } from 'next/server'
-import { canAccessCalendarManagement } from '../../../lib/auth.js'
-import { createCalendarEvent, deleteCalendarEvent, getAllCalendarEvents, updateCalendarEvent } from '../../../lib/calendar-events.js'
+import {
+  createCalendarEvent,
+  deleteCalendarEvent,
+  getAllCalendarEvents,
+  updateCalendarEvent,
+} from '../../../lib/calendar-events.js'
 import { markCalendarNotificationsSeen } from '../../../lib/calendar-notifications.js'
 import { isFeatureEnabled } from '../../../lib/feature-flags.js'
+import { hasPermission } from '../../../lib/permissions.js'
 import { getServerSession } from '../../../lib/server-session.js'
 
-export async function GET(request) {
+async function requireCalendarPermission(permissionKey) {
   if (!isFeatureEnabled('calendarManagement')) {
-    return NextResponse.json({ message: 'O calendário está desativado.' }, { status: 503 })
+    return {
+      error: NextResponse.json({ message: 'O calendario esta desativado.' }, { status: 503 }),
+    }
   }
 
   const session = await getServerSession()
 
   if (!session) {
-    return NextResponse.json({ message: 'Sessão expirada.' }, { status: 401 })
+    return {
+      error: NextResponse.json({ message: 'Sessao expirada.' }, { status: 401 }),
+    }
   }
 
-  if (!canAccessCalendarManagement(session.role)) {
-    return NextResponse.json({ message: 'Sem permissão.' }, { status: 403 })
+  if (!hasPermission(session, permissionKey)) {
+    return {
+      error: NextResponse.json({ message: 'Sem permissao.' }, { status: 403 }),
+    }
   }
+
+  return { session }
+}
+
+export async function GET(request) {
+  const auth = await requireCalendarPermission('calendar.read')
+  if (auth.error) return auth.error
 
   const { searchParams } = new URL(request.url)
   const year = searchParams.get('year')
@@ -28,19 +46,8 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
-  if (!isFeatureEnabled('calendarManagement')) {
-    return NextResponse.json({ message: 'O calendário está desativado.' }, { status: 503 })
-  }
-
-  const session = await getServerSession()
-
-  if (!session) {
-    return NextResponse.json({ message: 'Sessão expirada.' }, { status: 401 })
-  }
-
-  if (!canAccessCalendarManagement(session.role)) {
-    return NextResponse.json({ message: 'Sem permissão.' }, { status: 403 })
-  }
+  const auth = await requireCalendarPermission('calendar.manage')
+  if (auth.error) return auth.error
 
   try {
     const body = await request.json()
@@ -56,31 +63,20 @@ export async function POST(request) {
       departureTime: body.departureTime,
       arrivalTime: body.arrivalTime,
       color: body.color,
-      createdBy: session.name || session.username,
+      createdBy: auth.session.name || auth.session.username,
     })
 
-    markCalendarNotificationsSeen(session.username, event.updatedAt || event.createdAt)
+    markCalendarNotificationsSeen(auth.session.username, event.updatedAt || event.createdAt)
 
     return NextResponse.json(event, { status: 201 })
   } catch (error) {
-    return NextResponse.json({ message: error.message || 'Não foi possível criar o evento.' }, { status: 400 })
+    return NextResponse.json({ message: error.message || 'Nao foi possivel criar o evento.' }, { status: 400 })
   }
 }
 
 export async function PUT(request) {
-  if (!isFeatureEnabled('calendarManagement')) {
-    return NextResponse.json({ message: 'O calendário está desativado.' }, { status: 503 })
-  }
-
-  const session = await getServerSession()
-
-  if (!session) {
-    return NextResponse.json({ message: 'Sessão expirada.' }, { status: 401 })
-  }
-
-  if (!canAccessCalendarManagement(session.role)) {
-    return NextResponse.json({ message: 'Sem permissão.' }, { status: 403 })
-  }
+  const auth = await requireCalendarPermission('calendar.manage')
+  if (auth.error) return auth.error
 
   try {
     const body = await request.json()
@@ -96,31 +92,20 @@ export async function PUT(request) {
       departureTime: body.departureTime,
       arrivalTime: body.arrivalTime,
       color: body.color,
-      createdBy: session.name || session.username,
+      createdBy: auth.session.name || auth.session.username,
     })
 
-    markCalendarNotificationsSeen(session.username, event.updatedAt || event.createdAt)
+    markCalendarNotificationsSeen(auth.session.username, event.updatedAt || event.createdAt)
 
     return NextResponse.json(event)
   } catch (error) {
-    return NextResponse.json({ message: error.message || 'Não foi possível atualizar o evento.' }, { status: 400 })
+    return NextResponse.json({ message: error.message || 'Nao foi possivel atualizar o evento.' }, { status: 400 })
   }
 }
 
 export async function DELETE(request) {
-  if (!isFeatureEnabled('calendarManagement')) {
-    return NextResponse.json({ message: 'O calendário está desativado.' }, { status: 503 })
-  }
-
-  const session = await getServerSession()
-
-  if (!session) {
-    return NextResponse.json({ message: 'Sessão expirada.' }, { status: 401 })
-  }
-
-  if (!canAccessCalendarManagement(session.role)) {
-    return NextResponse.json({ message: 'Sem permissão.' }, { status: 403 })
-  }
+  const auth = await requireCalendarPermission('calendar.manage')
+  if (auth.error) return auth.error
 
   try {
     const body = await request.json()
@@ -128,6 +113,6 @@ export async function DELETE(request) {
 
     return NextResponse.json(event)
   } catch (error) {
-    return NextResponse.json({ message: error.message || 'Não foi possível remover o evento.' }, { status: 400 })
+    return NextResponse.json({ message: error.message || 'Nao foi possivel remover o evento.' }, { status: 400 })
   }
 }

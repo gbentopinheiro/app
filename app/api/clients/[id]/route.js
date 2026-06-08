@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 import { deleteClientDb, getClientByIdDb, updateClientDb } from '../../../../lib/db/clients-db.js'
+import { hasPermission } from '../../../../lib/permissions.js'
+import { getServerSession } from '../../../../lib/server-session.js'
 import { getAllWorksData } from '../../../../lib/works.js'
 
 function getClientMutationErrorResponse(error, fallbackMessage) {
@@ -13,8 +15,25 @@ function getClientMutationErrorResponse(error, fallbackMessage) {
   return NextResponse.json({ error: message }, { status })
 }
 
+async function requireClientPermission(permissionKey) {
+  const session = await getServerSession()
+
+  if (!session) {
+    return { error: NextResponse.json({ error: 'Sessao obrigatoria.' }, { status: 401 }) }
+  }
+
+  if (!hasPermission(session, permissionKey)) {
+    return { error: NextResponse.json({ error: 'Sem permissao para gerir clientes.' }, { status: 403 }) }
+  }
+
+  return { session }
+}
+
 export async function GET(request, { params }) {
   try {
+    const auth = await requireClientPermission('clients.read')
+    if (auth.error) return auth.error
+
     const { id } = await params
     const client = await getClientByIdDb(id)
 
@@ -30,6 +49,9 @@ export async function GET(request, { params }) {
 
 export async function PUT(request, { params }) {
   try {
+    const auth = await requireClientPermission('clients.update')
+    if (auth.error) return auth.error
+
     const { id } = await params
     const body = await request.json()
     const { name, vatNumber, contactName, email, phone, notes } = body
@@ -48,6 +70,9 @@ export async function PUT(request, { params }) {
 
 export async function DELETE(request, { params }) {
   try {
+    const auth = await requireClientPermission('clients.delete')
+    if (auth.error) return auth.error
+
     const { id } = await params
     const linkedWorks = (await getAllWorksData()).filter(work => work.clientId === parseInt(id, 10))
 

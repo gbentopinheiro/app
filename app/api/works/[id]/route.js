@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { deleteWorkData, getWorkByIdData, updateWorkData } from '../../../../lib/works.js'
 import { getClientByIdData } from '../../../../lib/clients.js'
+import { hasPermission } from '../../../../lib/permissions.js'
+import { getServerSession } from '../../../../lib/server-session.js'
 import { repriceWorkAssignmentsForWorkData } from '../../../../lib/work-assignments.js'
 
 function getWorkMutationErrorResponse(error, fallbackMessage) {
@@ -9,8 +11,25 @@ function getWorkMutationErrorResponse(error, fallbackMessage) {
   return NextResponse.json({ error: message }, { status })
 }
 
+async function requireWorkPermission(permissionKey) {
+  const session = await getServerSession()
+
+  if (!session) {
+    return { error: NextResponse.json({ error: 'Sessao obrigatoria.' }, { status: 401 }) }
+  }
+
+  if (!hasPermission(session, permissionKey)) {
+    return { error: NextResponse.json({ error: 'Sem permissao para gerir obras.' }, { status: 403 }) }
+  }
+
+  return { session }
+}
+
 export async function GET(request, { params }) {
   try {
+    const auth = await requireWorkPermission('works.read')
+    if (auth.error) return auth.error
+
     const { id } = await params
     const work = await getWorkByIdData(id)
 
@@ -26,6 +45,9 @@ export async function GET(request, { params }) {
 
 export async function PUT(request, { params }) {
   try {
+    const auth = await requireWorkPermission('works.update')
+    if (auth.error) return auth.error
+
     const { id } = await params
     const body = await request.json()
     const {
@@ -102,6 +124,9 @@ export async function PUT(request, { params }) {
 
 export async function DELETE(request, { params }) {
   try {
+    const auth = await requireWorkPermission('works.delete')
+    if (auth.error) return auth.error
+
     const { id } = await params
     const deleted = await deleteWorkData(id)
 

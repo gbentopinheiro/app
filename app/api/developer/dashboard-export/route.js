@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getDeveloperDashboardData } from '../../../../lib/developer-dashboard.js'
 import { buildDeveloperDashboardPdf } from '../../../../lib/developer-dashboard-export.js'
-import { isDeveloperRole } from '../../../../lib/roles.js'
+import { hasPermission } from '../../../../lib/permissions.js'
 import { getServerSession } from '../../../../lib/server-session.js'
 
 function getSafeDateLabel() {
@@ -15,7 +15,7 @@ export async function GET() {
     return NextResponse.json({ error: 'Sessao obrigatoria.' }, { status: 401 })
   }
 
-  if (!isDeveloperRole(session.role)) {
+  if (!hasPermission(session, 'developer.dashboard.export')) {
     return NextResponse.json({ error: 'Apenas o programador pode exportar este relatorio.' }, { status: 403 })
   }
 

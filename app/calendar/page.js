@@ -1,11 +1,11 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import CalendarClient from './CalendarClient.js'
-import { canAccessCalendarManagement } from '../../lib/auth.js'
 import { getAllCalendarEvents } from '../../lib/calendar-events.js'
 import { markCalendarNotificationsSeen } from '../../lib/calendar-notifications.js'
 import { isFeatureEnabled } from '../../lib/feature-flags.js'
 import { getAllPeopleData } from '../../lib/people.js'
+import { hasPermission } from '../../lib/permissions.js'
 import { getServerSession } from '../../lib/server-session.js'
 
 const pageStyle = {
@@ -57,7 +57,7 @@ export default async function CalendarPage() {
     redirect('/login')
   }
 
-  if (!canAccessCalendarManagement(session.role)) {
+  if (!hasPermission(session, 'calendar.read')) {
     redirect('/')
   }
 

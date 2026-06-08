@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
-import { canAccessMaterialsManagement } from '../../../lib/auth.js'
 import { createMaterial, getAllMaterials, getMaterialByReference } from '../../../lib/materials.js'
+import { hasPermission } from '../../../lib/permissions.js'
 import { getServerSession } from '../../../lib/server-session.js'
 
 function validateMaterialPayload(payload, currentMaterialId = null) {
@@ -32,14 +32,14 @@ function validateMaterialPayload(payload, currentMaterialId = null) {
   return ''
 }
 
-async function requireAdminSession() {
+async function requireMaterialsPermission(permissionKey) {
   const session = await getServerSession()
 
   if (!session) {
     return { error: NextResponse.json({ error: 'Sessao obrigatoria.' }, { status: 401 }) }
   }
 
-  if (!canAccessMaterialsManagement(session.role)) {
+  if (!hasPermission(session, permissionKey)) {
     return { error: NextResponse.json({ error: 'Sem permissao para gerir materiais.' }, { status: 403 }) }
   }
 
@@ -48,7 +48,7 @@ async function requireAdminSession() {
 
 export async function GET() {
   try {
-    const auth = await requireAdminSession()
+    const auth = await requireMaterialsPermission('materials.read')
     if (auth.error) return auth.error
 
     return NextResponse.json(getAllMaterials())
@@ -59,7 +59,7 @@ export async function GET() {
 
 export async function POST(request) {
   try {
-    const auth = await requireAdminSession()
+    const auth = await requireMaterialsPermission('materials.create')
     if (auth.error) return auth.error
 
     const body = await request.json()

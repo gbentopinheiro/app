@@ -1,9 +1,9 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import NotificationsClient from './NotificationsClient'
-import { canManageEntireApp } from '../../lib/auth.js'
 import { isFeatureEnabled } from '../../lib/feature-flags.js'
 import { getOperationNotifications } from '../../lib/operation-notifications.js'
+import { hasPermission } from '../../lib/permissions.js'
 import { isResponsavelRole } from '../../lib/roles.js'
 import { getServerSession } from '../../lib/server-session.js'
 
@@ -52,7 +52,7 @@ export default async function NotificationsPage() {
     redirect('/login')
   }
 
-  if (!canManageEntireApp(session.role) && !isResponsavelRole(session.role)) {
+  if (!hasPermission(session, 'notifications.read')) {
     redirect('/')
   }
 

@@ -1,9 +1,28 @@
 import { NextResponse } from 'next/server'
+import { hasPermission } from '../../../../lib/permissions.js'
+import { getServerSession } from '../../../../lib/server-session.js'
 import { deleteWorkPlanData, getWorkPlanByIdData, updateWorkPlanData } from '../../../../lib/work-plans.js'
 import { getAllWorkAssignmentsData } from '../../../../lib/work-assignments.js'
 
+async function requireWorkPlanPermission(permissionKey, errorMessage = 'Sem permissao para gerir o plano diario.') {
+  const session = await getServerSession()
+
+  if (!session) {
+    return { error: NextResponse.json({ error: 'Sessao obrigatoria.' }, { status: 401 }) }
+  }
+
+  if (!hasPermission(session, permissionKey)) {
+    return { error: NextResponse.json({ error: errorMessage }, { status: 403 }) }
+  }
+
+  return { session }
+}
+
 export async function GET(request, { params }) {
   try {
+    const auth = await requireWorkPlanPermission('work_plans.read', 'Sem permissao para consultar o plano diario.')
+    if (auth.error) return auth.error
+
     const { id } = await params
     const workPlan = await getWorkPlanByIdData(id)
 
@@ -19,6 +38,9 @@ export async function GET(request, { params }) {
 
 export async function PUT(request, { params }) {
   try {
+    const auth = await requireWorkPlanPermission('work_plans.update')
+    if (auth.error) return auth.error
+
     const { id } = await params
     const body = await request.json()
     const { date } = body
@@ -38,6 +60,9 @@ export async function PUT(request, { params }) {
 
 export async function DELETE(request, { params }) {
   try {
+    const auth = await requireWorkPlanPermission('work_plans.delete')
+    if (auth.error) return auth.error
+
     const { id } = await params
     const linkedAssignments = await getAllWorkAssignmentsData({ workPlanId: id })
 

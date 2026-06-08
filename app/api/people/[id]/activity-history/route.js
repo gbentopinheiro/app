@@ -1,5 +1,5 @@
 ﻿import { NextResponse } from 'next/server'
-import { canManageEntireApp } from '../../../../../lib/auth.js'
+import { hasPermission } from '../../../../../lib/permissions.js'
 import { getAllDailyWorkNotes } from '../../../../../lib/daily-work-notes.js'
 import { getPersonByIdData } from '../../../../../lib/people.js'
 import { getServerSession } from '../../../../../lib/server-session.js'
@@ -359,7 +359,7 @@ export async function GET(request, { params }) {
     return NextResponse.json({ error: 'SessÃ£o obrigatÃ³ria.' }, { status: 401 })
   }
 
-  if (!canManageEntireApp(session.role)) {
+  if (!hasPermission(session, 'people.activity_history.read')) {
     return NextResponse.json({ error: 'Sem permissÃ£o.' }, { status: 403 })
   }
 

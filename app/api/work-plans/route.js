@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { resolveCompanyId } from '../../../lib/companies.js'
 import { getDefaultHoursForDate } from '../../../lib/default-hours.js'
 import { isDailyPlanLocked } from '../../../lib/daily-plan-lock.js'
+import { hasPermission } from '../../../lib/permissions.js'
+import { getServerSession } from '../../../lib/server-session.js'
 import {
   createWorkAssignmentData,
   deleteWorkAssignmentData,
@@ -9,8 +11,25 @@ import {
 } from '../../../lib/work-assignments.js'
 import { createWorkPlanData, getAllWorkPlansData, getWorkPlanByDateData } from '../../../lib/work-plans.js'
 
+async function requireWorkPlanPermission(permissionKey, errorMessage = 'Sem permissao para gerir o plano diario.') {
+  const session = await getServerSession()
+
+  if (!session) {
+    return { error: NextResponse.json({ error: 'Sessao obrigatoria.' }, { status: 401 }) }
+  }
+
+  if (!hasPermission(session, permissionKey)) {
+    return { error: NextResponse.json({ error: errorMessage }, { status: 403 }) }
+  }
+
+  return { session }
+}
+
 export async function GET() {
   try {
+    const auth = await requireWorkPlanPermission('work_plans.read', 'Sem permissao para consultar o plano diario.')
+    if (auth.error) return auth.error
+
     return NextResponse.json(await getAllWorkPlansData())
   } catch (error) {
     return NextResponse.json({ error: 'Erro ao obter work plans' }, { status: 500 })
@@ -19,6 +38,9 @@ export async function GET() {
 
 export async function POST(request) {
   try {
+    const auth = await requireWorkPlanPermission('work_plans.create')
+    if (auth.error) return auth.error
+
     const body = await request.json()
     const { date, clonePreviousDay } = body
     const companyId = resolveCompanyId(body.companyId)
@@ -37,6 +59,9 @@ export async function POST(request) {
     }
 
     if (clonePreviousDay) {
+      const copyAuth = await requireWorkPlanPermission('work_plans.copy_previous', 'Sem permissao para copiar o plano anterior.')
+      if (copyAuth.error) return copyAuth.error
+
       sourceWorkPlan = await getLatestPreviousWorkPlanWithAssignments(date, companyId)
 
       if (!sourceWorkPlan) {

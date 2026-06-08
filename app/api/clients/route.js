@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClientDb, getAllClientsDb } from '../../../lib/db/clients-db.js'
+import { hasPermission } from '../../../lib/permissions.js'
+import { getServerSession } from '../../../lib/server-session.js'
 
 function getClientMutationErrorResponse(error, fallbackMessage) {
   const message =
@@ -12,8 +14,25 @@ function getClientMutationErrorResponse(error, fallbackMessage) {
   return NextResponse.json({ error: message }, { status })
 }
 
+async function requireClientPermission(permissionKey) {
+  const session = await getServerSession()
+
+  if (!session) {
+    return { error: NextResponse.json({ error: 'Sessao obrigatoria.' }, { status: 401 }) }
+  }
+
+  if (!hasPermission(session, permissionKey)) {
+    return { error: NextResponse.json({ error: 'Sem permissao para gerir clientes.' }, { status: 403 }) }
+  }
+
+  return { session }
+}
+
 export async function GET() {
   try {
+    const auth = await requireClientPermission('clients.read')
+    if (auth.error) return auth.error
+
     return NextResponse.json(await getAllClientsDb())
   } catch (error) {
     return NextResponse.json({ error: 'Erro ao obter clientes' }, { status: 500 })
@@ -22,6 +41,9 @@ export async function GET() {
 
 export async function POST(request) {
   try {
+    const auth = await requireClientPermission('clients.create')
+    if (auth.error) return auth.error
+
     const body = await request.json()
     const { name, vatNumber, contactName, email, phone, notes } = body
 

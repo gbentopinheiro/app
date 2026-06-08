@@ -1,5 +1,5 @@
 import { getServerSession } from '../../../../lib/server-session.js'
-import { isDeveloperRole } from '../../../../lib/roles.js'
+import { hasPermission } from '../../../../lib/permissions.js'
 import fs from 'fs/promises'
 import path from 'path'
 import { fileURLToPath } from 'url'
@@ -12,7 +12,7 @@ export async function GET() {
   try {
     const session = await getServerSession()
 
-    if (!session || !isDeveloperRole(session.role)) {
+    if (!session || !hasPermission(session, 'developer.diagnostics.read')) {
       return Response.json(
         { error: 'Unauthorized' },
         { status: 403 }

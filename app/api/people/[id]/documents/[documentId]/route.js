@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
-import { canAccessPeopleManagement } from '../../../../../../lib/auth.js'
 import { deletePersonDocumentReminder } from '../../../../../../lib/person-document-reminders.js'
 import { getPersonByIdData } from '../../../../../../lib/people.js'
+import { hasPermission } from '../../../../../../lib/permissions.js'
 import { getServerSession } from '../../../../../../lib/server-session.js'
 
 export async function DELETE(request, { params }) {
@@ -12,7 +12,7 @@ export async function DELETE(request, { params }) {
       return NextResponse.json({ error: 'Sessao obrigatoria.' }, { status: 401 })
     }
 
-    if (!canAccessPeopleManagement(session.role)) {
+    if (!hasPermission(session, 'people.documents.delete')) {
       return NextResponse.json({ error: 'Sem permissao para remover documentos.' }, { status: 403 })
     }
 

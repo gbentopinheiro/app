@@ -9,8 +9,8 @@ import AuditTrailPanel from './AuditTrailPanel'
 import DataManagementPanel from './DataManagementPanel'
 import { getDeveloperDashboardData } from '../../lib/developer-dashboard.js'
 import { getFeatureFlagDefinitions } from '../../lib/feature-flags.js'
+import { hasPermission } from '../../lib/permissions.js'
 import { getServerSession } from '../../lib/server-session.js'
-import { isDeveloperRole } from '../../lib/roles.js'
 
 const pageStyle = {
   minHeight: '100vh',
@@ -353,7 +353,7 @@ export default async function DeveloperPage() {
     redirect('/login')
   }
 
-  if (!isDeveloperRole(session.role)) {
+  if (!hasPermission(session, 'developer.dashboard.read')) {
     redirect('/')
   }
 

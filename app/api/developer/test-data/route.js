@@ -1,12 +1,12 @@
 import { getServerSession } from '../../../../lib/server-session.js'
-import { isDeveloperRole } from '../../../../lib/roles.js'
+import { hasPermission } from '../../../../lib/permissions.js'
 import { generateTestData, generateTestScenarios } from '../../../../lib/test-data-generator.js'
 
 export async function GET(req) {
   try {
     const session = await getServerSession()
 
-    if (!session || !isDeveloperRole(session.role)) {
+    if (!session || !hasPermission(session, 'developer.test_data.generate')) {
       return Response.json(
         { error: 'Unauthorized' },
         { status: 403 }

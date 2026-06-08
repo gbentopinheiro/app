@@ -7,7 +7,7 @@ import {
   getAccessIdentityByUsernameData,
   updateAccessIdentityData,
 } from '../../../../lib/access-identities.js'
-import { canManageEntireApp } from '../../../../lib/auth.js'
+import { hasPermission } from '../../../../lib/permissions.js'
 import { roleRequiresAppAccess, roleUsesWorkScope } from '../../../../lib/roles.js'
 import { getServerSession } from '../../../../lib/server-session.js'
 import { readProtectedRequestJson } from '../../../../lib/login-transport.js'
@@ -35,11 +35,11 @@ function getAccessPayload(personId, role, accessIdentity, existingAccessIdentity
   const password = String(accessIdentity?.password || '')
 
   if (!username) {
-    throw new Error('username de acesso é obrigatório para o role selecionado')
+    throw new Error('username de acesso e obrigatorio para o role selecionado')
   }
 
   if (!password && !existingAccessIdentity?.password) {
-    throw new Error('password de acesso é obrigatória para o role selecionado')
+    throw new Error('password de acesso e obrigatoria para o role selecionado')
   }
 
   return {
@@ -82,18 +82,18 @@ function getErrorStatus(error) {
   const message = error.message || ''
 
   if (
-    message.includes('obrigatório') ||
-    message.includes('obrigatória') ||
+    message.includes('obrigatorio') ||
+    message.includes('obrigatoria') ||
     message.includes('palavra-passe') ||
-    message.includes('carácter') ||
+    message.includes('caracter') ||
     message.includes('bytes') ||
-    message.includes('Já existe') ||
+    message.includes('Ja existe') ||
     message.includes('role')
   ) {
     return 400
   }
 
-  if (message.includes('não encontrada')) {
+  if (message.includes('nao encontrada')) {
     return 404
   }
 
@@ -108,7 +108,7 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: 'Sessao obrigatoria.' }, { status: 401 })
     }
 
-    if (!canManageEntireApp(session.role)) {
+    if (!hasPermission(session, 'people.read_full')) {
       return NextResponse.json({ error: 'Sem permissao para consultar esta pessoa.' }, { status: 403 })
     }
 
@@ -116,7 +116,7 @@ export async function GET(request, { params }) {
     const person = await getPersonByIdData(id)
 
     if (!person) {
-      return NextResponse.json({ error: 'Pessoa não encontrada' }, { status: 404 })
+      return NextResponse.json({ error: 'Pessoa nao encontrada' }, { status: 404 })
     }
 
     return NextResponse.json(person)
@@ -133,7 +133,7 @@ export async function PUT(request, { params }) {
       return NextResponse.json({ error: 'Sessao obrigatoria.' }, { status: 401 })
     }
 
-    if (!canManageEntireApp(session.role)) {
+    if (!hasPermission(session, 'people.update_full')) {
       return NextResponse.json({ error: 'Sem permissao para atualizar pessoas.' }, { status: 403 })
     }
 
@@ -143,21 +143,21 @@ export async function PUT(request, { params }) {
     const currentPerson = await getPersonByIdData(id)
 
     if (!currentPerson) {
-      return NextResponse.json({ error: 'Pessoa não encontrada' }, { status: 404 })
+      return NextResponse.json({ error: 'Pessoa nao encontrada' }, { status: 404 })
     }
 
     if (price !== undefined && Number(price) < 0) {
-      return NextResponse.json({ error: 'Preço não pode ser negativo' }, { status: 400 })
+      return NextResponse.json({ error: 'Preco nao pode ser negativo' }, { status: 400 })
     }
 
     if (monthlyPrice !== undefined && Number(monthlyPrice) < 0) {
-      return NextResponse.json({ error: 'monthlyPrice não pode ser negativo' }, { status: 400 })
+      return NextResponse.json({ error: 'monthlyPrice nao pode ser negativo' }, { status: 400 })
     }
 
     const updatedPerson = await updatePersonData(id, { name, price, monthlyPrice, role })
 
     if (!updatedPerson) {
-      return NextResponse.json({ error: 'Pessoa não encontrada' }, { status: 404 })
+      return NextResponse.json({ error: 'Pessoa nao encontrada' }, { status: 404 })
     }
 
     try {
@@ -175,7 +175,7 @@ export async function PUT(request, { params }) {
     return NextResponse.json(updatedPerson)
   } catch (error) {
     if (error.message?.includes('protecao') || error.message?.includes('protegido')) {
-      return NextResponse.json({ error: 'Pedido sensível não protegido.' }, { status: 400 })
+      return NextResponse.json({ error: 'Pedido sensivel nao protegido.' }, { status: 400 })
     }
 
     return NextResponse.json({ error: error.message || 'Erro ao atualizar pessoa' }, { status: getErrorStatus(error) })
@@ -190,7 +190,7 @@ export async function DELETE(request, { params }) {
       return NextResponse.json({ error: 'Sessao obrigatoria.' }, { status: 401 })
     }
 
-    if (!canManageEntireApp(session.role)) {
+    if (!hasPermission(session, 'people.delete')) {
       return NextResponse.json({ error: 'Sem permissao para remover pessoas.' }, { status: 403 })
     }
 
@@ -198,14 +198,14 @@ export async function DELETE(request, { params }) {
     const person = await getPersonByIdData(id)
 
     if (!person) {
-      return NextResponse.json({ error: 'Pessoa não encontrada' }, { status: 404 })
+      return NextResponse.json({ error: 'Pessoa nao encontrada' }, { status: 404 })
     }
 
     await deleteAccessIdentityByPersonIdData(id)
     const deleted = await deletePersonData(id)
 
     if (!deleted) {
-      return NextResponse.json({ error: 'Pessoa não encontrada' }, { status: 404 })
+      return NextResponse.json({ error: 'Pessoa nao encontrada' }, { status: 404 })
     }
 
     return NextResponse.json({ message: 'Pessoa removida com sucesso' })

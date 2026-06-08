@@ -1,12 +1,12 @@
 import { getServerSession } from '../../../../lib/server-session.js'
-import { isDeveloperRole } from '../../../../lib/roles.js'
+import { hasPermission } from '../../../../lib/permissions.js'
 import { getAuditLogs, getAuditStats, logAuditEvent } from '../../../../lib/audit-trail.js'
 
 export async function GET(req) {
   try {
     const session = await getServerSession()
 
-    if (!session || !isDeveloperRole(session.role)) {
+    if (!session || !hasPermission(session, 'developer.audit.read')) {
       return Response.json(
         { error: 'Unauthorized' },
         { status: 403 }
@@ -50,7 +50,7 @@ export async function POST(req) {
   try {
     const session = await getServerSession()
 
-    if (!session || !isDeveloperRole(session.role)) {
+    if (!session || !hasPermission(session, 'developer.audit.write')) {
       return Response.json(
         { error: 'Unauthorized' },
         { status: 403 }

@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server'
 import { isDailyPlanLocked } from '../../../lib/daily-plan-lock.js'
+import { hasPermission } from '../../../lib/permissions.js'
 import { isChefRole } from '../../../lib/roles.js'
 import { getServerSession } from '../../../lib/server-session.js'
 import {
-  canAccessAssignmentsRoute,
   canAccessWork,
   extendDefaultsForChef,
   filterAssignmentsForSession,
@@ -29,7 +29,7 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url)
     const scopedSession = await resolvePreviewScopedSession(session, searchParams)
 
-    if (!canAccessAssignmentsRoute(scopedSession)) {
+    if (!hasPermission(scopedSession, 'work_assignments.read')) {
       return NextResponse.json({ error: 'Sem permissao para consultar afetacoes.' }, { status: 403 })
     }
 
@@ -73,7 +73,7 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Sessao obrigatoria.' }, { status: 401 })
     }
 
-    if (!canAccessAssignmentsRoute(session)) {
+    if (!hasPermission(session, 'work_assignments.create')) {
       return NextResponse.json({ error: 'Sem permissao para criar afetacoes.' }, { status: 403 })
     }
 

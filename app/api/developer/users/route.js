@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getAllLoginEvents } from '../../../../lib/login-audit.js'
-import { isDeveloperRole } from '../../../../lib/roles.js'
+import { hasPermission } from '../../../../lib/permissions.js'
 import { getServerSession } from '../../../../lib/server-session.js'
 import { getAllUsersData } from '../../../../lib/users.js'
 
@@ -33,7 +33,7 @@ export async function GET() {
       return NextResponse.json({ error: 'Sessao obrigatoria.' }, { status: 401 })
     }
 
-    if (!isDeveloperRole(session.role)) {
+    if (!hasPermission(session, 'developer.users.read')) {
       return NextResponse.json({ error: 'Apenas o programador pode aceder a esta informacao.' }, { status: 403 })
     }
 

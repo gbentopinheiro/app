@@ -1,12 +1,12 @@
 import { getServerSession } from '../../../../lib/server-session.js'
-import { isDeveloperRole } from '../../../../lib/roles.js'
+import { hasAnyPermission, hasPermission } from '../../../../lib/permissions.js'
 import { getDataStats, exportData } from '../../../../lib/data-management.js'
 
 export async function GET(req) {
   try {
     const session = await getServerSession()
 
-    if (!session || !isDeveloperRole(session.role)) {
+    if (!session) {
       return Response.json(
         { error: 'Unauthorized' },
         { status: 403 }
@@ -17,11 +17,25 @@ export async function GET(req) {
     const action = searchParams.get('action')
 
     if (action === 'stats') {
+      if (!hasPermission(session, 'developer.data_management.read')) {
+        return Response.json(
+          { error: 'Unauthorized' },
+          { status: 403 }
+        )
+      }
+
       const stats = await getDataStats()
       return Response.json(stats)
     }
 
     if (action === 'export') {
+      if (!hasPermission(session, 'developer.data_management.export')) {
+        return Response.json(
+          { error: 'Unauthorized' },
+          { status: 403 }
+        )
+      }
+
       const exportType = searchParams.get('type') || 'full'
       const exportedData = await exportData(exportType)
       
@@ -33,6 +47,13 @@ export async function GET(req) {
           'Content-Disposition': `attachment; filename="${filename}"`,
         },
       })
+    }
+
+    if (!hasAnyPermission(session, ['developer.data_management.read', 'developer.data_management.export'])) {
+      return Response.json(
+        { error: 'Unauthorized' },
+        { status: 403 }
+      )
     }
 
     return Response.json({ error: 'Invalid action' }, { status: 400 })

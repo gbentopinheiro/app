@@ -5,7 +5,7 @@ import { getAllClientsData } from '../../../../lib/clients.js'
 import { getAllDailyWorkNotesData } from '../../../../lib/daily-work-notes.js'
 import { getAllDevelopersData } from '../../../../lib/developers.js'
 import { getAllPeopleData } from '../../../../lib/people.js'
-import { isDeveloperRole } from '../../../../lib/roles.js'
+import { hasPermission } from '../../../../lib/permissions.js'
 import { getServerSession } from '../../../../lib/server-session.js'
 import { getAllWorkAssignmentsData } from '../../../../lib/work-assignments.js'
 import { getAllWorkPlansData } from '../../../../lib/work-plans.js'
@@ -19,7 +19,7 @@ export async function GET() {
       return NextResponse.json({ error: 'Sessao obrigatoria.' }, { status: 401 })
     }
 
-    if (!isDeveloperRole(session.role)) {
+    if (!hasPermission(session, 'developer.data_integrity.read')) {
       return NextResponse.json({ error: 'Apenas o programador pode aceder a esta informacao.' }, { status: 403 })
     }
 

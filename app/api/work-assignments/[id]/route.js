@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { canManageEntireApp } from '../../../../lib/auth.js'
 import { isDailyPlanLocked } from '../../../../lib/daily-plan-lock.js'
+import { hasPermission } from '../../../../lib/permissions.js'
 import { getServerSession } from '../../../../lib/server-session.js'
 import {
   canAccessAssignment,
@@ -20,6 +21,10 @@ export async function GET(request, { params }) {
 
     if (!session) {
       return NextResponse.json({ error: 'Sessao obrigatoria.' }, { status: 401 })
+    }
+
+    if (!hasPermission(session, 'work_assignments.read')) {
+      return NextResponse.json({ error: 'Sem permissao para consultar afetacoes.' }, { status: 403 })
     }
 
     const { id } = await params
@@ -45,6 +50,10 @@ export async function PUT(request, { params }) {
 
     if (!session) {
       return NextResponse.json({ error: 'Sessao obrigatoria.' }, { status: 401 })
+    }
+
+    if (!hasPermission(session, 'work_assignments.update')) {
+      return NextResponse.json({ error: 'Sem permissao para atualizar afetacoes.' }, { status: 403 })
     }
 
     const { id } = await params
@@ -151,6 +160,10 @@ export async function DELETE(request, { params }) {
 
     if (!session) {
       return NextResponse.json({ error: 'Sessao obrigatoria.' }, { status: 401 })
+    }
+
+    if (!hasPermission(session, 'work_assignments.delete')) {
+      return NextResponse.json({ error: 'Sem permissao para remover afetacoes.' }, { status: 403 })
     }
 
     const { id } = await params

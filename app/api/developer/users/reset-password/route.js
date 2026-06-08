@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { isDeveloperRole } from '../../../../../lib/roles.js'
+import { hasPermission } from '../../../../../lib/permissions.js'
 import { getServerSession } from '../../../../../lib/server-session.js'
 import { getUserByIdData, updateUserPasswordData } from '../../../../../lib/users.js'
 
@@ -34,7 +34,7 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Sessao obrigatoria.' }, { status: 401 })
     }
 
-    if (!isDeveloperRole(session.role)) {
+    if (!hasPermission(session, 'developer.users.reset_password')) {
       return NextResponse.json({ error: 'Apenas o programador pode fazer isto.' }, { status: 403 })
     }
 

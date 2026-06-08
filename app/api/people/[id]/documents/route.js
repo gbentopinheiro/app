@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server'
-import { canAccessPeopleManagement } from '../../../../../lib/auth.js'
 import {
   createPersonDocumentReminder,
   getPersonDocumentReminders,
 } from '../../../../../lib/person-document-reminders.js'
 import { getPersonByIdData } from '../../../../../lib/people.js'
+import { hasPermission } from '../../../../../lib/permissions.js'
 import { getServerSession } from '../../../../../lib/server-session.js'
 
 function getErrorStatus(error) {
@@ -29,7 +29,7 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: 'Sessao obrigatoria.' }, { status: 401 })
     }
 
-    if (!canAccessPeopleManagement(session.role)) {
+    if (!hasPermission(session, 'people.documents.read')) {
       return NextResponse.json({ error: 'Sem permissao para consultar documentos.' }, { status: 403 })
     }
 
@@ -54,7 +54,7 @@ export async function POST(request, { params }) {
       return NextResponse.json({ error: 'Sessao obrigatoria.' }, { status: 401 })
     }
 
-    if (!canAccessPeopleManagement(session.role)) {
+    if (!hasPermission(session, 'people.documents.write')) {
       return NextResponse.json({ error: 'Sem permissao para criar documentos.' }, { status: 403 })
     }
 

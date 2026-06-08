@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { inferAccountType } from '../../../../lib/account-types.js'
 import { readProtectedRequestJson } from '../../../../lib/login-transport.js'
 import { getPasswordPolicyError, verifyPassword } from '../../../../lib/passwords.js'
+import { hasPermission } from '../../../../lib/permissions.js'
 import { getServerSession } from '../../../../lib/server-session.js'
 import { getUserByUsernameData, updateUserPasswordData } from '../../../../lib/users.js'
 
@@ -33,6 +34,10 @@ export async function PATCH(request) {
 
     if (!session) {
       return NextResponse.json({ error: 'Sessao obrigatoria.' }, { status: 401 })
+    }
+
+    if (!hasPermission(session, 'account.password.change_self')) {
+      return NextResponse.json({ error: 'Sem permissao para alterar a palavra-passe.' }, { status: 403 })
     }
 
     const body = await readProtectedRequestJson(request)

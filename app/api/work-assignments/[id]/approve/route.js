@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server'
+import { isFeatureEnabled } from '../../../../../lib/feature-flags.js'
+import { hasPermission } from '../../../../../lib/permissions.js'
+import { getServerSession } from '../../../../../lib/server-session.js'
+import { canAccessAssignment } from '../../../../../lib/work-assignment-policy.js'
 import {
   getWorkAssignmentByIdData,
   updateWorkAssignmentData,
 } from '../../../../../lib/work-assignments.js'
-import { canApproveHours } from '../../../../../lib/auth.js'
-import { isFeatureEnabled } from '../../../../../lib/feature-flags.js'
-import { getServerSession } from '../../../../../lib/server-session.js'
-import { canAccessAssignment } from '../../../../../lib/work-assignment-policy.js'
 
 export async function PUT(request, { params }) {
   try {
@@ -17,10 +17,10 @@ export async function PUT(request, { params }) {
     const session = await getServerSession()
 
     if (!session) {
-      return NextResponse.json({ error: 'Sessão obrigatória.' }, { status: 401 })
+      return NextResponse.json({ error: 'Sessao obrigatoria.' }, { status: 401 })
     }
 
-    if (!canApproveHours(session.role)) {
+    if (!hasPermission(session, 'work_assignments.approve')) {
       return NextResponse.json(
         { error: 'Apenas administradores podem aprovar horas.' },
         { status: 403 },
@@ -31,11 +31,11 @@ export async function PUT(request, { params }) {
     const currentAssignment = await getWorkAssignmentByIdData(id)
 
     if (!currentAssignment) {
-      return NextResponse.json({ error: 'Afetação não encontrada' }, { status: 404 })
+      return NextResponse.json({ error: 'Afetacao nao encontrada' }, { status: 404 })
     }
 
     if (!canAccessAssignment(session, currentAssignment)) {
-      return NextResponse.json({ error: 'Sem permissão para esta afetação.' }, { status: 403 })
+      return NextResponse.json({ error: 'Sem permissao para esta afetacao.' }, { status: 403 })
     }
 
     const body = await request.json()
@@ -57,12 +57,12 @@ export async function PUT(request, { params }) {
     })
 
     if (!assignment) {
-      return NextResponse.json({ error: 'Afetação não encontrada' }, { status: 404 })
+      return NextResponse.json({ error: 'Afetacao nao encontrada' }, { status: 404 })
     }
 
     return NextResponse.json(assignment)
   } catch (error) {
-    const status = error.message.includes('não encontrado') ? 404 : 500
+    const status = String(error.message || '').includes('nao encontrado') ? 404 : 500
     return NextResponse.json({ error: error.message || 'Erro ao aprovar horas' }, { status })
   }
 }

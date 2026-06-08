@@ -6,8 +6,8 @@ import {
   getAccessIdentityByUsernameData,
   updateAccessIdentityData,
 } from '../../../lib/access-identities.js'
-import { canAccessPeopleManagement, canManageEntireApp } from '../../../lib/auth.js'
 import { getAllPersonDocumentReminders } from '../../../lib/person-document-reminders.js'
+import { hasPermission } from '../../../lib/permissions.js'
 import { getServerSession } from '../../../lib/server-session.js'
 import { DEFAULT_ROLE, isResponsavelRole, roleRequiresAppAccess, roleUsesWorkScope } from '../../../lib/roles.js'
 import { readProtectedRequestJson } from '../../../lib/login-transport.js'
@@ -35,11 +35,11 @@ function getAccessPayload(personId, role, accessIdentity, existingAccessIdentity
   const password = String(accessIdentity?.password || '')
 
   if (!username) {
-    throw new Error('username de acesso é obrigatório para o role selecionado')
+    throw new Error('username de acesso e obrigatorio para o role selecionado')
   }
 
   if (!password && !existingAccessIdentity?.password) {
-    throw new Error('password de acesso é obrigatória para o role selecionado')
+    throw new Error('password de acesso e obrigatoria para o role selecionado')
   }
 
   return {
@@ -81,18 +81,18 @@ function getErrorStatus(error) {
   const message = error.message || ''
 
   if (
-    message.includes('obrigatório') ||
-    message.includes('obrigatória') ||
+    message.includes('obrigatorio') ||
+    message.includes('obrigatoria') ||
     message.includes('palavra-passe') ||
-    message.includes('carácter') ||
+    message.includes('caracter') ||
     message.includes('bytes') ||
-    message.includes('Já existe') ||
+    message.includes('Ja existe') ||
     message.includes('role')
   ) {
     return 400
   }
 
-  if (message.includes('não encontrada')) {
+  if (message.includes('nao encontrada')) {
     return 404
   }
 
@@ -176,7 +176,7 @@ export async function GET() {
       return NextResponse.json({ error: 'Sessao obrigatoria.' }, { status: 401 })
     }
 
-    if (!canAccessPeopleManagement(session.role)) {
+    if (!hasPermission(session, 'people.read')) {
       return NextResponse.json({ error: 'Sem permissao para consultar pessoas.' }, { status: 403 })
     }
 
@@ -196,14 +196,17 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Sessao obrigatoria.' }, { status: 401 })
     }
 
-    if (!canManageEntireApp(session.role) && !isResponsavelRole(session.role)) {
+    const canCreateFull = hasPermission(session, 'people.create_full')
+    const canCreateBasic = hasPermission(session, 'people.create_basic')
+
+    if (!canCreateFull && !canCreateBasic) {
       return NextResponse.json({ error: 'Sem permissao para criar pessoas.' }, { status: 403 })
     }
 
     const body = await readProtectedRequestJson(request)
     const { name, price, monthlyPrice, role, accessIdentity } = body
 
-    if (isResponsavelRole(session.role)) {
+    if (!canCreateFull) {
       if (!String(name || '').trim()) {
         return NextResponse.json({ error: 'Nome obrigatorio.' }, { status: 400 })
       }
@@ -227,11 +230,11 @@ export async function POST(request) {
     }
 
     if (!name || price === undefined || monthlyPrice === undefined) {
-      return NextResponse.json({ error: 'Nome, preço e monthlyPrice são obrigatórios' }, { status: 400 })
+      return NextResponse.json({ error: 'Nome, preco e monthlyPrice sao obrigatorios' }, { status: 400 })
     }
 
     if (Number(price) < 0 || Number(monthlyPrice) < 0) {
-      return NextResponse.json({ error: 'Preço e monthlyPrice não podem ser negativos' }, { status: 400 })
+      return NextResponse.json({ error: 'Preco e monthlyPrice nao podem ser negativos' }, { status: 400 })
     }
 
     const newPerson = await createPersonData({ name, price, monthlyPrice, role })
@@ -246,7 +249,7 @@ export async function POST(request) {
     return NextResponse.json(newPerson, { status: 201 })
   } catch (error) {
     if (error.message?.includes('protecao') || error.message?.includes('protegido')) {
-      return NextResponse.json({ error: 'Pedido sensível não protegido.' }, { status: 400 })
+      return NextResponse.json({ error: 'Pedido sensivel nao protegido.' }, { status: 400 })
     }
 
     return NextResponse.json({ error: error.message || 'Erro ao criar pessoa' }, { status: getErrorStatus(error) })

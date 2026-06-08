@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import LogoutButton from '../components/LogoutButton'
 import ChangePasswordForm from './ChangePasswordForm'
 import NotificationSettingsForm from './NotificationSettingsForm'
+import { hasPermission } from '../../lib/permissions.js'
 import { getServerSession } from '../../lib/server-session.js'
 import { getRoleLabel, isChefRole } from '../../lib/roles.js'
 
@@ -110,6 +111,10 @@ export default async function AccountSettingsPage() {
 
   if (!session) {
     redirect('/login')
+  }
+
+  if (!hasPermission(session, 'account.read_self')) {
+    redirect('/')
   }
 
   const isChef = isChefRole(session.role)

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getFeatureFlagDefinitions, updateFeatureFlag } from '../../../../lib/feature-flags.js'
-import { isDeveloperRole } from '../../../../lib/roles.js'
+import { hasPermission } from '../../../../lib/permissions.js'
 import { getServerSession } from '../../../../lib/server-session.js'
 
 function buildForbiddenResponse() {
@@ -14,7 +14,7 @@ export async function GET() {
     return NextResponse.json({ error: 'Sessao obrigatoria.' }, { status: 401 })
   }
 
-  if (!isDeveloperRole(session.role)) {
+  if (!hasPermission(session, 'developer.feature_flags.read')) {
     return buildForbiddenResponse()
   }
 
@@ -28,7 +28,7 @@ export async function PUT(request) {
     return NextResponse.json({ error: 'Sessao obrigatoria.' }, { status: 401 })
   }
 
-  if (!isDeveloperRole(session.role)) {
+  if (!hasPermission(session, 'developer.feature_flags.manage')) {
     return buildForbiddenResponse()
   }
 

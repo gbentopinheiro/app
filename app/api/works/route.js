@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { createWorkData, getAllWorksData } from '../../../lib/works.js'
 import { getClientByIdData } from '../../../lib/clients.js'
+import { hasPermission } from '../../../lib/permissions.js'
+import { getServerSession } from '../../../lib/server-session.js'
 
 function getWorkMutationErrorResponse(error, fallbackMessage) {
   const message = String(error?.message || fallbackMessage).trim() || fallbackMessage
@@ -8,8 +10,25 @@ function getWorkMutationErrorResponse(error, fallbackMessage) {
   return NextResponse.json({ error: message }, { status })
 }
 
+async function requireWorkPermission(permissionKey) {
+  const session = await getServerSession()
+
+  if (!session) {
+    return { error: NextResponse.json({ error: 'Sessao obrigatoria.' }, { status: 401 }) }
+  }
+
+  if (!hasPermission(session, permissionKey)) {
+    return { error: NextResponse.json({ error: 'Sem permissao para gerir obras.' }, { status: 403 }) }
+  }
+
+  return { session }
+}
+
 export async function GET() {
   try {
+    const auth = await requireWorkPermission('works.read')
+    if (auth.error) return auth.error
+
     const works = await getAllWorksData()
     return NextResponse.json(works)
   } catch (error) {
@@ -19,6 +38,9 @@ export async function GET() {
 
 export async function POST(request) {
   try {
+    const auth = await requireWorkPermission('works.create')
+    if (auth.error) return auth.error
+
     const body = await request.json()
     const { name, clientId, location, status, budget, defaultHourlyCost, roleHourlyCosts, specialPersonHourlyCosts, startDate, endDate, workingDays, notes, number } = body
 

@@ -7,12 +7,13 @@ import {
   upsertDailyWorkNoteData,
 } from '../../../lib/daily-work-notes.js'
 import { isFeatureEnabled } from '../../../lib/feature-flags.js'
+import { hasPermission } from '../../../lib/permissions.js'
 import { getServerSession } from '../../../lib/server-session.js'
 
 function canAccessWork(session, workId) {
   if (!session) return false
   if (canManageEntireApp(session.role)) return true
-  return session.workIds.includes(Number(workId))
+  return Array.isArray(session.workIds) && session.workIds.includes(Number(workId))
 }
 
 async function resolvePreviewScopedSession(session, searchParams) {
@@ -38,10 +39,7 @@ async function resolvePreviewScopedSession(session, searchParams) {
 function filterNotesForSession(notes, session) {
   if (!session) return []
 
-  return notes.filter(note => {
-    if (!canAccessWork(session, note.workId)) return false
-    return true
-  })
+  return notes.filter(note => canAccessWork(session, note.workId))
 }
 
 export async function GET(request) {
@@ -53,11 +51,16 @@ export async function GET(request) {
     const session = await getServerSession()
 
     if (!session) {
-      return NextResponse.json({ error: 'Sessão obrigatória.' }, { status: 401 })
+      return NextResponse.json({ error: 'Sessao obrigatoria.' }, { status: 401 })
     }
 
     const { searchParams } = new URL(request.url)
     const scopedSession = await resolvePreviewScopedSession(session, searchParams)
+
+    if (!hasPermission(scopedSession, 'daily_work_notes.read')) {
+      return NextResponse.json({ error: 'Sem permissao para consultar notas.' }, { status: 403 })
+    }
+
     const filters = {
       date: searchParams.get('date'),
       workId: searchParams.get('workId'),
@@ -79,14 +82,18 @@ export async function PUT(request) {
     const session = await getServerSession()
 
     if (!session) {
-      return NextResponse.json({ error: 'Sessão obrigatória.' }, { status: 401 })
+      return NextResponse.json({ error: 'Sessao obrigatoria.' }, { status: 401 })
+    }
+
+    if (!hasPermission(session, 'daily_work_notes.write')) {
+      return NextResponse.json({ error: 'Sem permissao para guardar notas.' }, { status: 403 })
     }
 
     const body = await request.json()
     const workId = Number(body.workId)
 
     if (!canAccessWork(session, workId)) {
-      return NextResponse.json({ error: 'Sem permissão para esta obra.' }, { status: 403 })
+      return NextResponse.json({ error: 'Sem permissao para esta obra.' }, { status: 403 })
     }
 
     const note = await upsertDailyWorkNoteData({
@@ -99,7 +106,7 @@ export async function PUT(request) {
 
     return NextResponse.json(note)
   } catch (error) {
-    const status = error.message?.includes('obrigatória') ? 400 : 500
+    const status = String(error.message || '').includes('obrigatoria') ? 400 : 500
     return NextResponse.json({ error: error.message || 'Erro ao guardar nota.' }, { status })
   }
 }
@@ -113,11 +120,11 @@ export async function DELETE(request) {
     const session = await getServerSession()
 
     if (!session) {
-      return NextResponse.json({ error: 'SessÃ£o obrigatÃ³ria.' }, { status: 401 })
+      return NextResponse.json({ error: 'Sessao obrigatoria.' }, { status: 401 })
     }
 
-    if (!canManageEntireApp(session.role)) {
-      return NextResponse.json({ error: 'Sem permissÃ£o para remover notas.' }, { status: 403 })
+    if (!hasPermission(session, 'daily_work_notes.delete')) {
+      return NextResponse.json({ error: 'Sem permissao para remover notas.' }, { status: 403 })
     }
 
     const body = await request.json()
