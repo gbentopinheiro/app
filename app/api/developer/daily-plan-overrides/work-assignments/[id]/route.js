@@ -93,6 +93,38 @@ async function requireOverrideSession(session, reason, entityId, targetDate, bef
   return null
 }
 
+export async function GET(_request, { params }) {
+  try {
+    const session = await getServerSession()
+
+    if (!session) {
+      return NextResponse.json({ error: 'Sessao obrigatoria.' }, { status: 401 })
+    }
+
+    if (!isDeveloperOverrideSession(session)) {
+      return NextResponse.json({ error: 'Sessao de developer obrigatoria.' }, { status: 403 })
+    }
+
+    if (!hasPermission(session, DEVELOPER_WORK_ASSIGNMENTS_OVERRIDE_PERMISSION)) {
+      return NextResponse.json({ error: 'Sem permissao para override tecnico de afetacoes.' }, { status: 403 })
+    }
+
+    const { id } = await params
+    const assignment = await getWorkAssignmentByIdData(id)
+
+    if (!assignment) {
+      return NextResponse.json({ error: 'Afetacao nao encontrada' }, { status: 404 })
+    }
+
+    await assertDeveloperOverrideWorkAssignment(assignment)
+
+    return NextResponse.json({ item: assignment })
+  } catch (error) {
+    const classifiedError = classifyDeveloperOverrideError(error, 'Erro ao carregar afetacao para override tecnico.')
+    return NextResponse.json({ error: classifiedError.message }, { status: classifiedError.status })
+  }
+}
+
 export async function PUT(request, { params }) {
   let session = null
   let reason = ''

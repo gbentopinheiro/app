@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getDeveloperUsersOverview } from '../../../../lib/developer-management.js'
+import { getDeveloperAccessProfilesOverview } from '../../../../lib/developer-management.js'
 import { hasPermission } from '../../../../lib/permissions.js'
 import { getServerSession } from '../../../../lib/server-session.js'
 
@@ -12,12 +12,13 @@ export async function GET() {
     }
 
     if (!hasPermission(session, 'developer.users.read')) {
-      return NextResponse.json({ error: 'Apenas o programador pode aceder a esta informacao.' }, { status: 403 })
+      return NextResponse.json({ error: 'Sem permissao para consultar perfis.' }, { status: 403 })
     }
 
-    return NextResponse.json(await getDeveloperUsersOverview())
+    return NextResponse.json({
+      profiles: await getDeveloperAccessProfilesOverview(),
+    })
   } catch (error) {
-    console.error('Error fetching users:', error.message)
-    return NextResponse.json({ error: 'Erro ao obter utilizadores.' }, { status: 500 })
+    return NextResponse.json({ error: 'Erro ao obter perfis de acesso.' }, { status: 500 })
   }
 }

@@ -1,435 +1,364 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+
+const panelStyle = {
+  borderRadius: '30px',
+  padding: '24px',
+  background: '#ffffff',
+  border: '1px solid rgba(148, 163, 184, 0.18)',
+  boxShadow: '0 18px 42px rgba(15, 23, 42, 0.08)',
+}
+
+const titleStyle = {
+  margin: 0,
+  color: '#10233e',
+  fontSize: '24px',
+  fontWeight: 900,
+  letterSpacing: '-0.04em',
+}
+
+const textStyle = {
+  margin: '10px 0 0',
+  color: '#52637a',
+  fontSize: '15px',
+  lineHeight: 1.7,
+}
+
+const topBarStyle = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  gap: '12px',
+  flexWrap: 'wrap',
+}
+
+const buttonStyle = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  minHeight: '38px',
+  padding: '0 14px',
+  borderRadius: '999px',
+  border: '1px solid rgba(148, 163, 184, 0.2)',
+  background: '#f8fafc',
+  color: '#10233e',
+  fontSize: '13px',
+  fontWeight: 800,
+  cursor: 'pointer',
+}
+
+const gridStyle = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+  gap: '14px',
+  marginTop: '20px',
+}
+
+const cardStyle = tone => ({
+  padding: '18px',
+  borderRadius: '22px',
+  background:
+    tone === 'success'
+      ? 'linear-gradient(135deg, #ecfdf3 0%, #ffffff 100%)'
+      : tone === 'warning'
+        ? 'linear-gradient(135deg, #fff7ed 0%, #ffffff 100%)'
+        : tone === 'danger'
+          ? 'linear-gradient(135deg, #fff1f2 0%, #ffffff 100%)'
+          : '#f8fafc',
+  border:
+    tone === 'success'
+      ? '1px solid rgba(34, 197, 94, 0.18)'
+      : tone === 'warning'
+        ? '1px solid rgba(249, 115, 22, 0.18)'
+        : tone === 'danger'
+          ? '1px solid rgba(244, 63, 94, 0.18)'
+          : '1px solid rgba(148, 163, 184, 0.18)',
+  display: 'grid',
+  gap: '10px',
+})
+
+const cardLabelStyle = {
+  margin: 0,
+  color: '#64748b',
+  fontSize: '12px',
+  fontWeight: 900,
+  letterSpacing: '0.12em',
+  textTransform: 'uppercase',
+}
+
+const cardValueStyle = {
+  margin: 0,
+  color: '#10233e',
+  fontSize: '28px',
+  lineHeight: 1.05,
+  fontWeight: 900,
+  letterSpacing: '-0.05em',
+}
+
+const cardHelperStyle = {
+  margin: 0,
+  color: '#52637a',
+  fontSize: '13px',
+  lineHeight: 1.6,
+}
+
+const messageStyle = type => ({
+  marginTop: '18px',
+  padding: '12px 14px',
+  borderRadius: '14px',
+  border: type === 'error' ? '1px solid rgba(239, 68, 68, 0.18)' : '1px solid rgba(34, 197, 94, 0.18)',
+  background: type === 'error' ? '#fff1f2' : '#f0fdf4',
+  color: type === 'error' ? '#9f1239' : '#166534',
+  fontSize: '14px',
+  fontWeight: 700,
+})
+
+const sectionStyle = {
+  marginTop: '20px',
+  display: 'grid',
+  gap: '14px',
+}
+
+const sectionTitleStyle = {
+  margin: 0,
+  color: '#10233e',
+  fontSize: '18px',
+  fontWeight: 900,
+}
+
+const summaryGridStyle = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+  gap: '12px',
+}
+
+const summaryCardStyle = {
+  padding: '14px 16px',
+  borderRadius: '18px',
+  background: '#f8fafc',
+  border: '1px solid rgba(148, 163, 184, 0.18)',
+}
+
+const migrationWarningStyle = {
+  padding: '14px 16px',
+  borderRadius: '18px',
+  background: '#fff7ed',
+  border: '1px solid rgba(249, 115, 22, 0.18)',
+  color: '#9a3412',
+  display: 'grid',
+  gap: '6px',
+}
+
+const migrationGridStyle = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+  gap: '14px',
+}
+
+const migrationColumnStyle = source => ({
+  padding: '18px',
+  borderRadius: '22px',
+  background:
+    source === 'mysql'
+      ? 'linear-gradient(135deg, #eff6ff 0%, #ffffff 100%)'
+      : source === 'json'
+        ? 'linear-gradient(135deg, #fff7ed 0%, #ffffff 100%)'
+        : 'linear-gradient(135deg, #fef3c7 0%, #ffffff 100%)',
+  border:
+    source === 'mysql'
+      ? '1px solid rgba(59, 130, 246, 0.18)'
+      : source === 'json'
+        ? '1px solid rgba(249, 115, 22, 0.18)'
+        : '1px solid rgba(217, 119, 6, 0.18)',
+  display: 'grid',
+  gap: '12px',
+})
+
+const migrationItemStyle = {
+  padding: '12px 14px',
+  borderRadius: '16px',
+  background: '#ffffff',
+  border: '1px solid rgba(148, 163, 184, 0.14)',
+  display: 'grid',
+  gap: '6px',
+}
+
+function formatGeneratedAt(value) {
+  if (!value) {
+    return 'Sem registo'
+  }
+
+  const date = new Date(value)
+
+  if (Number.isNaN(date.getTime())) {
+    return 'Sem registo'
+  }
+
+  return new Intl.DateTimeFormat('pt-PT', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date)
+}
 
 export default function SystemDiagnosticsPanel() {
-  const [diagnostics, setDiagnostics] = useState(null)
+  const [systemState, setSystemState] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [expandedSections, setExpandedSections] = useState({
-    memory: true,
-    fileIO: true,
-    errors: false,
-    processor: false,
-    dataFiles: false,
-  })
 
   useEffect(() => {
-    fetchDiagnostics()
+    fetchSystemState()
   }, [])
 
-  const fetchDiagnostics = async () => {
+  async function fetchSystemState() {
     try {
       setLoading(true)
       setError(null)
-      const res = await fetch('/api/developer/system-diagnostics')
-      if (!res.ok) throw new Error('Failed to fetch diagnostics')
-      const data = await res.json()
-      setDiagnostics(data)
-    } catch (err) {
-      setError(err.message)
+      const response = await fetch('/api/developer/system-diagnostics')
+
+      if (!response.ok) {
+        throw new Error('Erro ao carregar estado do sistema')
+      }
+
+      setSystemState(await response.json())
+    } catch (fetchError) {
+      setError(fetchError.message || 'Erro ao carregar estado do sistema')
     } finally {
       setLoading(false)
     }
   }
 
-  const toggleSection = (section) => {
-    setExpandedSections(prev => ({
-      ...prev,
-      [section]: !prev[section],
-    }))
-  }
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'healthy':
-        return '#10b981'
-      case 'warning':
-        return '#f59e0b'
-      case 'slow':
-        return '#f59e0b'
-      case 'critical':
-        return '#ef4444'
-      case 'error':
-        return '#ef4444'
-      default:
-        return '#6b7280'
+  const migrationGroups = useMemo(() => {
+    if (!systemState?.migration?.entities) {
+      return []
     }
-  }
 
-  const panelStyle = {
-    marginBottom: '2rem',
-    padding: '1.5rem',
-    backgroundColor: '#f9fafb',
-    border: '1px solid #e5e7eb',
-    borderRadius: '0.5rem',
-  }
-
-  const headerStyle = {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: '1rem',
-    cursor: 'pointer',
-    userSelect: 'none',
-  }
-
-  const titleStyle = {
-    fontSize: '1.125rem',
-    fontWeight: 600,
-    color: '#1f2937',
-    margin: 0,
-  }
-
-  const statusBadgeStyle = (status) => ({
-    display: 'inline-block',
-    padding: '0.25rem 0.75rem',
-    borderRadius: '9999px',
-    fontSize: '0.75rem',
-    fontWeight: 600,
-    backgroundColor: getStatusColor(status),
-    color: 'white',
-  })
-
-  const sectionHeaderStyle = {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingBottom: '0.75rem',
-    borderBottom: '1px solid #d1d5db',
-    marginBottom: '0.75rem',
-    cursor: 'pointer',
-  }
-
-  const gridStyle = {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-    gap: '1rem',
-    marginTop: '1rem',
-  }
-
-  const metricCardStyle = {
-    padding: '1rem',
-    backgroundColor: 'white',
-    border: '1px solid #e5e7eb',
-    borderRadius: '0.375rem',
-  }
-
-  const metricLabelStyle = {
-    fontSize: '0.875rem',
-    color: '#6b7280',
-    marginBottom: '0.25rem',
-  }
-
-  const metricValueStyle = {
-    fontSize: '1.5rem',
-    fontWeight: 700,
-    color: '#1f2937',
-  }
+    return [
+      {
+        id: 'mysql',
+        label: 'MySQL',
+        items: systemState.migration.entities.filter(entity => entity.source === 'mysql'),
+      },
+      {
+        id: 'json',
+        label: 'JSON',
+        items: systemState.migration.entities.filter(entity => entity.source === 'json'),
+      },
+      {
+        id: 'hybrid',
+        label: 'Hibrido',
+        items: systemState.migration.entities.filter(entity => entity.source === 'hybrid'),
+      },
+    ]
+  }, [systemState])
 
   if (loading) {
     return (
-      <div style={panelStyle}>
-        <p style={{ textAlign: 'center', color: '#6b7280' }}>A carregar diagnósticos do sistema...</p>
-      </div>
+      <section style={panelStyle}>
+        <h2 style={titleStyle}>Estado do Sistema</h2>
+        <p style={textStyle}>A carregar estado tecnico...</p>
+      </section>
     )
-  }
-
-  if (error) {
-    return (
-      <div style={panelStyle}>
-        <p style={{ color: '#ef4444' }}>Erro ao carregar diagnósticos: {error}</p>
-      </div>
-    )
-  }
-
-  if (!diagnostics) {
-    return null
   }
 
   return (
-    <div style={panelStyle}>
-      <div style={headerStyle}>
-        <h2 style={titleStyle}>🔍 Diagnósticos do Sistema</h2>
-        <button
-          onClick={fetchDiagnostics}
-          style={{
-            padding: '0.5rem 1rem',
-            backgroundColor: '#3b82f6',
-            color: 'white',
-            border: 'none',
-            borderRadius: '0.375rem',
-            cursor: 'pointer',
-            fontSize: '0.875rem',
-            fontWeight: 500,
-          }}
-        >
-          🔄 Reanalysar
+    <section style={panelStyle}>
+      <div style={topBarStyle}>
+        <div>
+          <h2 style={titleStyle}>Estado do Sistema</h2>
+          <p style={textStyle}>
+            Resumo tecnico de runtime, origem de dados e estado da migracao para MySQL.
+          </p>
+        </div>
+        <button type="button" style={buttonStyle} onClick={fetchSystemState}>
+          Recarregar
         </button>
       </div>
 
-      {/* Memory Section */}
-      <div
-        style={{
-          marginBottom: '1.5rem',
-          padding: '1rem',
-          backgroundColor: 'white',
-          border: '1px solid #e5e7eb',
-          borderRadius: '0.375rem',
-        }}
-      >
-        <div
-          style={sectionHeaderStyle}
-          onClick={() => toggleSection('memory')}
-        >
-          <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>
-            💾 Memória
-          </h3>
-          <span style={statusBadgeStyle(diagnostics.memory.status)}>
-            {diagnostics.memory.status}
-          </span>
-        </div>
+      {error ? <div style={messageStyle('error')}>{error}</div> : null}
 
-        {expandedSections.memory && (
+      {systemState ? (
+        <>
           <div style={gridStyle}>
-            <div style={metricCardStyle}>
-              <div style={metricLabelStyle}>Heap Usado</div>
-              <div style={metricValueStyle}>{diagnostics.memory.heapUsedMB} MB</div>
-            </div>
-            <div style={metricCardStyle}>
-              <div style={metricLabelStyle}>Heap Total</div>
-              <div style={metricValueStyle}>{diagnostics.memory.heapTotalMB} MB</div>
-            </div>
-            <div style={metricCardStyle}>
-              <div style={metricLabelStyle}>Percentagem</div>
-              <div style={metricValueStyle}>{diagnostics.memory.heapPercentage}%</div>
-            </div>
-            <div style={metricCardStyle}>
-              <div style={metricLabelStyle}>Externo</div>
-              <div style={metricValueStyle}>{diagnostics.memory.externalMemMB} MB</div>
-            </div>
-            <div style={metricCardStyle}>
-              <div style={metricLabelStyle}>RSS</div>
-              <div style={metricValueStyle}>{diagnostics.memory.rssMemMB} MB</div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* File I/O Section */}
-      <div
-        style={{
-          marginBottom: '1.5rem',
-          padding: '1rem',
-          backgroundColor: 'white',
-          border: '1px solid #e5e7eb',
-          borderRadius: '0.375rem',
-        }}
-      >
-        <div
-          style={sectionHeaderStyle}
-          onClick={() => toggleSection('fileIO')}
-        >
-          <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>
-            📁 I/O de Ficheiros
-          </h3>
-          <span style={statusBadgeStyle(diagnostics.fileIO.status)}>
-            {diagnostics.fileIO.status}
-          </span>
-        </div>
-
-        {expandedSections.fileIO && (
-          <div style={gridStyle}>
-            <div style={metricCardStyle}>
-              <div style={metricLabelStyle}>Tempo Escrita</div>
-              <div style={metricValueStyle}>
-                {diagnostics.fileIO.writeTimeMs || diagnostics.fileIO.error}
-              </div>
-              {!diagnostics.fileIO.error && (
-                <div style={{ ...metricLabelStyle, marginTop: '0.25rem' }}>ms</div>
-              )}
-            </div>
-            <div style={metricCardStyle}>
-              <div style={metricLabelStyle}>Tempo Leitura</div>
-              <div style={metricValueStyle}>
-                {diagnostics.fileIO.readTimeMs || '—'}
-              </div>
-              {!diagnostics.fileIO.error && (
-                <div style={{ ...metricLabelStyle, marginTop: '0.25rem' }}>ms</div>
-              )}
-            </div>
-            <div style={metricCardStyle}>
-              <div style={metricLabelStyle}>Tempo Médio</div>
-              <div style={metricValueStyle}>
-                {diagnostics.fileIO.averageTimeMs || '—'}
-              </div>
-              {!diagnostics.fileIO.error && (
-                <div style={{ ...metricLabelStyle, marginTop: '0.25rem' }}>ms</div>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Processor Section */}
-      <div
-        style={{
-          marginBottom: '1.5rem',
-          padding: '1rem',
-          backgroundColor: 'white',
-          border: '1px solid #e5e7eb',
-          borderRadius: '0.375rem',
-        }}
-      >
-        <div
-          style={sectionHeaderStyle}
-          onClick={() => toggleSection('processor')}
-        >
-          <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>
-            ⚙️ Processador & Uptime
-          </h3>
-        </div>
-
-        {expandedSections.processor && (
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: '1fr 1fr',
-              gap: '1rem',
-              marginTop: '1rem',
-            }}
-          >
-            <div style={metricCardStyle}>
-              <div style={metricLabelStyle}>Uptime</div>
-              <div style={metricValueStyle} title={diagnostics.processor.uptimeFormatted}>
-                {diagnostics.processor.uptimeFormatted}
-              </div>
-            </div>
-            <div style={metricCardStyle}>
-              <div style={metricLabelStyle}>Node.js</div>
-              <div style={metricValueStyle}>{diagnostics.processor.nodeVersion}</div>
-            </div>
-            <div style={metricCardStyle}>
-              <div style={metricLabelStyle}>Ambiente</div>
-              <div style={metricValueStyle}>{diagnostics.processor.environment}</div>
-            </div>
-            <div style={metricCardStyle}>
-              <div style={metricLabelStyle}>CPU User</div>
-              <div style={metricValueStyle}>
-                {Math.round(diagnostics.processor.cpuUsage.user / 1000)}ms
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Recent Errors Section */}
-      {diagnostics.recentErrors && diagnostics.recentErrors.recentCount > 0 && (
-        <div
-          style={{
-            marginBottom: '1.5rem',
-            padding: '1rem',
-            backgroundColor: '#fef2f2',
-            border: '1px solid #fee2e2',
-            borderRadius: '0.375rem',
-          }}
-        >
-          <div
-            style={sectionHeaderStyle}
-            onClick={() => toggleSection('errors')}
-          >
-            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>
-              ⚠️ Erros Recentes ({diagnostics.recentErrors.totalErrorsLogged})
-            </h3>
-            <span style={statusBadgeStyle('warning')}>
-              {diagnostics.recentErrors.recentCount} recentes
-            </span>
-          </div>
-
-          {expandedSections.errors && (
-            <div style={{ marginTop: '1rem' }}>
-              {diagnostics.recentErrors.errors.map((err, idx) => (
-                <div
-                  key={idx}
-                  style={{
-                    padding: '0.75rem',
-                    marginBottom: '0.5rem',
-                    backgroundColor: 'white',
-                    border: '1px solid #fee2e2',
-                    borderRadius: '0.375rem',
-                    fontSize: '0.875rem',
-                  }}
-                >
-                  <div style={{ color: '#991b1b', fontWeight: 500 }}>
-                    {err.message}
-                  </div>
-                  <div style={{ color: '#7f1d1d', fontSize: '0.8rem' }}>
-                    {err.endpoint} • {new Date(err.timestamp).toLocaleString()}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Data Files Section */}
-      <div
-        style={{
-          padding: '1rem',
-          backgroundColor: 'white',
-          border: '1px solid #e5e7eb',
-          borderRadius: '0.375rem',
-        }}
-      >
-        <div
-          style={sectionHeaderStyle}
-          onClick={() => toggleSection('dataFiles')}
-        >
-          <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>
-            📊 Ficheiros de Dados
-          </h3>
-        </div>
-
-        {expandedSections.dataFiles && (
-          <div style={{ marginTop: '1rem' }}>
-            {Object.entries(diagnostics.dataFileStatus).map(([filename, stats]) => (
-              <div
-                key={filename}
-                style={{
-                  padding: '0.75rem',
-                  marginBottom: '0.5rem',
-                  backgroundColor: stats.exists ? '#f0fdf4' : '#fef2f2',
-                  border: `1px solid ${stats.exists ? '#bbf7d0' : '#fee2e2'}`,
-                  borderRadius: '0.375rem',
-                  fontSize: '0.875rem',
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <div style={{ fontWeight: 500 }}>
-                    {stats.exists ? '✅' : '❌'} {filename}
-                  </div>
-                  {stats.exists && (
-                    <div style={{ color: '#6b7280' }}>
-                      {stats.sizeMB > 1 ? `${stats.sizeMB}MB` : `${stats.sizeKB}KB`}
-                    </div>
-                  )}
-                </div>
-                {stats.exists && (
-                  <div style={{ color: '#6b7280', fontSize: '0.8rem' }}>
-                    Modificado há {stats.lastModifiedMinutesAgo} minuto(s)
-                  </div>
-                )}
-                {!stats.exists && (
-                  <div style={{ color: '#7f1d1d', fontSize: '0.8rem' }}>
-                    {stats.error}
-                  </div>
-                )}
-              </div>
+            {systemState.cards.map(card => (
+              <article key={card.id} style={cardStyle(card.tone)}>
+                <p style={cardLabelStyle}>{card.label}</p>
+                <p style={cardValueStyle}>{card.value}</p>
+                <p style={cardHelperStyle}>{card.helper}</p>
+              </article>
             ))}
           </div>
-        )}
-      </div>
-    </div>
+
+          {systemState.migration ? (
+            <>
+              <section style={sectionStyle}>
+                <h3 style={sectionTitleStyle}>Migracao MySQL</h3>
+                <div style={summaryGridStyle}>
+                  <article style={{ ...summaryCardStyle, background: 'linear-gradient(135deg, #dbeafe 0%, #ffffff 100%)', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
+                    <p style={cardLabelStyle}>Origem principal dos dados</p>
+                    <p style={{ ...cardValueStyle, fontSize: '24px', color: '#1e40af' }}>{systemState.migration.primaryDataSource}</p>
+                  </article>
+                  <article style={{ ...summaryCardStyle, background: 'linear-gradient(135deg, #dbeafe 0%, #ffffff 100%)', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
+                    <p style={cardLabelStyle}>Entidades MySQL</p>
+                    <p style={{ ...cardValueStyle, fontSize: '24px', color: '#1e40af' }}>{systemState.migration.summary.mysql}</p>
+                  </article>
+                  <article style={{ ...summaryCardStyle, background: 'linear-gradient(135deg, #fef3c7 0%, #ffffff 100%)', border: '1px solid rgba(217, 119, 6, 0.2)' }}>
+                    <p style={cardLabelStyle}>Entidades JSON</p>
+                    <p style={{ ...cardValueStyle, fontSize: '24px', color: '#92400e' }}>{systemState.migration.summary.json}</p>
+                  </article>
+                  <article style={{ ...summaryCardStyle, background: 'linear-gradient(135deg, #fff7ed 0%, #ffffff 100%)', border: '1px solid rgba(249, 115, 22, 0.2)' }}>
+                    <p style={cardLabelStyle}>Entidades Hibridas</p>
+                    <p style={{ ...cardValueStyle, fontSize: '24px', color: '#9a3412' }}>{systemState.migration.summary.hybrid}</p>
+                  </article>
+                </div>
+
+                {systemState.migration.summary.json > 0 || systemState.migration.summary.hybrid > 0 ? (
+                  <article style={migrationWarningStyle}>
+                    <strong>Aviso de migracao</strong>
+                    <span>
+                      A migracao MySQL ainda tem entidades hibridas. Ver auditoria tecnica antes de remover JSON.
+                    </span>
+                  </article>
+                ) : null}
+              </section>
+
+              <section style={sectionStyle}>
+                <div style={migrationGridStyle}>
+                  {migrationGroups.map(group => (
+                    <div key={group.id} style={migrationColumnStyle(group.id)}>
+                      <h4 style={{ ...sectionTitleStyle, fontSize: '16px' }}>
+                        {group.label} ({group.items.length})
+                      </h4>
+                      {group.items.length > 0 ? (
+                        group.items.map(item => (
+                          <article key={item.id} style={migrationItemStyle}>
+                            <strong style={{ color: '#10233e', fontSize: '14px' }}>{item.label}</strong>
+                            <span style={{ color: '#475569', fontSize: '13px', lineHeight: 1.6 }}>{item.helper}</span>
+                          </article>
+                        ))
+                      ) : (
+                        <article style={migrationItemStyle}>
+                          <strong style={{ color: '#10233e', fontSize: '14px' }}>Sem entidades</strong>
+                          <span style={{ color: '#475569', fontSize: '13px', lineHeight: 1.6 }}>
+                            Nenhum item classificado neste grupo.
+                          </span>
+                        </article>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </section>
+            </>
+          ) : null}
+
+          <p style={{ ...textStyle, marginTop: '18px' }}>
+            Ultima leitura: {formatGeneratedAt(systemState.generatedAt)}
+          </p>
+        </>
+      ) : null}
+    </section>
   )
 }

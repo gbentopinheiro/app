@@ -1511,7 +1511,14 @@ export default function DailyPlanPage() {
         <div style={modalBackdropStyle} onClick={closeAddModal}>
           <section style={modalCardStyle} onClick={(event) => event.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center' }}>
-              <h2 style={{ margin: 0 }}>{assignmentForm.id ? 'Editar afetação' : 'Adicionar afetação'}</h2>
+              <div>
+                <h2 style={{ margin: 0 }}>{assignmentForm.id ? 'Editar afetação' : 'Adicionar afetação'}</h2>
+                {assignmentForm.id ? (
+                  <p style={{ margin: '6px 0 0', color: 'var(--vp-text-muted)', fontSize: '13px', fontWeight: 700 }}>
+                    Assignment ID: {assignmentForm.id}
+                  </p>
+                ) : null}
+              </div>
               <button type="button" onClick={closeAddModal} style={closeButtonStyle} aria-label="Fechar">
                 ×
               </button>

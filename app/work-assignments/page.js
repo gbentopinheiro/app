@@ -472,6 +472,11 @@ export default function WorkAssignmentsPage() {
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center' }}>
               <div>
                 <h2 style={{ margin: 0 }}>{form.id ? 'Editar afetação' : 'Nova afetação'}</h2>
+                {form.id ? (
+                  <p style={{ margin: '8px 0 0', color: 'var(--vp-text-muted)', fontSize: '13px', fontWeight: 700 }}>
+                    Assignment ID: {form.id}
+                  </p>
+                ) : null}
                 <p style={{ margin: '8px 0 0', color: 'var(--vp-text-muted)' }}>
                   Ao mudar a obra numa afetação existente, a pessoa passa a ficar associada a outra obra.
                 </p>

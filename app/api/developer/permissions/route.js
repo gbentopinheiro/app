@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getDeveloperUsersOverview } from '../../../../lib/developer-management.js'
+import { getDeveloperPermissionsCatalog } from '../../../../lib/developer-management.js'
 import { hasPermission } from '../../../../lib/permissions.js'
 import { getServerSession } from '../../../../lib/server-session.js'
 
@@ -12,12 +12,13 @@ export async function GET() {
     }
 
     if (!hasPermission(session, 'developer.users.read')) {
-      return NextResponse.json({ error: 'Apenas o programador pode aceder a esta informacao.' }, { status: 403 })
+      return NextResponse.json({ error: 'Sem permissao para consultar permissoes.' }, { status: 403 })
     }
 
-    return NextResponse.json(await getDeveloperUsersOverview())
+    return NextResponse.json({
+      permissions: await getDeveloperPermissionsCatalog(),
+    })
   } catch (error) {
-    console.error('Error fetching users:', error.message)
-    return NextResponse.json({ error: 'Erro ao obter utilizadores.' }, { status: 500 })
+    return NextResponse.json({ error: 'Erro ao obter permissoes.' }, { status: 500 })
   }
 }

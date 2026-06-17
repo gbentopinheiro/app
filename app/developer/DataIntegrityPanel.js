@@ -25,16 +25,51 @@ const textStyle = {
   lineHeight: 1.7,
 }
 
-const statusBadgeStyle = (hasIssues) => ({
+const topBarStyle = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  gap: '12px',
+  flexWrap: 'wrap',
+}
+
+const buttonStyle = (variant = 'ghost') => ({
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  minHeight: '38px',
+  padding: '0 14px',
+  borderRadius: '999px',
+  border: variant === 'primary' ? 'none' : '1px solid rgba(148, 163, 184, 0.2)',
+  background: variant === 'primary' ? '#ff8c00' : '#f8fafc',
+  color: variant === 'primary' ? '#ffffff' : '#10233e',
+  fontSize: '13px',
+  fontWeight: 800,
+  cursor: 'pointer',
+})
+
+const messageStyle = type => ({
+  marginTop: '18px',
+  padding: '12px 14px',
+  borderRadius: '14px',
+  border: type === 'error' ? '1px solid rgba(239, 68, 68, 0.18)' : '1px solid rgba(34, 197, 94, 0.18)',
+  background: type === 'error' ? '#fff1f2' : '#f0fdf4',
+  color: type === 'error' ? '#9f1239' : '#166534',
+  fontSize: '14px',
+  fontWeight: 700,
+})
+
+const statusBadgeStyle = hasIssues => ({
   display: 'inline-flex',
   alignItems: 'center',
   gap: '8px',
   padding: '8px 12px',
   borderRadius: '999px',
-  background: hasIssues ? '#fee2e2' : '#dcfce7',
-  color: hasIssues ? '#7f1d1d' : '#166534',
+  background: hasIssues ? '#fff1f2' : '#ecfdf3',
+  color: hasIssues ? '#9f1239' : '#166534',
   fontSize: '13px',
-  fontWeight: 700,
+  fontWeight: 800,
+  border: hasIssues ? '1px solid rgba(244, 63, 94, 0.18)' : '1px solid rgba(34, 197, 94, 0.18)',
 })
 
 const statsGridStyle = {
@@ -72,124 +107,104 @@ const statValueStyle = {
 const issueListStyle = {
   display: 'grid',
   gap: '12px',
-  marginTop: '18px',
+  marginTop: '20px',
 }
 
-const issueCardStyle = (severity) => {
-  const baseStyle = {
-    padding: '16px 18px',
-    borderRadius: '20px',
-    border: '1px solid',
-    cursor: 'pointer',
-    transition: 'all 0.2s',
-  }
-
-  if (severity === 'high') {
-    return {
-      ...baseStyle,
-      background: '#fff1f2',
-      borderColor: 'rgba(244, 63, 94, 0.22)',
-      color: '#9f1239',
-    }
-  }
-
-  if (severity === 'medium') {
-    return {
-      ...baseStyle,
-      background: '#fff7ed',
-      borderColor: 'rgba(249, 115, 22, 0.22)',
-      color: '#9a3412',
-    }
-  }
-
-  return {
-    ...baseStyle,
-    background: '#eff6ff',
-    borderColor: 'rgba(59, 130, 246, 0.22)',
-    color: '#1d4ed8',
-  }
-}
-
-const issueTitleStyle = {
-  margin: 0,
-  fontSize: '16px',
-  fontWeight: 900,
-  marginBottom: '4px',
-}
-
-const issueTextStyle = {
-  margin: 0,
-  fontSize: '14px',
-  lineHeight: 1.65,
-  opacity: 0.9,
-}
-
-const issueCountStyle = {
-  fontSize: '12px',
-  marginTop: '8px',
-  opacity: 0.8,
-}
-
-const messageStyle = (type) => ({
-  margin: '18px 0 0',
-  padding: '12px 14px',
-  borderRadius: '14px',
-  border: type === 'error' ? '1px solid rgba(239, 68, 68, 0.18)' : '1px solid rgba(34, 197, 94, 0.18)',
-  background: type === 'error' ? '#fff1f2' : '#f0fdf4',
-  color: type === 'error' ? '#9f1239' : '#166534',
-  fontSize: '14px',
-  fontWeight: 700,
+const issueCardStyle = severity => ({
+  padding: '18px',
+  borderRadius: '22px',
+  background:
+    severity === 'high'
+      ? '#fff1f2'
+      : severity === 'medium'
+        ? '#fff7ed'
+        : '#eff6ff',
+  border:
+    severity === 'high'
+      ? '1px solid rgba(244, 63, 94, 0.18)'
+      : severity === 'medium'
+        ? '1px solid rgba(249, 115, 22, 0.18)'
+        : '1px solid rgba(59, 130, 246, 0.18)',
+  display: 'grid',
+  gap: '12px',
 })
 
-const statusRowStyle = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
-  gap: '12px',
-  marginTop: '16px',
-}
-
-const statusItemStyle = {
+const issueHeaderStyle = {
   display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'flex-start',
+  gap: '12px',
+  flexWrap: 'wrap',
+}
+
+const severityBadgeStyle = severity => ({
+  display: 'inline-flex',
   alignItems: 'center',
-  gap: '8px',
-  padding: '10px 12px',
-  borderRadius: '12px',
-  background: '#f8fafc',
-  border: '1px solid rgba(148, 163, 184, 0.18)',
+  justifyContent: 'center',
+  minWidth: '76px',
+  padding: '6px 10px',
+  borderRadius: '999px',
+  background: '#ffffff',
+  color:
+    severity === 'high'
+      ? '#9f1239'
+      : severity === 'medium'
+        ? '#9a3412'
+        : '#1d4ed8',
+  fontSize: '12px',
+  fontWeight: 900,
+  textTransform: 'uppercase',
+})
+
+const detailGridStyle = {
+  display: 'grid',
+  gap: '10px',
 }
 
-const countCircleStyle = (severity) => {
-  const colors = {
-    high: '#dc2626',
-    medium: '#f97316',
-    low: '#2563eb',
-  }
-  return {
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    minWidth: '28px',
-    height: '28px',
-    borderRadius: '50%',
-    background: colors[severity],
-    color: '#ffffff',
-    fontSize: '13px',
-    fontWeight: 900,
-  }
+const detailCardStyle = {
+  padding: '14px',
+  borderRadius: '16px',
+  background: '#ffffff',
+  border: '1px solid rgba(148, 163, 184, 0.16)',
 }
 
-const labelStyle = {
-  color: '#52637a',
-  fontSize: '13px',
-  fontWeight: 700,
-  margin: 0,
+const detailRowStyle = {
+  display: 'flex',
+  flexWrap: 'wrap',
+  gap: '8px 12px',
+}
+
+const detailLabelStyle = {
+  color: '#64748b',
+  fontSize: '12px',
+  fontWeight: 900,
+  letterSpacing: '0.08em',
+  textTransform: 'uppercase',
+}
+
+function formatDetailValue(value) {
+  if (value === null || value === undefined || value === '') {
+    return 'n/a'
+  }
+
+  if (Array.isArray(value) || (typeof value === 'object' && value !== null)) {
+    try {
+      return JSON.stringify(value)
+    } catch {
+      return String(value)
+    }
+  }
+
+  return String(value)
 }
 
 export default function DataIntegrityPanel() {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [expandedIssue, setExpandedIssue] = useState(null)
+  const [expandedIssueId, setExpandedIssueId] = useState(null)
+  const [fixingIssueId, setFixingIssueId] = useState(null)
+  const [message, setMessage] = useState(null)
 
   useEffect(() => {
     fetchIntegrity()
@@ -200,13 +215,50 @@ export default function DataIntegrityPanel() {
       setLoading(true)
       setError(null)
       const res = await fetch('/api/developer/data-integrity')
-      if (!res.ok) throw new Error('Erro ao carregar integridade dos dados')
-      const result = await res.json()
-      setData(result)
-    } catch (err) {
-      setError(err.message)
+
+      if (!res.ok) {
+        throw new Error('Erro ao carregar integridade dos dados')
+      }
+
+      setData(await res.json())
+    } catch (fetchError) {
+      setError(fetchError.message)
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function handleAutoFix(issueId) {
+    const confirmed = window.confirm('Queres aplicar esta correcao automatica?')
+
+    if (!confirmed) {
+      return
+    }
+
+    try {
+      setFixingIssueId(issueId)
+      setError(null)
+      setMessage(null)
+      const res = await fetch('/api/developer/data-integrity', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ issueId }),
+      })
+      const payload = await res.json()
+
+      if (!res.ok) {
+        throw new Error(payload.error || 'Erro ao aplicar correcao automatica.')
+      }
+
+      setMessage(payload.message || 'Correcao automatica aplicada com sucesso.')
+      await fetchIntegrity()
+      setExpandedIssueId(issueId)
+    } catch (fixError) {
+      setError(fixError.message)
+    } finally {
+      setFixingIssueId(null)
     }
   }
 
@@ -221,108 +273,126 @@ export default function DataIntegrityPanel() {
 
   return (
     <section style={panelStyle}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
+      <div style={topBarStyle}>
         <div>
           <h2 style={titleStyle}>Integridade de Dados</h2>
+          <p style={textStyle}>Detecao tecnica de incoerencias com detalhe e correcoes automaticas seguras.</p>
         </div>
-        <div style={statusBadgeStyle(data?.hasIssues)}>
-          <span>{data?.hasIssues ? '🔴 Problemas' : '✅ OK'}</span>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+          <span style={statusBadgeStyle(data?.hasIssues)}>
+            {data?.hasIssues ? 'Com problemas' : 'Sem problemas'}
+          </span>
+          <button type="button" style={buttonStyle()} onClick={fetchIntegrity}>
+            Reanalisar
+          </button>
         </div>
       </div>
 
-      {error && <div style={messageStyle('error')}>{error}</div>}
+      {error ? <div style={messageStyle('error')}>{error}</div> : null}
+      {message ? <div style={messageStyle('success')}>{message}</div> : null}
 
-      {data && (
+      {data ? (
         <>
-          <div style={statusRowStyle}>
-            <div style={statusItemStyle}>
-              <div style={countCircleStyle('high')}>{data.issueCounts.high}</div>
-              <p style={labelStyle}>Critico</p>
+          <div style={statsGridStyle}>
+            <div style={statCardStyle}>
+              <p style={statLabelStyle}>Critico</p>
+              <p style={statValueStyle}>{data.issueCounts.high}</p>
             </div>
-            <div style={statusItemStyle}>
-              <div style={countCircleStyle('medium')}>{data.issueCounts.medium}</div>
-              <p style={labelStyle}>Aviso</p>
+            <div style={statCardStyle}>
+              <p style={statLabelStyle}>Aviso</p>
+              <p style={statValueStyle}>{data.issueCounts.medium}</p>
             </div>
-            <div style={statusItemStyle}>
-              <div style={countCircleStyle('low')}>{data.issueCounts.low}</div>
-              <p style={labelStyle}>Informacao</p>
+            <div style={statCardStyle}>
+              <p style={statLabelStyle}>Info</p>
+              <p style={statValueStyle}>{data.issueCounts.low}</p>
+            </div>
+            <div style={statCardStyle}>
+              <p style={statLabelStyle}>Contas</p>
+              <p style={statValueStyle}>{data.statistics.totalAccounts}</p>
+            </div>
+            <div style={statCardStyle}>
+              <p style={statLabelStyle}>Pessoas</p>
+              <p style={statValueStyle}>{data.statistics.totalPeople}</p>
+            </div>
+            <div style={statCardStyle}>
+              <p style={statLabelStyle}>Obras</p>
+              <p style={statValueStyle}>{data.statistics.totalWorks}</p>
             </div>
           </div>
 
           {data.issues.length === 0 ? (
-            <div style={messageStyle('success')}>
-              Nenhum problema encontrado. A integridade dos dados esta OK!
-            </div>
+            <div style={messageStyle('success')}>Nenhum problema encontrado. A base esta consistente.</div>
           ) : (
-            <>
-              <div style={issueListStyle}>
-                {data.issues.map((issue, idx) => (
-                  <div
-                    key={idx}
-                    style={issueCardStyle(issue.severity)}
-                    onClick={() => setExpandedIssue(expandedIssue === idx ? null : idx)}
-                  >
-                    <p style={issueTitleStyle}>{issue.title}</p>
-                    <p style={issueTextStyle}>{issue.description}</p>
-                    <p style={issueCountStyle}>🔹 {issue.affectedCount} item(ns) afetado(s)</p>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
+            <div style={issueListStyle}>
+              {data.issues.map(issue => {
+                const expanded = expandedIssueId === issue.id
 
-          <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '1px solid rgba(148, 163, 184, 0.18)' }}>
-            <p style={{ ...titleStyle, fontSize: '18px', marginBottom: '12px' }}>Estatísticas da Base de Dados</p>
-            <div style={statsGridStyle}>
-              <div style={statCardStyle}>
-                <p style={statLabelStyle}>Pessoas</p>
-                <p style={statValueStyle}>{data.statistics.totalPeople}</p>
-              </div>
-              <div style={statCardStyle}>
-                <p style={statLabelStyle}>Obras</p>
-                <p style={statValueStyle}>{data.statistics.totalWorks}</p>
-              </div>
-              <div style={statCardStyle}>
-                <p style={statLabelStyle}>Clientes</p>
-                <p style={statValueStyle}>{data.statistics.totalClients}</p>
-              </div>
-              <div style={statCardStyle}>
-                <p style={statLabelStyle}>Atribuições</p>
-                <p style={statValueStyle}>{data.statistics.totalAssignments}</p>
-              </div>
-              <div style={statCardStyle}>
-                <p style={statLabelStyle}>Planos</p>
-                <p style={statValueStyle}>{data.statistics.totalWorkPlans}</p>
-              </div>
-              <div style={statCardStyle}>
-                <p style={statLabelStyle}>Notas Diárias</p>
-                <p style={statValueStyle}>{data.statistics.totalDailyNotes}</p>
-              </div>
-              <div style={statCardStyle}>
-                <p style={statLabelStyle}>Contas</p>
-                <p style={statValueStyle}>{data.statistics.totalAccounts}</p>
-              </div>
+                return (
+                  <article key={issue.id} style={issueCardStyle(issue.severity)}>
+                    <div style={issueHeaderStyle}>
+                      <div style={{ display: 'grid', gap: '6px' }}>
+                        <p style={{ margin: 0, color: '#10233e', fontSize: '16px', fontWeight: 900 }}>
+                          {issue.title}
+                        </p>
+                        <p style={{ margin: 0, color: '#475569', fontSize: '14px', lineHeight: 1.6 }}>
+                          {issue.description}
+                        </p>
+                        <p style={{ margin: 0, color: '#64748b', fontSize: '12px', fontWeight: 800 }}>
+                          {issue.affectedCount} item(ns) afetado(s)
+                        </p>
+                      </div>
+                      <span style={severityBadgeStyle(issue.severity)}>{issue.severity}</span>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                      <button
+                        type="button"
+                        style={buttonStyle()}
+                        onClick={() => setExpandedIssueId(expanded ? null : issue.id)}
+                      >
+                        {expanded ? 'Ocultar detalhe' : 'Ver detalhe'}
+                      </button>
+                      {issue.fixable ? (
+                        <button
+                          type="button"
+                          style={buttonStyle('primary')}
+                          onClick={() => handleAutoFix(issue.id)}
+                          disabled={fixingIssueId === issue.id}
+                        >
+                          {fixingIssueId === issue.id ? 'A corrigir...' : issue.fixLabel || 'Corrigir automaticamente'}
+                        </button>
+                      ) : null}
+                    </div>
+
+                    {expanded ? (
+                      <div style={detailGridStyle}>
+                        {issue.items.length === 0 ? (
+                          <p style={{ ...textStyle, margin: 0 }}>Sem detalhe adicional.</p>
+                        ) : (
+                          issue.items.map((item, index) => (
+                            <div key={`${issue.id}-${index}`} style={detailCardStyle}>
+                              <div style={detailRowStyle}>
+                                {Object.entries(item).map(([key, value]) => (
+                                  <div key={key} style={{ display: 'grid', gap: '4px' }}>
+                                    <span style={detailLabelStyle}>{key}</span>
+                                    <span style={{ color: '#10233e', fontSize: '13px', fontWeight: 700 }}>
+                                      {formatDetailValue(value)}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    ) : null}
+                  </article>
+                )
+              })}
             </div>
-          </div>
-
-          <button
-            onClick={fetchIntegrity}
-            style={{
-              marginTop: '16px',
-              padding: '10px 16px',
-              borderRadius: '8px',
-              border: 'none',
-              background: '#2563eb',
-              color: '#ffffff',
-              fontSize: '14px',
-              fontWeight: 700,
-              cursor: 'pointer',
-            }}
-          >
-            🔄 Reanalysar
-          </button>
+          )}
         </>
-      )}
+      ) : null}
     </section>
   )
 }

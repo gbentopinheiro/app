@@ -2,15 +2,20 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import LogoutButton from '../components/LogoutButton'
 import FeatureFlagsPanel from './FeatureFlagsPanel'
+import AccessProfilesPanel from './AccessProfilesPanel'
 import UserManagementPanel from './UserManagementPanel'
 import DataIntegrityPanel from './DataIntegrityPanel'
 import SystemDiagnosticsPanel from './SystemDiagnosticsPanel'
 import AuditTrailPanel from './AuditTrailPanel'
 import DataManagementPanel from './DataManagementPanel'
+import DeveloperOverrideCorrectionButton from './DeveloperOverrideCorrectionButton'
 import { getDeveloperDashboardData } from '../../lib/developer-dashboard.js'
+import { getDeveloperOverrideEvents } from '../../lib/developer-override-events.js'
 import { getFeatureFlagDefinitions } from '../../lib/feature-flags.js'
+import { getAllPeopleData } from '../../lib/people.js'
 import { hasPermission } from '../../lib/permissions.js'
 import { getServerSession } from '../../lib/server-session.js'
+import { getAllWorksData } from '../../lib/works.js'
 
 const pageStyle = {
   minHeight: '100vh',
@@ -86,7 +91,6 @@ const linkButtonStyle = {
 
 const heroGridStyle = {
   display: 'grid',
-  gridTemplateColumns: 'minmax(0, 1.4fr) minmax(280px, 0.8fr)',
   gap: '18px',
 }
 
@@ -96,36 +100,6 @@ const heroTitleStyle = {
   lineHeight: 0.96,
   letterSpacing: '-0.07em',
   fontWeight: 900,
-}
-
-const chipGridStyle = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-  gap: '12px',
-}
-
-const chipStyle = {
-  padding: '14px 16px',
-  borderRadius: '20px',
-  background: 'rgba(255,255,255,0.08)',
-  border: '1px solid rgba(255,255,255,0.12)',
-}
-
-const chipLabelStyle = {
-  margin: 0,
-  color: '#93c5fd',
-  fontSize: '11px',
-  fontWeight: 900,
-  letterSpacing: '0.12em',
-  textTransform: 'uppercase',
-}
-
-const chipValueStyle = {
-  margin: '8px 0 0',
-  color: '#ffffff',
-  fontSize: '16px',
-  lineHeight: 1.5,
-  fontWeight: 800,
 }
 
 const metricGridStyle = {
@@ -263,42 +237,49 @@ const quickTitleStyle = {
   fontWeight: 900,
 }
 
-function formatDate(value) {
-  if (!value) {
-    return 'Sem registo'
-  }
-
-  const date = new Date(value)
-
-  if (Number.isNaN(date.getTime())) {
-    return String(value)
-  }
-
-  return new Intl.DateTimeFormat('pt-PT', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  }).format(date)
+const groupShellStyle = {
+  display: 'grid',
+  gap: '18px',
 }
 
-function formatDateTime(value) {
-  if (!value) {
-    return 'Sem registo'
-  }
+const groupHeaderStyle = {
+  display: 'grid',
+  gap: '8px',
+  padding: '22px 24px',
+  borderRadius: '28px',
+  background: 'rgba(255,255,255,0.76)',
+  border: '1px solid rgba(148, 163, 184, 0.18)',
+  boxShadow: '0 18px 42px rgba(15, 23, 42, 0.08)',
+  backdropFilter: 'blur(16px)',
+}
 
-  const date = new Date(value)
+const groupEyebrowStyle = {
+  margin: 0,
+  color: '#64748b',
+  fontSize: '12px',
+  fontWeight: 900,
+  letterSpacing: '0.14em',
+  textTransform: 'uppercase',
+}
 
-  if (Number.isNaN(date.getTime())) {
-    return String(value)
-  }
+const groupTitleStyle = {
+  margin: 0,
+  color: '#10233e',
+  fontSize: '30px',
+  fontWeight: 900,
+  letterSpacing: '-0.05em',
+}
 
-  return new Intl.DateTimeFormat('pt-PT', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(date)
+const groupDescriptionStyle = {
+  margin: 0,
+  color: '#52637a',
+  fontSize: '15px',
+  lineHeight: 1.7,
+}
+
+const groupContentStyle = {
+  display: 'grid',
+  gap: '18px',
 }
 
 function getIssueStyle(severity) {
@@ -346,6 +327,75 @@ function SummaryRow({ item }) {
   )
 }
 
+function formatDateTime(value) {
+  if (!value) {
+    return 'Sem registo'
+  }
+
+  const date = new Date(value)
+
+  if (Number.isNaN(date.getTime())) {
+    return String(value)
+  }
+
+  return new Intl.DateTimeFormat('pt-PT', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date)
+}
+
+function formatTargetDate(value) {
+  if (!value) {
+    return 'Sem data alvo'
+  }
+
+  const date = new Date(value)
+
+  if (Number.isNaN(date.getTime())) {
+    return String(value)
+  }
+
+  return new Intl.DateTimeFormat('pt-PT', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  }).format(date)
+}
+
+function getOverrideResultStyle(result) {
+  return {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: '96px',
+    padding: '8px 12px',
+    borderRadius: '999px',
+    fontSize: '12px',
+    fontWeight: 900,
+    letterSpacing: '0.08em',
+    textTransform: 'uppercase',
+    background: result === 'success' ? '#ecfdf3' : '#fff1f2',
+    color: result === 'success' ? '#166534' : '#9f1239',
+    border: `1px solid ${result === 'success' ? 'rgba(34, 197, 94, 0.2)' : 'rgba(244, 63, 94, 0.18)'}`,
+  }
+}
+
+function DeveloperSectionGroup({ eyebrow, heading, description, children }) {
+  return (
+    <section style={groupShellStyle}>
+      <div style={groupHeaderStyle}>
+        <p style={groupEyebrowStyle}>{eyebrow}</p>
+        <h2 style={groupTitleStyle}>{heading}</h2>
+        <p style={groupDescriptionStyle}>{description}</p>
+      </div>
+      <div style={groupContentStyle}>{children}</div>
+    </section>
+  )
+}
+
 export default async function DeveloperPage() {
   const session = await getServerSession()
 
@@ -358,129 +408,196 @@ export default async function DeveloperPage() {
   }
 
   const dashboard = await getDeveloperDashboardData()
+  const overrideEvents = await getDeveloperOverrideEvents({ limit: 12 })
   const featureFlags = getFeatureFlagDefinitions()
+  const [people, works] = await Promise.all([getAllPeopleData(), getAllWorksData()])
+  const overridePeopleOptions = people
+    .map(person => ({
+      id: person.id,
+      name: person.name,
+      companyId: person.companyId,
+      role: person.role,
+    }))
+    .sort((left, right) => left.name.localeCompare(right.name, 'pt-PT'))
+  const overrideWorkOptions = works
+    .map(work => ({
+      id: work.id,
+      number: work.number,
+      name: work.name,
+      companyId: work.companyId,
+      status: work.status,
+    }))
+    .sort((left, right) => Number(left.number || 0) - Number(right.number || 0))
 
   return (
     <main style={pageStyle}>
       <div style={shellStyle}>
-        <section style={heroStyle}>
-          <div style={topBarStyle}>
-            <span style={badgeStyle}>BenPin · Painel do programador</span>
-            <div style={actionRowStyle}>
-              <Link href="/activity-history" style={linkButtonStyle}>
-                Histórico
-              </Link>
-              <Link href="/account-settings" style={linkButtonStyle}>
-                Conta
-              </Link>
-              <a href="/api/developer/dashboard-export" style={linkButtonStyle}>
-                Exportar PDF
-              </a>
-              <LogoutButton
-                style={{
-                  border: '1px solid rgba(255,255,255,0.16)',
-                  background: 'rgba(255,255,255,0.08)',
-                  color: '#ffffff',
-                  backdropFilter: 'blur(12px)',
-                }}
+        <DeveloperSectionGroup
+          eyebrow="Visao Geral"
+          heading="Resumo tecnico da area Developer"
+          description="Leitura rapida do ambiente tecnico, alertas e acessos principais do painel Developer."
+        >
+          <section style={heroStyle}>
+            <div style={topBarStyle}>
+              <span style={badgeStyle}>BenPin - Painel do programador</span>
+              <div style={actionRowStyle}>
+                <Link href="/activity-history" style={linkButtonStyle}>
+                  Historico
+                </Link>
+                <Link href="/account-settings" style={linkButtonStyle}>
+                  Conta
+                </Link>
+                <a href="/api/developer/dashboard-export" style={linkButtonStyle}>
+                  Exportar PDF
+                </a>
+                <LogoutButton
+                  style={{
+                    border: '1px solid rgba(255,255,255,0.16)',
+                    background: 'rgba(255,255,255,0.08)',
+                    color: '#ffffff',
+                    backdropFilter: 'blur(12px)',
+                  }}
+                />
+              </div>
+            </div>
+
+            <div style={heroGridStyle}>
+              <div>
+                <h1 style={heroTitleStyle}>
+                  Centro tecnico da <span style={{ color: '#ff8c00' }}>aplicacao</span>
+                </h1>
+              </div>
+            </div>
+          </section>
+
+          <section style={metricGridStyle}>
+            {dashboard.metrics.map(item => (
+              <MetricCard key={item.label} item={item} />
+            ))}
+          </section>
+
+          <section style={sectionGridStyle}>
+            <section style={sectionStyle}>
+              <h2 style={sectionTitleStyle}>Alertas tecnicos</h2>
+              {dashboard.issues.length > 0 ? (
+                <div style={issueListStyle}>
+                  {dashboard.issues.map(issue => (
+                    <article key={`${issue.severity}-${issue.title}`} style={getIssueStyle(issue.severity)}>
+                      <p style={issueTitleStyle}>{issue.title}</p>
+                      <p style={issueTextStyle}>{issue.description}</p>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ ...getIssueStyle('low'), marginTop: '18px' }}>
+                  <p style={issueTitleStyle}>Sem alertas abertos</p>
+                </div>
+              )}
+            </section>
+
+            <section style={sectionStyle}>
+              <h2 style={sectionTitleStyle}>Atalhos do programador</h2>
+              <div style={quickGridStyle}>
+                <Link href="/activity-history" style={quickCardStyle}>
+                  <p style={quickTitleStyle}>Historico da aplicacao</p>
+                </Link>
+                <Link href="/account-settings" style={quickCardStyle}>
+                  <p style={quickTitleStyle}>Conta e seguranca</p>
+                </Link>
+              </div>
+              <div style={listStyle}>
+                {dashboard.accessSummary.map(item => (
+                  <SummaryRow key={item.label} item={item} />
+                ))}
+              </div>
+            </section>
+          </section>
+        </DeveloperSectionGroup>
+
+        <DeveloperSectionGroup
+          eyebrow="Gestao"
+          heading="Contas, perfis e permissoes"
+          description="Organizacao tecnica de contas e perfis, mantendo roles, accountType e guardas existentes."
+        >
+          <UserManagementPanel />
+          <AccessProfilesPanel />
+        </DeveloperSectionGroup>
+
+        <DeveloperSectionGroup
+          eyebrow="Operacao Tecnica"
+          heading="Correcao tecnica e integridade"
+          description="Ferramentas de manutencao controlada para ajustes tecnicos e verificacao de consistencia."
+        >
+          <section style={sectionStyle}>
+            <div style={topBarStyle}>
+              <h2 style={sectionTitleStyle}>Correcoes tecnicas</h2>
+              <DeveloperOverrideCorrectionButton
+                peopleOptions={overridePeopleOptions}
+                workOptions={overrideWorkOptions}
               />
             </div>
-          </div>
+            {overrideEvents.length > 0 ? (
+              <div style={listStyle}>
+                {overrideEvents.map(event => (
+                  <article key={event.id} style={{ ...rowStyle, alignItems: 'flex-start', flexDirection: 'column' }}>
+                    <div style={{ ...topBarStyle, width: '100%' }}>
+                      <div style={{ display: 'grid', gap: '6px' }}>
+                        <p style={rowLabelStyle}>
+                          {event.action} - {event.entityType}
+                          {event.entityId ? ` #${event.entityId}` : ''}
+                        </p>
+                        <p style={{ margin: 0, color: '#64748b', fontSize: '13px', lineHeight: 1.6 }}>
+                          {formatDateTime(event.createdAt)} - {event.developerUsername || 'developer'} - {formatTargetDate(event.targetDate)}
+                        </p>
+                      </div>
+                      <span style={getOverrideResultStyle(event.result)}>
+                        {event.result === 'success' ? 'Sucesso' : 'Falha'}
+                      </span>
+                    </div>
 
-          <div style={heroGridStyle}>
-            <div>
-              <h1 style={heroTitleStyle}>
-                Centro técnico da <span style={{ color: '#ff8c00' }}>aplicação</span>
-              </h1>
-            </div>
-
-            <div style={chipGridStyle}>
-              <div style={chipStyle}>
-                <p style={chipLabelStyle}>Sessão ativa</p>
-                <p style={chipValueStyle}>{session.name}</p>
-              </div>
-              <div style={chipStyle}>
-                <p style={chipLabelStyle}>Username</p>
-                <p style={chipValueStyle}>{session.username}</p>
-              </div>
-              <div style={chipStyle}>
-                <p style={chipLabelStyle}>Última atividade</p>
-                <p style={chipValueStyle}>{formatDateTime(dashboard.highlights.lastActivityAt)}</p>
-              </div>
-              <div style={chipStyle}>
-                <p style={chipLabelStyle}>Último login</p>
-                <p style={chipValueStyle}>{formatDateTime(dashboard.highlights.latestLoginAt)}</p>
-              </div>
-              <div style={chipStyle}>
-                <p style={chipLabelStyle}>Sessão expira</p>
-                <p style={chipValueStyle}>{formatDateTime(session.expiresAt)}</p>
-              </div>
-              <div style={chipStyle}>
-                <p style={chipLabelStyle}>Último plano diário</p>
-                <p style={chipValueStyle}>{formatDate(dashboard.highlights.latestPlanDate)}</p>
-              </div>
-              <div style={chipStyle}>
-                <p style={chipLabelStyle}>Submissões bloqueadas</p>
-                <p style={chipValueStyle}>{dashboard.highlights.submittedAssignments}</p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section style={metricGridStyle}>
-          {dashboard.metrics.map(item => (
-            <MetricCard key={item.label} item={item} />
-          ))}
-        </section>
-
-        <section style={sectionGridStyle}>
-          <section style={sectionStyle}>
-            <h2 style={sectionTitleStyle}>Alertas técnicos</h2>
-            {dashboard.issues.length > 0 ? (
-              <div style={issueListStyle}>
-                {dashboard.issues.map(issue => (
-                  <article key={`${issue.severity}-${issue.title}`} style={getIssueStyle(issue.severity)}>
-                    <p style={issueTitleStyle}>{issue.title}</p>
-                    <p style={issueTextStyle}>{issue.description}</p>
+                    <div style={{ display: 'grid', gap: '6px', width: '100%' }}>
+                      <p style={{ margin: 0, color: '#10233e', fontSize: '14px', fontWeight: 800 }}>
+                        Motivo: <span style={{ fontWeight: 600 }}>{event.reason || 'Sem motivo'}</span>
+                      </p>
+                      <p style={{ margin: 0, color: '#475569', fontSize: '13px', lineHeight: 1.6 }}>
+                        Permissao: {event.permissionKeyUsed || 'n/a'} - Override: {event.overrideType || 'n/a'}
+                      </p>
+                      {event.errorMessage ? (
+                        <p style={{ margin: 0, color: '#9f1239', fontSize: '13px', lineHeight: 1.6 }}>
+                          Erro: {event.errorMessage}
+                        </p>
+                      ) : null}
+                    </div>
                   </article>
                 ))}
               </div>
             ) : (
               <div style={{ ...getIssueStyle('low'), marginTop: '18px' }}>
-                <p style={issueTitleStyle}>Sem alertas abertos</p>
+                <p style={issueTitleStyle}>Sem correcoes tecnicas registadas</p>
               </div>
             )}
           </section>
 
-          <section style={sectionStyle}>
-            <h2 style={sectionTitleStyle}>Atalhos do programador</h2>
-            <div style={quickGridStyle}>
-              <Link href="/activity-history" style={quickCardStyle}>
-                <p style={quickTitleStyle}>Histórico da aplicação</p>
-              </Link>
-              <Link href="/account-settings" style={quickCardStyle}>
-                <p style={quickTitleStyle}>Conta e segurança</p>
-              </Link>
-            </div>
-            <div style={listStyle}>
-              {dashboard.accessSummary.map(item => (
-                <SummaryRow key={item.label} item={item} />
-              ))}
-            </div>
-          </section>
-        </section>
+          <DataIntegrityPanel />
+        </DeveloperSectionGroup>
 
-        <FeatureFlagsPanel initialFlags={featureFlags} />
+        <DeveloperSectionGroup
+          eyebrow="Sistema"
+          heading="Estado, funcionalidades e dados"
+          description="Diagnostico do runtime, controlo de funcionalidades e operacoes de gestao de dados."
+        >
+          <SystemDiagnosticsPanel />
+          <FeatureFlagsPanel initialFlags={featureFlags} />
+          <DataManagementPanel />
+        </DeveloperSectionGroup>
 
-        <UserManagementPanel />
-
-        <DataIntegrityPanel />
-
-        <DataManagementPanel />
-
-        <AuditTrailPanel />
-
-        <SystemDiagnosticsPanel />
+        <DeveloperSectionGroup
+          eyebrow="Auditoria"
+          heading="Rastreabilidade tecnica"
+          description="Consulta do audit trail e historico das acoes tecnicas mais sensiveis."
+        >
+          <AuditTrailPanel />
+        </DeveloperSectionGroup>
       </div>
     </main>
   )
