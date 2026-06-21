@@ -1,38 +1,10 @@
-import { NextResponse } from 'next/server'
-import { getAllAccessIdentitiesData, getAccessIdentityWorkOptionsData } from '../../../lib/access-identities.js'
-import { hasPermission } from '../../../lib/permissions.js'
-import { getServerSession } from '../../../lib/server-session.js'
-
-function hidePassword(identity) {
-  const { password, ...safeIdentity } = identity
-  return safeIdentity
-}
+import { getAccessIdentitiesController } from '../../../server/controllers/access-identities-controller.js'
+import { toNextErrorResponse, toNextResponse } from '../../../server/responses/route-response.js'
 
 export async function GET(request) {
   try {
-    const session = await getServerSession()
-
-    if (!session) {
-      return NextResponse.json({ error: 'Sessao obrigatoria.' }, { status: 401 })
-    }
-
-    if (!hasPermission(session, 'access_identities.read')) {
-      return NextResponse.json({ error: 'Sem permissao para consultar acessos.' }, { status: 403 })
-    }
-
-    const { searchParams } = new URL(request.url)
-    const includeWorks = searchParams.get('includeWorks') === 'true'
-    const items = await getAllAccessIdentitiesData()
-
-    if (includeWorks) {
-      return NextResponse.json({
-        items: items.map(hidePassword),
-        works: await getAccessIdentityWorkOptionsData(),
-      })
-    }
-
-    return NextResponse.json(items.map(hidePassword))
+    return toNextResponse(await getAccessIdentitiesController(request))
   } catch (error) {
-    return NextResponse.json({ error: 'Erro ao obter acessos' }, { status: 500 })
+    return toNextErrorResponse(error, 'Erro ao obter acessos')
   }
 }

@@ -1,5 +1,32 @@
 [
   {
+    "id": 121,
+    "username": "admin",
+    "name": "Administrador",
+    "role": "admin",
+    "accountType": "admin",
+    "loginAt": "2026-06-18T18:53:03.714Z",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36 Edg/149.0.0.0"
+  },
+  {
+    "id": 120,
+    "username": "admin",
+    "name": "Administrador",
+    "role": "admin",
+    "accountType": "admin",
+    "loginAt": "2026-06-17T21:05:31.625Z",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36 Edg/149.0.0.0"
+  },
+  {
+    "id": 119,
+    "username": "developer",
+    "name": "Programador",
+    "role": "developer",
+    "accountType": "developer",
+    "loginAt": "2026-06-17T20:58:00.853Z",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36 Edg/149.0.0.0"
+  },
+  {
     "id": 118,
     "username": "developer",
     "name": "Programador",

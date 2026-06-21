@@ -61,11 +61,11 @@ export default async function CalendarPage() {
     redirect('/')
   }
 
-  if (!isFeatureEnabled('calendarManagement')) {
+  if (!(await isFeatureEnabled('calendarManagement'))) {
     redirect('/')
   }
 
-  markCalendarNotificationsSeen(session.username)
+  await markCalendarNotificationsSeen(session.username)
 
   const weekdays = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo']
   const today = new Date()
@@ -73,7 +73,7 @@ export default async function CalendarPage() {
   const currentMonth = today.getMonth() + 1
   const initialMonthKey = `${currentYear}-${String(currentMonth).padStart(2, '0')}`
   const todayDate = formatDateKey(currentYear, currentMonth, today.getDate())
-  const initialEvents = getAllCalendarEvents({ year: currentYear, month: currentMonth }).map(event => ({ ...event }))
+  const initialEvents = (await getAllCalendarEvents({ year: currentYear, month: currentMonth })).map(event => ({ ...event }))
   const peopleNames = (await getAllPeopleData())
     .map(person => person.name)
     .filter(Boolean)

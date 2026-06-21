@@ -33,6 +33,12 @@ const WORKING_DAY_VALUES = new Set([
   'saturday',
   'sunday',
 ])
+const MATERIAL_UNIT_VALUES = new Set(['un', 'cx', 'kg', 'l', 'm', 'm2', 'm3'])
+const DOCUMENT_WARNING_DAY_VALUES = new Set([30, 15, 7, 1, 0])
+const CALENDAR_EVENT_COLOR_VALUES = new Set(['#16a34a', '#2563eb', '#dc2626', '#111111'])
+const CALENDAR_EVENT_TYPE_VALUES = new Set(['viagem'])
+const CALENDAR_TRAVEL_TRANSPORT_VALUES = new Set(['comboio', 'aviao'])
+const CALENDAR_TRAVEL_AIRPORT_VALUES = new Set(['zaventem', 'charleroi', 'bruxelles-midi', 'outro'])
 
 export async function buildMysqlMigrationSnapshot() {
   const companies = await readJsonArray('companies.json')
@@ -46,6 +52,13 @@ export async function buildMysqlMigrationSnapshot() {
   const admins = await readJsonArray('admins.json')
   const developers = await readJsonArray('developers.json')
   const loginEvents = await readJsonArray('login-events.json')
+  const loginAttempts = await readJsonArray('login-attempts.json')
+  const auditTrailEvents = await readJsonArray('.audit-trail.json')
+  const materials = await readJsonArray('materials.json')
+  const personDocumentReminders = await readJsonArray('person-document-reminders.json')
+  const calendarEvents = await readJsonArray('calendar-events.json')
+  const calendarNotificationStates = await readJsonArray('calendar-notification-state.json')
+  const featureFlags = await readJsonObject('feature-flags.json')
 
   const peopleById = new Map(
     people
@@ -71,6 +84,21 @@ export async function buildMysqlMigrationSnapshot() {
     workAssignments: buildWorkAssignments(workAssignments, usersByUsername, usersByPersonId, peopleById),
     dailyWorkNotes: dailyWorkNotes.map(note => normalizeDailyWorkNote(note, peopleById)).filter(Boolean),
     loginEvents: buildLoginEvents(loginEvents, usersByUsername, usersByPersonId, peopleById),
+    loginAttempts: loginAttempts.map(normalizeLoginAttempt).filter(Boolean),
+    auditTrailEvents: auditTrailEvents
+      .map((event, index) => normalizeAuditTrailEvent(event, index))
+      .filter(Boolean),
+    materials: materials.map((material, index) => normalizeMaterial(material, index + 1)).filter(Boolean),
+    personDocumentReminders: personDocumentReminders
+      .map((reminder, index) => normalizePersonDocumentReminder(reminder, index + 1))
+      .filter(Boolean),
+    calendarEvents: calendarEvents
+      .map((event, index) => normalizeCalendarEvent(event, index + 1))
+      .filter(Boolean),
+    calendarNotificationStates: calendarNotificationStates
+      .map(item => normalizeCalendarNotificationState(item))
+      .filter(Boolean),
+    featureFlags: normalizeFeatureFlags(featureFlags),
   }
 
   return {
@@ -87,6 +115,13 @@ export async function buildMysqlMigrationSnapshot() {
       admins: admins.length,
       developers: developers.length,
       loginEvents: loginEvents.length,
+      loginAttempts: loginAttempts.length,
+      auditTrailEvents: auditTrailEvents.length,
+      materials: materials.length,
+      personDocumentReminders: personDocumentReminders.length,
+      calendarEvents: calendarEvents.length,
+      calendarNotificationStates: calendarNotificationStates.length,
+      featureFlags: Object.keys(featureFlags).length,
     },
     targetCounts: Object.fromEntries(
       Object.entries(target).map(([key, value]) => [key, Array.isArray(value) ? value.length : 0]),
@@ -153,6 +188,46 @@ function normalizeDateTime(value, fallback = null) {
 
   const candidate = new Date(value)
   return Number.isNaN(candidate.getTime()) ? fallback : candidate.toISOString()
+}
+
+function normalizeOptionalText(value) {
+  const normalizedValue = String(value || '').trim()
+  return normalizedValue || null
+}
+
+function normalizeMaterialUnit(value) {
+  const normalizedValue = String(value || '').trim().toLowerCase() || 'un'
+  return MATERIAL_UNIT_VALUES.has(normalizedValue) ? normalizedValue : 'un'
+}
+
+function normalizeDocumentWarningDays(value) {
+  const normalizedValue = Number.parseInt(value, 10)
+  return DOCUMENT_WARNING_DAY_VALUES.has(normalizedValue) ? normalizedValue : 30
+}
+
+function normalizeCalendarEventColor(value) {
+  const normalizedValue = String(value || '#2563eb').trim().toLowerCase()
+  return CALENDAR_EVENT_COLOR_VALUES.has(normalizedValue) ? normalizedValue : '#2563eb'
+}
+
+function normalizeCalendarEventType(value) {
+  const normalizedValue = String(value || 'viagem').trim().toLowerCase()
+  return CALENDAR_EVENT_TYPE_VALUES.has(normalizedValue) ? normalizedValue : 'viagem'
+}
+
+function normalizeCalendarTravelTransport(value) {
+  const normalizedValue = String(value || 'aviao').trim().toLowerCase()
+  return CALENDAR_TRAVEL_TRANSPORT_VALUES.has(normalizedValue) ? normalizedValue : 'aviao'
+}
+
+function normalizeCalendarTravelAirport(value) {
+  const normalizedValue = String(value || 'charleroi').trim().toLowerCase()
+  return CALENDAR_TRAVEL_AIRPORT_VALUES.has(normalizedValue) ? normalizedValue : 'charleroi'
+}
+
+function normalizeOptionalTime(value) {
+  const normalizedValue = String(value || '').trim()
+  return normalizedValue ? normalizedValue.slice(0, 8) : null
 }
 
 function normalizeRole(value, fallback = null) {
@@ -293,6 +368,164 @@ function normalizeDailyWorkNote(note, peopleById) {
     authorName: String(note?.authorName || author?.name || '').trim() || null,
     note: String(note?.note || '').trim(),
     updatedAt: normalizeDateTime(note?.updatedAt, new Date().toISOString()),
+  }
+}
+
+async function readJsonObject(fileName) {
+  const filePath = join(dataDir, fileName)
+
+  try {
+    const rawValue = await readFile(filePath, 'utf8')
+    const parsedValue = JSON.parse(rawValue)
+    return parsedValue && typeof parsedValue === 'object' && !Array.isArray(parsedValue) ? parsedValue : {}
+  } catch (error) {
+    return {}
+  }
+}
+
+function normalizeMaterial(material, fallbackId = null) {
+  const id = normalizePositiveInt(material?.id) || fallbackId
+  const name = String(material?.name || '').trim()
+
+  if (!id || !name) {
+    return null
+  }
+
+  return {
+    id,
+    name,
+    reference: normalizeOptionalText(material?.reference),
+    category: normalizeOptionalText(material?.category),
+    unit: normalizeMaterialUnit(material?.unit),
+    quantity: normalizeDecimal(material?.quantity),
+    minimumQuantity: normalizeDecimal(material?.minimumQuantity),
+    location: normalizeOptionalText(material?.location),
+    supplier: normalizeOptionalText(material?.supplier),
+    notes: normalizeOptionalText(material?.notes),
+    createdAt: normalizeDateTime(material?.createdAt, new Date().toISOString()),
+    updatedAt: normalizeDateTime(material?.updatedAt, material?.createdAt || new Date().toISOString()),
+  }
+}
+
+function normalizePersonDocumentReminder(reminder, fallbackId = null) {
+  const id = normalizePositiveInt(reminder?.id) || fallbackId
+  const personId = normalizePositiveInt(reminder?.personId)
+  const name = String(reminder?.name || '').trim()
+  const expirationDate = normalizeDate(reminder?.expirationDate)
+
+  if (!id || !personId || !name || !expirationDate) {
+    return null
+  }
+
+  return {
+    id,
+    personId,
+    name,
+    expirationDate,
+    warningDays: normalizeDocumentWarningDays(reminder?.warningDays),
+    notes: normalizeOptionalText(reminder?.notes),
+    createdAt: normalizeDateTime(reminder?.createdAt, new Date().toISOString()),
+    updatedAt: normalizeDateTime(reminder?.updatedAt, reminder?.createdAt || new Date().toISOString()),
+  }
+}
+
+function normalizeCalendarEvent(event, fallbackId = null) {
+  const id = normalizePositiveInt(event?.id) || fallbackId
+  const date = normalizeDate(event?.date)
+  const title = String(event?.title || '').trim()
+
+  if (!id || !date || !title) {
+    return null
+  }
+
+  const createdAtFallback = new Date().toISOString()
+
+  return {
+    id,
+    date,
+    title,
+    type: normalizeCalendarEventType(event?.type),
+    transport: normalizeCalendarTravelTransport(event?.transport),
+    airport: normalizeCalendarTravelAirport(event?.airport),
+    destination: normalizeOptionalText(event?.destination),
+    departureDate: normalizeDate(event?.departureDate || event?.date),
+    arrivalDate: normalizeDate(event?.arrivalDate),
+    departureTime: normalizeOptionalTime(event?.departureTime),
+    arrivalTime: normalizeOptionalTime(event?.arrivalTime),
+    outboundFlightReference: normalizeOptionalText(event?.outboundFlightReference),
+    returnFlightReference: normalizeOptionalText(event?.returnFlightReference),
+    color: normalizeCalendarEventColor(event?.color),
+    createdBy: normalizeOptionalText(event?.createdBy),
+    createdAt: normalizeDateTime(event?.createdAt, createdAtFallback),
+    updatedAt: normalizeDateTime(event?.updatedAt, event?.createdAt || createdAtFallback),
+  }
+}
+
+function normalizeCalendarNotificationState(item) {
+  const username = String(item?.username || '').trim().toLowerCase()
+
+  if (!username) {
+    return null
+  }
+
+  return {
+    username,
+    seenAt: normalizeDateTime(item?.seenAt, new Date().toISOString()),
+  }
+}
+
+function normalizeFeatureFlags(flags) {
+  if (!flags || typeof flags !== 'object' || Array.isArray(flags)) {
+    return []
+  }
+
+  return Object.entries(flags)
+    .map(([key, enabled]) => ({
+      key: String(key || '').trim(),
+      enabled: enabled === true,
+    }))
+    .filter(flag => flag.key)
+    .sort((left, right) => left.key.localeCompare(right.key))
+}
+
+function normalizeLoginAttempt(record) {
+  const username = String(record?.username || '').trim().toLowerCase()
+
+  if (!username) {
+    return null
+  }
+
+  return {
+    username,
+    failedAt: Array.isArray(record?.failedAt)
+      ? record.failedAt.map(value => normalizeDateTime(value)).filter(Boolean)
+      : [],
+    blockedUntil: normalizeDateTime(record?.blockedUntil),
+  }
+}
+
+function normalizeAuditTrailEvent(event, fallbackIndex = 0) {
+  const timestamp = normalizeDateTime(event?.timestamp)
+  const action = String(event?.action || '').trim()
+  const entity = String(event?.entity || '').trim()
+
+  if (!timestamp || !action || !entity) {
+    return null
+  }
+
+  return {
+    id: String(event?.id || `${Date.now()}-${fallbackIndex}`).trim(),
+    timestamp,
+    username: String(event?.username || 'system').trim() || 'system',
+    action,
+    entity,
+    entityId: normalizePositiveInt(event?.entityId),
+    details:
+      event?.details && typeof event.details === 'object' && !Array.isArray(event.details)
+        ? JSON.parse(JSON.stringify(event.details))
+        : {},
+    result: String(event?.result || 'success').trim() || 'success',
+    errorMessage: normalizeOptionalText(event?.errorMessage),
   }
 }
 

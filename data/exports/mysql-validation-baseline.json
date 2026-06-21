@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-17T20:36:46.609Z",
+  "generatedAt": "2026-06-21T16:44:27.107Z",
   "source": "mysql-runtime-baseline",
   "targetCounts": {
     "accessProfiles": 5,
@@ -12,11 +12,18 @@
     "workWorkingDays": 16,
     "workRoleHourlyCosts": 6,
     "workPersonHourlyCosts": 0,
-    "workPlans": 28,
+    "workPlans": 30,
     "users": 17,
-    "workAssignments": 140,
+    "workAssignments": 156,
     "dailyWorkNotes": 0,
     "developerOverrideEvents": 1,
-    "loginEvents": 80
+    "loginEvents": 128,
+    "loginAttempts": 5,
+    "auditTrailEvents": 11,
+    "materials": 0,
+    "personDocumentReminders": 2,
+    "calendarEvents": 6,
+    "calendarNotificationStates": 3,
+    "featureFlags": 6
   }
 }

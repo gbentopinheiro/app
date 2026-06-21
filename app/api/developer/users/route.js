@@ -1,23 +1,11 @@
-import { NextResponse } from 'next/server'
-import { getDeveloperUsersOverview } from '../../../../lib/developer-management.js'
-import { hasPermission } from '../../../../lib/permissions.js'
-import { getServerSession } from '../../../../lib/server-session.js'
+import { getDeveloperUsersController } from '../../../../server/controllers/developer-users-controller.js'
+import { toNextErrorResponse, toNextResponse } from '../../../../server/responses/route-response.js'
 
 export async function GET() {
   try {
-    const session = await getServerSession()
-
-    if (!session) {
-      return NextResponse.json({ error: 'Sessao obrigatoria.' }, { status: 401 })
-    }
-
-    if (!hasPermission(session, 'developer.users.read')) {
-      return NextResponse.json({ error: 'Apenas o programador pode aceder a esta informacao.' }, { status: 403 })
-    }
-
-    return NextResponse.json(await getDeveloperUsersOverview())
+    return toNextResponse(await getDeveloperUsersController())
   } catch (error) {
     console.error('Error fetching users:', error.message)
-    return NextResponse.json({ error: 'Erro ao obter utilizadores.' }, { status: 500 })
+    return toNextErrorResponse(error, 'Erro ao obter utilizadores.')
   }
 }

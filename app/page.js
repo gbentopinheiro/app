@@ -8,7 +8,7 @@ import { getAllPeopleData } from '../lib/people.js'
 import { getAllWorkAssignmentsData } from '../lib/work-assignments.js'
 import { isAssignmentApproved } from '../lib/work-assignment-approval.js'
 import { getAllWorksData, WorkStatus } from '../lib/works.js'
-import { getAllDailyWorkNotes } from '../lib/daily-work-notes.js'
+import { getAllDailyWorkNotesData } from '../lib/daily-work-notes.js'
 import { getBelgianHolidays } from '../lib/belgian-holidays.js'
 import { getAllCalendarEvents } from '../lib/calendar-events.js'
 import { getCalendarNotificationState } from '../lib/calendar-notifications.js'
@@ -1038,14 +1038,14 @@ function getAgendaRouteLabel(event, type) {
   return `${airportLabel} -> ${destinationLabel}`
 }
 
-function getResponsavelCalendarAgenda() {
+async function getResponsavelCalendarAgenda() {
   const now = new Date()
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
   const tomorrow = addDays(today, 1)
   const todayKey = formatDateKey(today.getFullYear(), today.getMonth() + 1, today.getDate())
   const tomorrowKey = formatDateKey(tomorrow.getFullYear(), tomorrow.getMonth() + 1, tomorrow.getDate())
 
-  const agendaEntries = getAllCalendarEvents()
+  const agendaEntries = (await getAllCalendarEvents())
     .filter(event => event.type === 'viagem')
     .flatMap(event => {
       const departureDate = String(event.departureDate || event.date || '').trim()
@@ -1104,8 +1104,10 @@ function formatNotificationDate(dateString) {
   }).format(date)
 }
 
-function getRecentNotifications() {
-  return getAllDailyWorkNotes()
+async function getRecentNotifications() {
+  const notes = await getAllDailyWorkNotesData()
+
+  return notes
     .filter(note => note.note)
     .sort((left, right) => new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime())
     .slice(0, 3)
@@ -1118,12 +1120,12 @@ function getRecentNotifications() {
     }))
 }
 
-function getCalendarOverview(username) {
+async function getCalendarOverview(username) {
   const today = new Date()
   const year = today.getFullYear()
   const month = today.getMonth() + 1
-  const events = getAllCalendarEvents({ year, month }).filter(event => event.type === 'viagem')
-  const notificationState = getCalendarNotificationState(username)
+  const events = (await getAllCalendarEvents({ year, month })).filter(event => event.type === 'viagem')
+  const notificationState = await getCalendarNotificationState(username)
   const lastSeenAt = notificationState?.seenAt ? new Date(notificationState.seenAt).getTime() : 0
   const unseenEventsCount = events.filter(event => {
     const activityAt = new Date(event.updatedAt || event.createdAt || 0).getTime()
@@ -1208,13 +1210,15 @@ export default async function Home() {
   const isResponsavel = isResponsavelRole(session.role)
   const workSubmissionStatus = await getWorkSubmissionStatus()
   const notifications = isResponsavel
-    ? getOperationNotifications({ audience: 'responsavel', limit: 3 })
-    : getRecentNotifications()
+    ? await getOperationNotifications({ audience: 'responsavel', limit: 3 })
+    : await getRecentNotifications()
   const smallCalendar = getSmallCalendarSummary()
-  const responsavelCalendarAgenda = getResponsavelCalendarAgenda()
-  const calendarOverview = getCalendarOverview(session.username)
-  const notificationsCenterEnabled = isFeatureEnabled('notificationsCenter')
-  const calendarManagementEnabled = isFeatureEnabled('calendarManagement')
+  const responsavelCalendarAgenda = await getResponsavelCalendarAgenda()
+  const calendarOverview = await getCalendarOverview(session.username)
+  const [notificationsCenterEnabled, calendarManagementEnabled] = await Promise.all([
+    isFeatureEnabled('notificationsCenter'),
+    isFeatureEnabled('calendarManagement'),
+  ])
   const visibleModules = isResponsavelRole(session.role)
     ? modules.filter(module => module.href === '/people')
     : modules

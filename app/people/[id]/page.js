@@ -3,7 +3,7 @@ import { notFound, redirect } from 'next/navigation'
 import PersonDocumentsPanel from './PersonDocumentsPanel.js'
 import { getAccessIdentityByPersonIdData } from '../../../lib/access-identities.js'
 import { getAllDailyWorkNotesData } from '../../../lib/daily-work-notes.js'
-import { getPersonDocumentReminders } from '../../../lib/person-document-reminders.js'
+import { getPersonDocumentRemindersData } from '../../../lib/person-document-reminders.js'
 import { getPersonByIdData } from '../../../lib/people.js'
 import { getApprovedAssignmentTotalCost, isAssignmentApproved } from '../../../lib/work-assignment-approval.js'
 import { getRoleLabel, isResponsavelRole, roleRequiresAppAccess, roleUsesWorkScope } from '../../../lib/roles.js'
@@ -294,7 +294,7 @@ export default async function PersonDetailPage({ params }) {
     notFound()
   }
 
-  const personDocuments = getPersonDocumentReminders(id)
+  const personDocuments = await getPersonDocumentRemindersData(id)
 
   if (isResponsavelRole(session.role)) {
     return (

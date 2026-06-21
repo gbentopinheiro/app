@@ -18,6 +18,13 @@ async function main() {
   await prisma.$connect()
 
   await prisma.$transaction([
+    prisma.featureFlag.deleteMany(),
+    prisma.auditTrailEvent.deleteMany(),
+    prisma.calendarNotificationState.deleteMany(),
+    prisma.calendarEvent.deleteMany(),
+    prisma.personDocumentReminder.deleteMany(),
+    prisma.material.deleteMany(),
+    prisma.loginAttempt.deleteMany(),
     prisma.loginEvent.deleteMany(),
     prisma.dailyWorkNote.deleteMany(),
     prisma.workAssignment.deleteMany(),
@@ -44,6 +51,21 @@ async function main() {
   await prisma.workAssignment.createMany({ data: target.workAssignments })
   await prisma.dailyWorkNote.createMany({ data: target.dailyWorkNotes.map(prepareDailyWorkNoteForImport) })
   await prisma.loginEvent.createMany({ data: target.loginEvents })
+  await prisma.loginAttempt.createMany({ data: target.loginAttempts.map(prepareLoginAttemptForImport) })
+  await prisma.auditTrailEvent.createMany({ data: target.auditTrailEvents.map(prepareAuditTrailEventForImport) })
+  await prisma.material.createMany({ data: target.materials.map(prepareMaterialForImport) })
+  await prisma.personDocumentReminder.createMany({
+    data: target.personDocumentReminders.map(preparePersonDocumentReminderForImport),
+  })
+  await prisma.calendarEvent.createMany({
+    data: target.calendarEvents.map(prepareCalendarEventForImport),
+  })
+  await prisma.calendarNotificationState.createMany({
+    data: target.calendarNotificationStates.map(prepareCalendarNotificationStateForImport),
+  })
+  await prisma.featureFlag.createMany({
+    data: target.featureFlags,
+  })
 
   console.log('Importacao JSON -> MySQL concluida com sucesso.')
   console.log(JSON.stringify(snapshot.targetCounts, null, 2))
@@ -51,7 +73,22 @@ async function main() {
 
 async function loadSnapshot() {
   try {
-    return await readMysqlMigrationSnapshot()
+    const snapshot = await readMysqlMigrationSnapshot()
+
+    if (
+      Array.isArray(snapshot?.target?.calendarEvents) &&
+      Array.isArray(snapshot?.target?.calendarNotificationStates) &&
+      Array.isArray(snapshot?.target?.loginAttempts) &&
+      Array.isArray(snapshot?.target?.auditTrailEvents) &&
+      Array.isArray(snapshot?.target?.featureFlags)
+    ) {
+      return snapshot
+    }
+
+    const rebuiltSnapshot = await buildMysqlMigrationSnapshot()
+    await writeMysqlMigrationSnapshot(rebuiltSnapshot)
+    console.log(`Snapshot atualizado automaticamente em ${snapshotFilePath}`)
+    return rebuiltSnapshot
   } catch (error) {
     const snapshot = await buildMysqlMigrationSnapshot()
     await writeMysqlMigrationSnapshot(snapshot)
@@ -87,6 +124,55 @@ function prepareDailyWorkNoteForImport(note) {
   return {
     ...note,
     date: toDateOnly(note.date),
+  }
+}
+
+function prepareMaterialForImport(material) {
+  return {
+    ...material,
+    createdAt: material.createdAt ? new Date(material.createdAt) : new Date(),
+    updatedAt: material.updatedAt ? new Date(material.updatedAt) : new Date(),
+  }
+}
+
+function prepareLoginAttemptForImport(loginAttempt) {
+  return {
+    ...loginAttempt,
+    blockedUntil: loginAttempt.blockedUntil ? new Date(loginAttempt.blockedUntil) : null,
+  }
+}
+
+function prepareAuditTrailEventForImport(auditTrailEvent) {
+  return {
+    ...auditTrailEvent,
+    timestamp: auditTrailEvent.timestamp ? new Date(auditTrailEvent.timestamp) : new Date(),
+  }
+}
+
+function preparePersonDocumentReminderForImport(reminder) {
+  return {
+    ...reminder,
+    expirationDate: toDateOnly(reminder.expirationDate),
+    createdAt: reminder.createdAt ? new Date(reminder.createdAt) : new Date(),
+    updatedAt: reminder.updatedAt ? new Date(reminder.updatedAt) : new Date(),
+  }
+}
+
+function prepareCalendarEventForImport(event) {
+  return {
+    ...event,
+    date: toDateOnly(event.date),
+    departureDate: toDateOnly(event.departureDate),
+    arrivalDate: toDateOnly(event.arrivalDate),
+    createdAt: event.createdAt ? new Date(event.createdAt) : new Date(),
+    updatedAt: event.updatedAt ? new Date(event.updatedAt) : new Date(),
+  }
+}
+
+function prepareCalendarNotificationStateForImport(item) {
+  return {
+    ...item,
+    seenAt: item.seenAt ? new Date(item.seenAt) : new Date(),
   }
 }
 

@@ -1,118 +1,56 @@
 import { NextResponse } from 'next/server'
 import {
-  createCalendarEvent,
-  deleteCalendarEvent,
-  getAllCalendarEvents,
-  updateCalendarEvent,
-} from '../../../lib/calendar-events.js'
-import { markCalendarNotificationsSeen } from '../../../lib/calendar-notifications.js'
-import { isFeatureEnabled } from '../../../lib/feature-flags.js'
-import { hasPermission } from '../../../lib/permissions.js'
-import { getServerSession } from '../../../lib/server-session.js'
+  createCalendarEventController,
+  deleteCalendarEventController,
+  getCalendarEventsController,
+  updateCalendarEventController,
+} from '../../../server/controllers/calendar-controller.js'
+import { isHttpError } from '../../../server/errors/http-error.js'
+import { toNextResponse } from '../../../server/responses/route-response.js'
 
-async function requireCalendarPermission(permissionKey) {
-  if (!isFeatureEnabled('calendarManagement')) {
-    return {
-      error: NextResponse.json({ message: 'O calendario esta desativado.' }, { status: 503 }),
-    }
+function toCalendarErrorResponse(error, fallbackMessage, status = 400) {
+  if (isHttpError(error)) {
+    return NextResponse.json({ message: error.message }, { status: error.status })
   }
 
-  const session = await getServerSession()
-
-  if (!session) {
-    return {
-      error: NextResponse.json({ message: 'Sessao expirada.' }, { status: 401 }),
-    }
+  if (!fallbackMessage) {
+    throw error
   }
 
-  if (!hasPermission(session, permissionKey)) {
-    return {
-      error: NextResponse.json({ message: 'Sem permissao.' }, { status: 403 }),
-    }
-  }
-
-  return { session }
+  return NextResponse.json(
+    { message: String(error?.message || fallbackMessage).trim() || fallbackMessage },
+    { status },
+  )
 }
 
 export async function GET(request) {
-  const auth = await requireCalendarPermission('calendar.read')
-  if (auth.error) return auth.error
-
-  const { searchParams } = new URL(request.url)
-  const year = searchParams.get('year')
-  const month = searchParams.get('month')
-
-  return NextResponse.json(getAllCalendarEvents({ year, month }))
+  try {
+    return toNextResponse(await getCalendarEventsController(request))
+  } catch (error) {
+    return toCalendarErrorResponse(error)
+  }
 }
 
 export async function POST(request) {
-  const auth = await requireCalendarPermission('calendar.manage')
-  if (auth.error) return auth.error
-
   try {
-    const body = await request.json()
-    const event = createCalendarEvent({
-      date: body.date,
-      title: body.title,
-      type: body.type,
-      transport: body.transport,
-      airport: body.airport,
-      destination: body.destination,
-      departureDate: body.departureDate,
-      arrivalDate: body.arrivalDate,
-      departureTime: body.departureTime,
-      arrivalTime: body.arrivalTime,
-      color: body.color,
-      createdBy: auth.session.name || auth.session.username,
-    })
-
-    markCalendarNotificationsSeen(auth.session.username, event.updatedAt || event.createdAt)
-
-    return NextResponse.json(event, { status: 201 })
+    return toNextResponse(await createCalendarEventController(request))
   } catch (error) {
-    return NextResponse.json({ message: error.message || 'Nao foi possivel criar o evento.' }, { status: 400 })
+    return toCalendarErrorResponse(error, 'Nao foi possivel criar o evento.')
   }
 }
 
 export async function PUT(request) {
-  const auth = await requireCalendarPermission('calendar.manage')
-  if (auth.error) return auth.error
-
   try {
-    const body = await request.json()
-    const event = updateCalendarEvent(body.id, {
-      date: body.date,
-      title: body.title,
-      type: body.type,
-      transport: body.transport,
-      airport: body.airport,
-      destination: body.destination,
-      departureDate: body.departureDate,
-      arrivalDate: body.arrivalDate,
-      departureTime: body.departureTime,
-      arrivalTime: body.arrivalTime,
-      color: body.color,
-      createdBy: auth.session.name || auth.session.username,
-    })
-
-    markCalendarNotificationsSeen(auth.session.username, event.updatedAt || event.createdAt)
-
-    return NextResponse.json(event)
+    return toNextResponse(await updateCalendarEventController(request))
   } catch (error) {
-    return NextResponse.json({ message: error.message || 'Nao foi possivel atualizar o evento.' }, { status: 400 })
+    return toCalendarErrorResponse(error, 'Nao foi possivel atualizar o evento.')
   }
 }
 
 export async function DELETE(request) {
-  const auth = await requireCalendarPermission('calendar.manage')
-  if (auth.error) return auth.error
-
   try {
-    const body = await request.json()
-    const event = deleteCalendarEvent(body.id)
-
-    return NextResponse.json(event)
+    return toNextResponse(await deleteCalendarEventController(request))
   } catch (error) {
-    return NextResponse.json({ message: error.message || 'Nao foi possivel remover o evento.' }, { status: 400 })
+    return toCalendarErrorResponse(error, 'Nao foi possivel remover o evento.')
   }
 }

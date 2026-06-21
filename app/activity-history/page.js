@@ -264,7 +264,7 @@ export default async function ActivityHistoryPage({ searchParams }) {
     redirect('/')
   }
 
-  if (!isFeatureEnabled('activityHistory')) {
+  if (!(await isFeatureEnabled('activityHistory'))) {
     redirect(developerView ? '/developer' : '/')
   }
 

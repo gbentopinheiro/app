@@ -56,11 +56,11 @@ export default async function NotificationsPage() {
     redirect('/')
   }
 
-  if (!isFeatureEnabled('notificationsCenter')) {
+  if (!(await isFeatureEnabled('notificationsCenter'))) {
     redirect('/')
   }
 
-  const notifications = getOperationNotifications({
+  const notifications = await getOperationNotifications({
     audience: isResponsavelRole(session.role) ? 'responsavel' : 'admin',
     withYear: true,
   })

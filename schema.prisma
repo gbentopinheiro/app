@@ -122,6 +122,7 @@ model Person {
   workHourlyCosts  WorkPersonHourlyCost[]
   authoredNotes    DailyWorkNote[]
   loginEvents      LoginEvent[]
+  documentReminders PersonDocumentReminder[]
 
   @@index([companyId, role])
   @@map("people")
@@ -309,4 +310,104 @@ model LoginEvent {
 
   @@index([loginAt])
   @@map("login_events")
+}
+
+model LoginAttempt {
+  username     String    @id @db.VarChar(191)
+  failedAt     Json      @map("failed_at")
+  blockedUntil DateTime? @map("blocked_until")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  @@map("login_attempts")
+}
+
+model AuditTrailEvent {
+  id           String    @id @db.VarChar(48)
+  timestamp    DateTime
+  username     String    @db.VarChar(191)
+  action       String    @db.VarChar(64)
+  entity       String    @db.VarChar(64)
+  entityId     Int?      @map("entity_id")
+  details      Json
+  result       String    @db.VarChar(32)
+  errorMessage String?   @map("error_message") @db.Text
+
+  @@index([timestamp])
+  @@index([username])
+  @@index([action, entity])
+  @@map("audit_trail_events")
+}
+
+model Material {
+  id              Int      @id
+  name            String   @db.VarChar(191)
+  reference       String?  @unique @db.VarChar(191)
+  category        String?  @db.VarChar(191)
+  unit            String   @default("un") @db.VarChar(16)
+  quantity        Decimal  @default(0) @db.Decimal(10, 2)
+  minimumQuantity Decimal  @default(0) @map("minimum_quantity") @db.Decimal(10, 2)
+  location        String?  @db.VarChar(191)
+  supplier        String?  @db.VarChar(191)
+  notes           String?  @db.Text
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@map("materials")
+}
+
+model PersonDocumentReminder {
+  id             Int      @id
+  personId       Int      @map("person_id")
+  name           String   @db.VarChar(191)
+  expirationDate DateTime @map("expiration_date") @db.Date
+  warningDays    Int      @default(30) @map("warning_days")
+  notes          String?  @db.Text
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  person         Person   @relation(fields: [personId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@index([personId])
+  @@index([expirationDate])
+  @@map("person_document_reminders")
+}
+
+model CalendarEvent {
+  id                      Int       @id
+  date                    DateTime  @db.Date
+  title                   String    @db.VarChar(191)
+  type                    String    @db.VarChar(32)
+  transport               String    @db.VarChar(32)
+  airport                 String    @db.VarChar(64)
+  destination             String?   @db.VarChar(191)
+  departureDate           DateTime? @map("departure_date") @db.Date
+  arrivalDate             DateTime? @map("arrival_date") @db.Date
+  departureTime           String?   @map("departure_time") @db.VarChar(8)
+  arrivalTime             String?   @map("arrival_time") @db.VarChar(8)
+  outboundFlightReference String?   @map("outbound_flight_reference") @db.VarChar(64)
+  returnFlightReference   String?   @map("return_flight_reference") @db.VarChar(64)
+  color                   String    @db.VarChar(16)
+  createdBy               String?   @map("created_by") @db.VarChar(191)
+  createdAt               DateTime  @map("created_at")
+  updatedAt               DateTime  @map("updated_at")
+
+  @@index([date])
+  @@index([type])
+  @@map("calendar_events")
+}
+
+model CalendarNotificationState {
+  username String   @id @db.VarChar(191)
+  seenAt   DateTime @map("seen_at")
+
+  @@map("calendar_notification_states")
+}
+
+model FeatureFlag {
+  key       String   @id @db.VarChar(64)
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("feature_flags")
 }

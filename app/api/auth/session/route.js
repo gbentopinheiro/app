@@ -1,26 +1,6 @@
-import { NextResponse } from 'next/server'
-import { getServerSession } from '../../../../lib/server-session.js'
+import { getAuthSessionController } from '../../../../server/controllers/auth-session-controller.js'
+import { toNextResponse } from '../../../../server/responses/route-response.js'
 
 export async function GET() {
-  const session = await getServerSession()
-
-  if (!session) {
-    return NextResponse.json({ authenticated: false }, { status: 401 })
-  }
-
-  return NextResponse.json({
-    authenticated: true,
-    user: {
-      id: session.userId,
-      personId: session.personId,
-      username: session.username,
-      name: session.name,
-      role: session.role,
-      accountType: session.accountType,
-      accessProfileId: session.accessProfileId,
-      accessProfile: session.accessProfile,
-      permissionKeys: session.permissionKeys,
-      workIds: session.workIds,
-    },
-  })
+  return toNextResponse(await getAuthSessionController())
 }

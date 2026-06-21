@@ -409,7 +409,7 @@ export default async function DeveloperPage() {
 
   const dashboard = await getDeveloperDashboardData()
   const overrideEvents = await getDeveloperOverrideEvents({ limit: 12 })
-  const featureFlags = getFeatureFlagDefinitions()
+  const featureFlags = await getFeatureFlagDefinitions()
   const [people, works] = await Promise.all([getAllPeopleData(), getAllWorksData()])
   const overridePeopleOptions = people
     .map(person => ({
