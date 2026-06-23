@@ -3,6 +3,17 @@
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import EditPencilIcon, { editPencilButtonStyle } from '../components/EditPencilIcon'
+import { fetchAuthSession } from '../../frontend/controllers/auth-controller.js'
+import {
+  fetchDailyWorkNotes,
+  saveDailyWorkNote,
+} from '../../frontend/controllers/daily-work-notes-controller.js'
+import {
+  approveWorkAssignment,
+  listWorkAssignments,
+  saveWorkAssignment,
+  submitWorkAssignment,
+} from '../../frontend/controllers/work-assignments-controller.js'
 import {
   fetchChefDailyHoursData,
   fetchChefWorkNotes,
@@ -602,12 +613,13 @@ export default function DailyHoursPage() {
     setError('')
 
     try {
-      const response = await fetch(`/api/work-assignments?includeDefaults=true&date=${encodeURIComponent(date)}`)
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Erro ao carregar registos diários')
-      }
+      const data = await listWorkAssignments(
+        {
+          includeDefaults: true,
+          date,
+        },
+        'Erro ao carregar registos diários',
+      )
 
       setDefaults(data.defaults || { works: [] })
       setDailyEntries(data.items || [])
@@ -620,8 +632,7 @@ export default function DailyHoursPage() {
 
   async function loadWorkNotes(date) {
     try {
-      const response = await fetch(`/api/daily-work-notes?date=${encodeURIComponent(date)}`)
-      const data = await response.json()
+      const { response, data } = await fetchDailyWorkNotes({ date })
 
       if (!response.ok) {
         return
@@ -639,8 +650,7 @@ export default function DailyHoursPage() {
 
   async function loadSession() {
     try {
-      const response = await fetch('/api/auth/session')
-      const data = await response.json()
+      const { response, data } = await fetchAuthSession()
 
       if (response.ok) {
         setSession(data.user)
@@ -717,20 +727,14 @@ export default function DailyHoursPage() {
     setSavingWorkNoteId(workId)
 
     try {
-      const response = await fetch('/api/daily-work-notes', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const data = await saveDailyWorkNote(
+        {
           date: selectedDate,
           workId,
           note: workNotes[String(workId)] || '',
-        }),
-      })
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Erro ao guardar nota.')
-      }
+        },
+        'Erro ao guardar nota.',
+      )
 
       setWorkNotes(current => ({
         ...current,
@@ -774,36 +778,17 @@ export default function DailyHoursPage() {
         const hoursValue = entryHours[String(entry.id)]
         const numericHours = Number(hoursValue)
 
-        return fetch(`/api/work-assignments/${entry.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ hours: numericHours }),
-        }).then(response => response.json())
+        return saveWorkAssignment(entry.id, { hours: numericHours }, 'Erro ao atualizar horas')
       })
 
-      const updateResults = await Promise.all(updatePromises)
-
-      // Check if any update failed
-      const failedUpdateResult = updateResults.find(result => !result.id && result.error)
-      if (failedUpdateResult) {
-        throw new Error(failedUpdateResult.error || 'Erro ao atualizar horas')
-      }
+      await Promise.all(updatePromises)
 
       // Step 2: Submit all hours
       const submitPromises = entriesToSave.map(entry =>
-        fetch(`/api/work-assignments/${entry.id}/submit`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-        }).then(response => response.json())
+        submitWorkAssignment(entry.id, undefined, 'Erro ao submeter horas')
       )
 
-      const submitResults = await Promise.all(submitPromises)
-
-      // Check if any submit failed
-      const failedSubmitResult = submitResults.find(result => !result.id && result.error)
-      if (failedSubmitResult) {
-        throw new Error(failedSubmitResult.error || 'Erro ao submeter horas')
-      }
+      await Promise.all(submitPromises)
 
       await loadPageData(selectedDate)
       setSuccess('Horas guardadas e submetidas com sucesso! O administrador será notificado.')
@@ -829,17 +814,7 @@ export default function DailyHoursPage() {
         return
       }
 
-      const response = await fetch(`/api/work-assignments/${entryId}/approve`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ approvedHours }),
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Erro ao aprovar horas')
-      }
+      await approveWorkAssignment(entryId, { approvedHours }, 'Erro ao aprovar horas')
 
       setSuccess('Horas aprovadas com sucesso.')
       await loadPageData(selectedDate)
@@ -874,17 +849,7 @@ export default function DailyHoursPage() {
         return
       }
 
-      const response = await fetch(`/api/work-assignments/${entryId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ hours: newHours }),
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Erro ao atualizar horas')
-      }
+      await saveWorkAssignment(entryId, { hours: newHours }, 'Erro ao atualizar horas')
 
       setSuccess('Horas atualizadas e submetidas com sucesso.')
       setEditingChefHours(null)
@@ -940,17 +905,11 @@ export default function DailyHoursPage() {
         return
       }
 
-      const response = await fetch(`/api/work-assignments/${entryId}/approve`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ approvedHours: newApprovedHours }),
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Erro ao atualizar horas aprovadas')
-      }
+      await approveWorkAssignment(
+        entryId,
+        { approvedHours: newApprovedHours },
+        'Erro ao atualizar horas aprovadas',
+      )
 
       setSuccess('Horas aprovadas atualizadas com sucesso.')
       cancelApprovedHoursEdit(entryId)
@@ -973,20 +932,10 @@ export default function DailyHoursPage() {
           throw new Error('Horas aprovadas têm de ser um número igual ou maior que 0.')
         }
 
-        return fetch(`/api/work-assignments/${entry.id}/approve`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ approvedHours }),
-        }).then(response => response.json())
+        return approveWorkAssignment(entry.id, { approvedHours }, 'Erro ao aprovar horas')
       })
 
-      const results = await Promise.all(approvePromises)
-
-      // Check if any approve failed
-      const failedResult = results.find(result => !result.id && result.error)
-      if (failedResult) {
-        throw new Error(failedResult.error || 'Erro ao aprovar horas')
-      }
+      await Promise.all(approvePromises)
 
       await loadPageData(selectedDate)
       setSuccess('Todas as horas foram aprovadas com sucesso.')

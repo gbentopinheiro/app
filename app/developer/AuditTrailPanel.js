@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import { fetchDeveloperAuditTrail } from '../../frontend/controllers/developer-controller.js'
 
 const panelStyle = {
   marginBottom: '2rem',
@@ -258,20 +259,11 @@ export default function AuditTrailPanel() {
     try {
       setLoading(true)
       setError(null)
-
-      const queryParams = new URLSearchParams()
-      Object.entries(appliedFilters).forEach(([key, value]) => {
-        if (value) {
-          queryParams.append(key, value)
-        }
-      })
-
-      const response = await fetch(`/api/developer/audit-trail?${queryParams}`)
+      const { response, data } = await fetchDeveloperAuditTrail(appliedFilters)
       if (!response.ok) {
         throw new Error('Erro ao carregar audit trail.')
       }
 
-      const data = await response.json()
       setLogs(Array.isArray(data.logs) ? data.logs : [])
       setStats(data.stats || null)
     } catch (fetchError) {

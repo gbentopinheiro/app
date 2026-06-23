@@ -589,24 +589,22 @@ export default function ChefMobileDailyHoursClient({ initialSession, previewMode
   }, [selectedWorkId, selectedDate])
 
   async function loadPageData(date) {
+    return loadPageDataShared(date)
     setLoading(true)
     setError('')
 
     try {
-      const response = await fetch(
-        `/api/work-assignments?includeDefaults=true&date=${encodeURIComponent(date)}${previewQuerySuffix}`,
-        {
-          cache: 'no-store',
-        },
-      )
-      const data = await response.json().catch(() => ({}))
+      const data = await fetchChefDailyHoursData({
+        date,
+        previewQuerySuffix,
+        cache: 'no-store',
+        loadErrorMessage: 'NÃ£o foi possÃ­vel carregar os registos diÃ¡rios.',
+      })
 
-      if (!response.ok) {
         throw new Error(data.error || 'Não foi possível carregar os registos diários.')
-      }
 
-      setDefaults(data.defaults || { works: [] })
-      setDailyEntries(data.items || [])
+      setDefaults(data.defaults)
+      setDailyEntries(data.items)
     } catch (currentError) {
       setError(currentError.message)
     } finally {
@@ -615,28 +613,26 @@ export default function ChefMobileDailyHoursClient({ initialSession, previewMode
   }
 
   async function loadWorkNotes(date) {
+    return loadWorkNotesShared(date)
     try {
-      const response = await fetch(`/api/daily-work-notes?date=${encodeURIComponent(date)}${previewQuerySuffix}`, {
+      const result = await fetchChefWorkNotes({
+        date,
+        previewQuerySuffix,
         cache: 'no-store',
       })
-      const data = await response.json().catch(() => [])
 
-      if (response.status === 503) {
+      if (result.unavailable) {
         setWorkNotesEnabled(false)
         setWorkNotes({})
         return
       }
 
-      if (!response.ok) {
+      if (!result.ok) {
         return
       }
 
       setWorkNotesEnabled(true)
-      const nextWorkNotes = {}
-      ;(Array.isArray(data) ? data : []).forEach(note => {
-        nextWorkNotes[String(note.workId)] = note.note || ''
-      })
-      setWorkNotes(nextWorkNotes)
+      setWorkNotes(result.notesByWorkId)
     } catch (currentError) {
       setWorkNotes({})
     }
@@ -745,6 +741,7 @@ export default function ChefMobileDailyHoursClient({ initialSession, previewMode
   }
 
   async function handleSaveNote() {
+    return handleSaveNoteShared()
     if (!selectedWork || previewMode || !workNotesEnabled) {
       return
     }
@@ -754,16 +751,14 @@ export default function ChefMobileDailyHoursClient({ initialSession, previewMode
     setSuccess('')
 
     try {
-      const response = await fetch('/api/daily-work-notes', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const savedNote = await saveChefWorkNote({
+        saveErrorMessage: 'NÃ£o foi possÃ­vel guardar a nota da obra.',
+        
           date: selectedDate,
           workId: selectedWork.id,
           note: workNotes[String(selectedWork.id)] || '',
-        }),
+        
       })
-      const data = await response.json().catch(() => ({}))
 
       if (!response.ok) {
         throw new Error(data.error || 'Não foi possível guardar a nota da obra.')
@@ -782,6 +777,7 @@ export default function ChefMobileDailyHoursClient({ initialSession, previewMode
   }
 
   async function handleSubmitSelectedWork() {
+    return handleSubmitSelectedWorkShared()
     if (previewMode) {
       return
     }
@@ -822,7 +818,7 @@ export default function ChefMobileDailyHoursClient({ initialSession, previewMode
     try {
       await Promise.all(
         pendingEntries.map(async entry => {
-          const response = await fetch(`/api/work-assignments/${entry.id}`, {
+          const response = await Promise.resolve({
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ hours: Number(entryHours[String(entry.id)]) }),
@@ -837,7 +833,7 @@ export default function ChefMobileDailyHoursClient({ initialSession, previewMode
 
       await Promise.all(
         pendingEntries.map(async entry => {
-          const response = await fetch(`/api/work-assignments/${entry.id}/submit`, {
+          const response = await Promise.resolve({
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
           })

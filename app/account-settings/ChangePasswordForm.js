@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { changePassword } from '../../frontend/controllers/account-controller.js'
 import { createProtectedPayload } from '../../lib/browser-protected-payload'
 
 const formStyle = {
@@ -97,16 +98,7 @@ export default function ChangePasswordForm() {
 
     try {
       const protectedPayload = await createProtectedPayload(form)
-      const response = await fetch('/api/account/password', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ protectedPayload }),
-      })
-      const data = await response.json().catch(() => ({}))
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Não foi possível atualizar a palavra-passe.')
-      }
+      await changePassword(protectedPayload, 'Não foi possível atualizar a palavra-passe.')
 
       setForm({ currentPassword: '', newPassword: '', confirmPassword: '' })
       setMessageType('success')

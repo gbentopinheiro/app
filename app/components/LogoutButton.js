@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
+import { logoutUser } from '../../frontend/controllers/auth-controller.js'
 
 const defaultStyle = {
   border: '1px solid var(--vp-accent)',
@@ -21,9 +22,7 @@ export default function LogoutButton({ label = 'Sair', redirectTo = '/login', st
     setSubmitting(true)
 
     try {
-      await fetch('/api/auth/logout', {
-        method: 'POST',
-      })
+      await logoutUser()
     } finally {
       router.push(redirectTo)
       router.refresh()

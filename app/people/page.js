@@ -5,6 +5,14 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 import * as XLSX from 'xlsx'
 import EditPencilIcon, { editPencilButtonStyle } from '../components/EditPencilIcon'
+import {
+  deletePerson,
+  listPeople,
+  savePerson,
+} from '../../frontend/controllers/people-controller.js'
+import { listAccessIdentities } from '../../frontend/controllers/access-identities-controller.js'
+import { getAuthSession } from '../../frontend/controllers/auth-controller.js'
+import { listWorkAssignments } from '../../frontend/controllers/work-assignments-controller.js'
 import { createProtectedPayload } from '../../lib/browser-protected-payload.js'
 import { getApprovedAssignmentHours } from '../../lib/work-assignment-approval.js'
 import {
@@ -1962,23 +1970,13 @@ export default function PeoplePage() {
     setSuccess('')
 
     try {
-      const sessionResponse = await fetch('/api/auth/session')
-      const sessionData = await sessionResponse.json()
-
-      if (!sessionResponse.ok) {
-        throw new Error(sessionData.error || 'Erro ao carregar a sessão')
-      }
+      const sessionData = await getAuthSession('Erro ao carregar a sessão')
 
       const nextViewerRole = sessionData?.user?.role || ''
       const responsavelView = nextViewerRole === ROLE_RESPONSAVEL
       setViewerRole(nextViewerRole)
 
-      const peopleResponse = await fetch('/api/people')
-      const peopleData = await peopleResponse.json()
-
-      if (!peopleResponse.ok) {
-        throw new Error(peopleData.error || 'Erro ao carregar pessoas')
-      }
+      const peopleData = await listPeople('Erro ao carregar pessoas')
 
       setPeople(peopleData)
 
@@ -1991,16 +1989,10 @@ export default function PeoplePage() {
         return
       }
 
-      const [assignmentsResponse, accessIdentitiesResponse] = await Promise.all([
-        fetch('/api/work-assignments'),
-        fetch('/api/access-identities?includeWorks=true'),
+      const [assignmentsData, accessIdentitiesData] = await Promise.all([
+        listWorkAssignments({}, 'Erro ao carregar afetações'),
+        listAccessIdentities({ includeWorks: true }, 'Erro ao carregar acessos'),
       ])
-
-      const assignmentsData = await assignmentsResponse.json()
-      const accessIdentitiesData = await accessIdentitiesResponse.json()
-
-      if (!assignmentsResponse.ok) throw new Error(assignmentsData.error || 'Erro ao carregar afetações')
-      if (!accessIdentitiesResponse.ok) throw new Error(accessIdentitiesData.error || 'Erro ao carregar acessos')
 
       setAssignments(assignmentsData)
       setAccessIdentities(accessIdentitiesData.items || [])
@@ -2143,16 +2135,7 @@ export default function PeoplePage() {
     try {
       if (isResponsavelView) {
         const protectedPayload = await createProtectedPayload({ name: form.name })
-        const response = await fetch('/api/people', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ protectedPayload }),
-        })
-        const data = await response.json()
-
-        if (!response.ok) {
-          throw new Error(data.error || 'Erro ao gravar pessoa')
-        }
+        const data = await savePerson(null, { protectedPayload }, 'Erro ao gravar pessoa')
 
         await loadPeople()
         setSelectedPersonId(data.id)
@@ -2177,18 +2160,8 @@ export default function PeoplePage() {
           : null,
       }
 
-      const url = form.id ? `/api/people/${form.id}` : '/api/people'
-      const method = form.id ? 'PUT' : 'POST'
       const protectedPayload = await createProtectedPayload(payload)
-
-      const response = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ protectedPayload }),
-      })
-
-      const data = await response.json()
-      if (!response.ok) throw new Error(data.error || 'Erro ao gravar pessoa')
+      const data = await savePerson(form.id, { protectedPayload }, 'Erro ao gravar pessoa')
 
       await loadPeople()
       setSelectedPersonId(data.id)
@@ -2208,9 +2181,7 @@ export default function PeoplePage() {
     setSuccess('')
 
     try {
-      const response = await fetch(`/api/people/${personId}`, { method: 'DELETE' })
-      const data = await response.json()
-      if (!response.ok) throw new Error(data.error || 'Erro ao eliminar pessoa')
+      await deletePerson(personId, 'Erro ao eliminar pessoa')
 
       await loadPeople()
       setSelectedPersonId(null)

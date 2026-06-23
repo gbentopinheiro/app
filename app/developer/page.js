@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import LogoutButton from '../components/LogoutButton'
+import DashboardExportButton from './DashboardExportButton'
 import FeatureFlagsPanel from './FeatureFlagsPanel'
 import AccessProfilesPanel from './AccessProfilesPanel'
 import UserManagementPanel from './UserManagementPanel'
@@ -447,9 +448,9 @@ export default async function DeveloperPage() {
                 <Link href="/account-settings" style={linkButtonStyle}>
                   Conta
                 </Link>
-                <a href="/api/developer/dashboard-export" style={linkButtonStyle}>
+                <DashboardExportButton style={linkButtonStyle}>
                   Exportar PDF
-                </a>
+                </DashboardExportButton>
                 <LogoutButton
                   style={{
                     border: '1px solid rgba(255,255,255,0.16)',

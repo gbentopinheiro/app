@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { fetchDeveloperTestData } from '../../frontend/controllers/developer-controller.js'
 
 export default function TestDataGeneratorPanel() {
   const [scenario, setScenario] = useState('small')
@@ -14,15 +15,13 @@ export default function TestDataGeneratorPanel() {
       setLoading(true)
       setError(null)
 
-      let url = `/api/developer/test-data?scenario=${generationScenario}`
-      if (generationScenario === 'custom') {
-        url = `/api/developer/test-data?scenario=custom&count=${customCount}`
-      }
+      const { response, data } = await fetchDeveloperTestData(
+        generationScenario === 'custom'
+          ? { scenario: 'custom', count: customCount }
+          : { scenario: generationScenario },
+      )
+      if (!response.ok) throw new Error('Failed to generate test data')
 
-      const res = await fetch(url)
-      if (!res.ok) throw new Error('Failed to generate test data')
-      
-      const data = await res.json()
       setGeneratedData(data)
     } catch (err) {
       setError(err.message)

@@ -1,6 +1,10 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import {
+  fetchDeveloperDataIntegrity,
+  runDeveloperDataIntegrityFix,
+} from '../../frontend/controllers/developer-controller.js'
 
 const panelStyle = {
   borderRadius: '30px',
@@ -214,13 +218,13 @@ export default function DataIntegrityPanel() {
     try {
       setLoading(true)
       setError(null)
-      const res = await fetch('/api/developer/data-integrity')
+      const { response, data } = await fetchDeveloperDataIntegrity()
 
-      if (!res.ok) {
+      if (!response.ok) {
         throw new Error('Erro ao carregar integridade dos dados')
       }
 
-      setData(await res.json())
+      setData(data)
     } catch (fetchError) {
       setError(fetchError.message)
     } finally {
@@ -239,16 +243,9 @@ export default function DataIntegrityPanel() {
       setFixingIssueId(issueId)
       setError(null)
       setMessage(null)
-      const res = await fetch('/api/developer/data-integrity', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ issueId }),
-      })
-      const payload = await res.json()
+      const { response, data: payload } = await runDeveloperDataIntegrityFix({ issueId })
 
-      if (!res.ok) {
+      if (!response.ok) {
         throw new Error(payload.error || 'Erro ao aplicar correcao automatica.')
       }
 

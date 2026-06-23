@@ -1,6 +1,11 @@
 ﻿'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import {
+  deleteCalendarEvent,
+  listCalendarEvents,
+  saveCalendarEvent,
+} from '../../frontend/controllers/calendar-controller.js'
 import EditPencilIcon, { editPencilButtonStyle } from '../components/EditPencilIcon'
 import { getBelgianHolidays } from '../../lib/belgian-holidays.js'
 
@@ -1130,12 +1135,7 @@ export default function CalendarClient({ initialMonthKey, weekdays, initialEvent
 
       try {
         const [year, month] = monthKey.split('-')
-        const response = await fetch(`/api/calendar-events?year=${year}&month=${month}`)
-        const payload = await response.json()
-
-        if (!response.ok) {
-          throw new Error(payload.message || 'Não foi possível carregar o calendário.')
-        }
+        const payload = await listCalendarEvents({ year, month }, 'Não foi possível carregar o calendário.')
 
         if (!isCancelled) {
           setEvents(Array.isArray(payload) ? payload : [])
@@ -1220,21 +1220,16 @@ export default function CalendarClient({ initialMonthKey, weekdays, initialEvent
 
     try {
       const eventTitle = String(formData.title || '').trim()
-      const response = await fetch('/api/calendar-events', {
-        method: editingEventId ? 'PUT' : 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const payload = await saveCalendarEvent(
+        {
           ...formData,
           id: editingEventId,
           date: formData.departureDate,
           title: eventTitle,
-        }),
-      })
-      const payload = await response.json()
-
-      if (!response.ok) {
-        throw new Error(payload.message || 'Não foi possível criar o evento.')
-      }
+        },
+        editingEventId ? 'PUT' : 'POST',
+        'Não foi possível criar o evento.',
+      )
 
       setEvents(currentEvents => (
         editingEventId
@@ -1258,16 +1253,7 @@ export default function CalendarClient({ initialMonthKey, weekdays, initialEvent
     setIsSaving(true)
 
     try {
-      const response = await fetch('/api/calendar-events', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: selectedEvent.id }),
-      })
-      const payload = await response.json()
-
-      if (!response.ok) {
-        throw new Error(payload.message || 'Não foi possível remover o evento.')
-      }
+      await deleteCalendarEvent({ id: selectedEvent.id }, 'Não foi possível remover o evento.')
 
       setEvents(currentEvents => currentEvents.filter(calendarEvent => calendarEvent.id !== selectedEvent.id))
       setIsOpen(false)

@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import { deleteNotifications } from '../../frontend/controllers/notifications-controller.js'
 
 const panelStyle = {
   padding: '24px',
@@ -183,17 +184,7 @@ export default function NotificationsClient({ initialNotifications }) {
     setIsDeleting(true)
 
     try {
-      const response = await fetch('/api/daily-work-notes', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ids: selectedDeleteIds }),
-      })
-
-      const payload = await response.json()
-
-      if (!response.ok) {
-        throw new Error(payload.error || 'Não foi possível remover as notificações.')
-      }
+      await deleteNotifications(selectedDeleteIds, 'Não foi possível remover as notificações.')
 
       setNotifications(current => current.filter(item => !selectedIdSet.has(item.id)))
       setSelectedIds([])

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import { fetchDeveloperSystemDiagnostics } from '../../frontend/controllers/developer-controller.js'
 
 const panelStyle = {
   borderRadius: '30px',
@@ -217,13 +218,13 @@ export default function SystemDiagnosticsPanel() {
     try {
       setLoading(true)
       setError(null)
-      const response = await fetch('/api/developer/system-diagnostics')
+      const { response, data } = await fetchDeveloperSystemDiagnostics()
 
       if (!response.ok) {
         throw new Error('Erro ao carregar estado do sistema')
       }
 
-      setSystemState(await response.json())
+      setSystemState(data)
     } catch (fetchError) {
       setError(fetchError.message || 'Erro ao carregar estado do sistema')
     } finally {

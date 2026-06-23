@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { fetchDeveloperFeatureFlagsUpdate } from '../../frontend/controllers/developer-controller.js'
 
 const panelStyle = {
   borderRadius: '30px',
@@ -107,16 +108,10 @@ export default function FeatureFlagsPanel({ initialFlags }) {
     setFeedback({ type: '', text: '' })
 
     try {
-      const response = await fetch('/api/developer/feature-flags', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          key: flag.key,
-          enabled: nextEnabled,
-        }),
+      const { response, data } = await fetchDeveloperFeatureFlagsUpdate({
+        key: flag.key,
+        enabled: nextEnabled,
       })
-
-      const data = await response.json()
 
       if (!response.ok) {
         throw new Error(data.error || 'Não foi possível atualizar a funcionalidade.')

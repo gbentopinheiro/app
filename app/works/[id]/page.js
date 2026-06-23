@@ -5,6 +5,8 @@ import { useParams } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 import * as XLSX from 'xlsx'
 import EditPencilIcon, { editPencilButtonStyle } from '../../components/EditPencilIcon'
+import { listWorkAssignments } from '../../../frontend/controllers/work-assignments-controller.js'
+import { getWork } from '../../../frontend/controllers/works-controller.js'
 import { getApprovedAssignmentHours, getApprovedAssignmentTotalCost } from '../../../lib/work-assignment-approval.js'
 
 const pageStyle = {
@@ -1303,19 +1305,13 @@ export default function WorkDetailPage() {
       setError('')
 
       try {
-        const [workResponse, assignmentsResponse] = await Promise.all([
-          fetch(`/api/works/${workId}`),
-          fetch(`/api/work-assignments?workId=${workId}`),
-        ])
+      const [workData, assignmentsData] = await Promise.all([
+        getWork(workId, 'Erro ao carregar obra'),
+        listWorkAssignments({ workId }, 'Erro ao carregar afetações'),
+      ])
 
-        const workData = await workResponse.json()
-        const assignmentsData = await assignmentsResponse.json()
-
-        if (!workResponse.ok) throw new Error(workData.error || 'Erro ao carregar obra')
-        if (!assignmentsResponse.ok) throw new Error(assignmentsData.error || 'Erro ao carregar afetações')
-
-        setWork(workData)
-        setAssignments(assignmentsData)
+      setWork(workData)
+      setAssignments(assignmentsData)
       } catch (err) {
         setError(err.message)
       } finally {

@@ -1,6 +1,12 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import {
+  fetchDeveloperUser,
+  fetchDeveloperUsers,
+  resetDeveloperUserPassword,
+  updateDeveloperUser,
+} from '../../frontend/controllers/developer-controller.js'
 
 const panelStyle = {
   borderRadius: '30px',
@@ -375,13 +381,12 @@ export default function UserManagementPanel() {
     try {
       setLoading(true)
       setError(null)
-      const response = await fetch('/api/developer/users')
+      const { response, data } = await fetchDeveloperUsers()
 
       if (!response.ok) {
         throw new Error('Erro ao carregar utilizadores')
       }
 
-      const data = await response.json()
       setUsers(Array.isArray(data.users) ? data.users : [])
       setSummary(data.summary || null)
       setAccessProfiles(Array.isArray(data.accessProfiles) ? data.accessProfiles : [])
@@ -397,14 +402,12 @@ export default function UserManagementPanel() {
       setDetailLoading(true)
       setError(null)
       setResetMessage(null)
-      const response = await fetch(`/api/developer/users/${userId}`)
+      const { response, data } = await fetchDeveloperUser(userId)
 
       if (!response.ok) {
-        const data = await response.json().catch(() => ({}))
         throw new Error(data.error || 'Erro ao carregar a conta')
       }
 
-      const data = await response.json()
       const user = {
         ...data.user,
         lockoutProtection: data.lockoutProtection || null,
@@ -439,18 +442,11 @@ export default function UserManagementPanel() {
       setSaving(true)
       setError(null)
       setMessage(null)
-      const response = await fetch(`/api/developer/users/${selectedUser.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          accessProfileId: modalForm.accessProfileId,
-          active: modalForm.active,
-          unlockBlocked: modalForm.unlockBlocked,
-        }),
+      const { response, data } = await updateDeveloperUser(selectedUser.id, {
+        accessProfileId: modalForm.accessProfileId,
+        active: modalForm.active,
+        unlockBlocked: modalForm.unlockBlocked,
       })
-      const data = await response.json()
 
       if (!response.ok) {
         throw new Error(data.error || 'Erro ao guardar a conta')
@@ -492,12 +488,10 @@ export default function UserManagementPanel() {
     try {
       setResetLoading(true)
       setResetMessage(null)
-      const response = await fetch('/api/developer/users/reset-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: selectedUser.id, type: selectedUser.accountType }),
+      const { response, data } = await resetDeveloperUserPassword({
+        userId: selectedUser.id,
+        type: selectedUser.accountType,
       })
-      const data = await response.json()
 
       if (!response.ok) {
         throw new Error(data.error || 'Erro ao redefinir password')

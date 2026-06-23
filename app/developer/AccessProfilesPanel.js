@@ -1,6 +1,12 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import {
+  fetchDeveloperAccessProfile,
+  fetchDeveloperAccessProfiles,
+  fetchDeveloperPermissions,
+  updateDeveloperAccessProfilePermissions,
+} from '../../frontend/controllers/developer-controller.js'
 
 const panelStyle = {
   borderRadius: '30px',
@@ -417,21 +423,21 @@ export default function AccessProfilesPanel() {
     try {
       setLoading(true)
       setError(null)
-      const [profilesRes, permissionsRes] = await Promise.all([
-        fetch('/api/developer/access-profiles'),
-        fetch('/api/developer/permissions'),
+      const [profilesResult, permissionsResult] = await Promise.all([
+        fetchDeveloperAccessProfiles(),
+        fetchDeveloperPermissions(),
       ])
 
-      if (!profilesRes.ok) {
+      if (!profilesResult.response.ok) {
         throw new Error('Erro ao carregar perfis.')
       }
 
-      if (!permissionsRes.ok) {
+      if (!permissionsResult.response.ok) {
         throw new Error('Erro ao carregar permissoes.')
       }
 
-      const profilesData = await profilesRes.json()
-      const permissionsData = await permissionsRes.json()
+      const profilesData = profilesResult.data
+      const permissionsData = permissionsResult.data
       const nextProfiles = Array.isArray(profilesData.profiles) ? profilesData.profiles : []
       setProfiles(nextProfiles)
       setPermissionsCatalog(Array.isArray(permissionsData.permissions) ? permissionsData.permissions : [])
@@ -450,13 +456,12 @@ export default function AccessProfilesPanel() {
     try {
       setDetailLoading(true)
       setError(null)
-      const response = await fetch(`/api/developer/access-profiles/${profileId}`)
+      const { response, data } = await fetchDeveloperAccessProfile(profileId)
 
       if (!response.ok) {
         throw new Error('Erro ao carregar o perfil selecionado.')
       }
 
-      const data = await response.json()
       setProfileDetail(data.profile || null)
       setDraftPermissionKeys(data.profile?.assignedPermissionKeys || [])
       setMessage(null)
@@ -484,16 +489,12 @@ export default function AccessProfilesPanel() {
       setSaving(true)
       setError(null)
       setMessage(null)
-      const response = await fetch(`/api/developer/access-profiles/${profileDetail.id}/permissions`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      const { response, data } = await updateDeveloperAccessProfilePermissions(
+        profileDetail.id,
+        {
           permissionKeys: draftPermissionKeys,
-        }),
-      })
-      const data = await response.json()
+        },
+      )
 
       if (!response.ok) {
         throw new Error(data.error || 'Erro ao guardar permissoes.')

@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
+import { loginWithProtectedPayload } from '../../frontend/controllers/auth-controller.js'
 import { createProtectedPayload } from '../../lib/browser-protected-payload.js'
 import { BentixLogo } from './components/BentixLogo'
 
@@ -328,17 +329,10 @@ export default function LoginPage() {
         password,
       })
 
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ protectedPayload }),
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Não foi possível iniciar sessão.')
-      }
+      const data = await loginWithProtectedPayload(
+        protectedPayload,
+        'Não foi possível iniciar sessão.',
+      )
 
       router.push(data.redirectTo || '/')
       router.refresh()

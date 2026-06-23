@@ -2,6 +2,11 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import {
+  deleteDeveloperDailyPlanOverrideWorkAssignment,
+  fetchDeveloperDailyPlanOverrideWorkAssignment,
+  updateDeveloperDailyPlanOverrideWorkAssignment,
+} from '../../frontend/controllers/developer-controller.js'
 
 const actionButtonStyle = {
   display: 'inline-flex',
@@ -355,8 +360,7 @@ export default function DeveloperOverrideCorrectionButton({ peopleOptions = [], 
         setCurrentAssignment(null)
         setSubmitMessage(null)
 
-        const response = await fetch(`/api/developer/daily-plan-overrides/work-assignments/${trimmedAssignmentId}`)
-        const payload = await response.json().catch(() => ({}))
+        const { response, data: payload } = await fetchDeveloperDailyPlanOverrideWorkAssignment(trimmedAssignmentId)
 
         if (!response.ok) {
           throw new Error(payload.error || 'Erro ao carregar a afetacao.')
@@ -468,18 +472,10 @@ export default function DeveloperOverrideCorrectionButton({ peopleOptions = [], 
         reason,
       }
 
-      const response = await fetch(
-        `/api/developer/daily-plan-overrides/work-assignments/${currentAssignment.id}`,
-        {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(body),
-        },
+      const { response, data: payload } = await updateDeveloperDailyPlanOverrideWorkAssignment(
+        currentAssignment.id,
+        body,
       )
-
-      const payload = await response.json().catch(() => ({}))
 
       if (!response.ok) {
         throw new Error(payload.error || 'Erro ao gravar a correcao tecnica.')
@@ -531,18 +527,10 @@ export default function DeveloperOverrideCorrectionButton({ peopleOptions = [], 
       setIsSubmitting(true)
       setSubmitMessage(null)
 
-      const response = await fetch(
-        `/api/developer/daily-plan-overrides/work-assignments/${currentAssignment.id}`,
-        {
-          method: 'DELETE',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ reason }),
-        },
+      const { response, data: payload } = await deleteDeveloperDailyPlanOverrideWorkAssignment(
+        currentAssignment.id,
+        { reason },
       )
-
-      const payload = await response.json().catch(() => ({}))
 
       if (!response.ok) {
         throw new Error(payload.error || 'Erro ao remover a afetacao.')

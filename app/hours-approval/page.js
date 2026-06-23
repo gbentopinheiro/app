@@ -2,6 +2,10 @@
 
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
+import {
+  approveWorkAssignment,
+  listWorkAssignments,
+} from '../../frontend/controllers/work-assignments-controller.js'
 import { isAssignmentApproved } from '../../lib/work-assignment-approval.js'
 
 const pageStyle = {
@@ -128,12 +132,7 @@ export default function HoursApprovalPage() {
     setError('')
 
     try {
-      const response = await fetch('/api/work-assignments')
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Erro ao carregar afetações')
-      }
+      const data = await listWorkAssignments({}, 'Erro ao carregar afetações')
 
       setAssignments(data)
       
@@ -171,17 +170,11 @@ export default function HoursApprovalPage() {
         return
       }
 
-      const response = await fetch(`/api/work-assignments/${assignmentId}/approve`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ approvedHours: hoursValue }),
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Erro ao aprovar horas')
-      }
+      await approveWorkAssignment(
+        assignmentId,
+        { approvedHours: hoursValue },
+        'Erro ao aprovar horas',
+      )
 
       setSuccess('Horas aprovadas com sucesso.')
       await loadAssignments()

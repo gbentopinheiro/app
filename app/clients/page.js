@@ -3,6 +3,11 @@
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import EditPencilIcon, { editPencilButtonStyle } from '../components/EditPencilIcon'
+import {
+  deleteClient,
+  listClients,
+  saveClient,
+} from '../../frontend/controllers/clients-controller.js'
 
 const pageStyle = {
   minHeight: '100vh',
@@ -128,11 +133,7 @@ export default function ClientsPage() {
     setError('')
 
     try {
-      const response = await fetch('/api/clients')
-      const data = await response.json()
-
-      if (!response.ok) throw new Error(data.error || 'Erro ao carregar clientes')
-
+      const data = await listClients('Erro ao carregar clientes')
       setClients(data)
       setSelectedClientId(current => current ?? data[0]?.id ?? null)
     } catch (err) {
@@ -207,17 +208,7 @@ export default function ClientsPage() {
         notes: form.notes,
       }
 
-      const url = form.id ? `/api/clients/${form.id}` : '/api/clients'
-      const method = form.id ? 'PUT' : 'POST'
-
-      const response = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
-
-      const data = await response.json()
-      if (!response.ok) throw new Error(data.error || 'Erro ao gravar cliente')
+      const data = await saveClient(form.id, payload, 'Erro ao gravar cliente')
 
       await loadClients()
       setSelectedClientId(data.id)
@@ -237,10 +228,7 @@ export default function ClientsPage() {
     setSuccess('')
 
     try {
-      const response = await fetch(`/api/clients/${clientId}`, { method: 'DELETE' })
-      const data = await response.json()
-
-      if (!response.ok) throw new Error(data.error || 'Erro ao eliminar cliente')
+      await deleteClient(clientId, 'Erro ao eliminar cliente')
 
       await loadClients()
       setSelectedClientId(null)

@@ -1,6 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import {
+  fetchDeveloperDataManagementExport,
+  fetchDeveloperDataManagementStats,
+} from '../../frontend/controllers/developer-controller.js'
 
 export default function DataManagementPanel() {
   const [stats, setStats] = useState(null)
@@ -16,9 +20,8 @@ export default function DataManagementPanel() {
     try {
       setLoading(true)
       setError(null)
-      const res = await fetch('/api/developer/data-management?action=stats')
-      if (!res.ok) throw new Error('Failed to fetch stats')
-      const data = await res.json()
+      const { response, data } = await fetchDeveloperDataManagementStats()
+      if (!response.ok) throw new Error('Failed to fetch stats')
       setStats(data)
     } catch (err) {
       setError(err.message)
@@ -30,7 +33,7 @@ export default function DataManagementPanel() {
   const handleExport = async (type = 'full') => {
     try {
       setExporting(true)
-      const res = await fetch(`/api/developer/data-management?action=export&type=${type}`)
+      const res = await fetchDeveloperDataManagementExport(type)
       if (!res.ok) throw new Error('Export failed')
       
       const blob = await res.blob()

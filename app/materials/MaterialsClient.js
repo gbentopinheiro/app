@@ -3,6 +3,11 @@
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import EditPencilIcon, { editPencilButtonStyle } from '../components/EditPencilIcon'
+import {
+  deleteMaterial,
+  listMaterials,
+  saveMaterial,
+} from '../../frontend/controllers/materials-controller.js'
 
 const unitOptions = [
   { value: 'un', label: 'Unidade' },
@@ -438,12 +443,7 @@ export default function MaterialsClient() {
     setError('')
 
     try {
-      const response = await fetch('/api/materials')
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Erro ao carregar materiais.')
-      }
+      const data = await listMaterials('Erro ao carregar materiais.')
 
       setMaterials(data)
       setSelectedMaterialId(current => current ?? data[0]?.id ?? null)
@@ -574,18 +574,7 @@ export default function MaterialsClient() {
         notes: form.notes,
       }
 
-      const url = form.id ? `/api/materials/${form.id}` : '/api/materials'
-      const method = form.id ? 'PUT' : 'POST'
-      const response = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Erro ao gravar material.')
-      }
+      const data = await saveMaterial(form.id, payload, 'Erro ao gravar material.')
 
       await loadMaterials()
       setSelectedMaterialId(data.id)
@@ -605,12 +594,7 @@ export default function MaterialsClient() {
     setSuccess('')
 
     try {
-      const response = await fetch(`/api/materials/${materialId}`, { method: 'DELETE' })
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Erro ao remover material.')
-      }
+      await deleteMaterial(materialId, 'Erro ao remover material.')
 
       await loadMaterials()
       setShowForm(false)

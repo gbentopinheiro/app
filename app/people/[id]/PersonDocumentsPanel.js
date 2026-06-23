@@ -1,6 +1,10 @@
 'use client'
 
 import { useState } from 'react'
+import {
+  createPersonDocument,
+  deletePersonDocument,
+} from '../../../frontend/controllers/people-controller.js'
 
 const WARNING_OPTIONS = [
   { value: '30', label: '30 dias antes' },
@@ -230,21 +234,16 @@ export default function PersonDocumentsPanel({ personId, initialDocuments = [] }
     setMessage('')
 
     try {
-      const response = await fetch(`/api/people/${personId}/documents`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const data = await createPersonDocument(
+        personId,
+        {
           name: form.name,
           expirationDate: form.expirationDate,
           warningDays: Number(form.warningDays),
           notes: form.notes,
-        }),
-      })
-      const data = await response.json().catch(() => ({}))
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Nao foi possivel guardar o documento.')
-      }
+        },
+        'Nao foi possivel guardar o documento.',
+      )
 
       setDocuments(currentDocuments => sortDocuments([...currentDocuments, data]))
       setForm(emptyForm)
@@ -268,14 +267,7 @@ export default function PersonDocumentsPanel({ personId, initialDocuments = [] }
     setMessage('')
 
     try {
-      const response = await fetch(`/api/people/${personId}/documents/${documentId}`, {
-        method: 'DELETE',
-      })
-      const data = await response.json().catch(() => ({}))
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Nao foi possivel remover o documento.')
-      }
+      await deletePersonDocument(personId, documentId, 'Nao foi possivel remover o documento.')
 
       setDocuments(currentDocuments => currentDocuments.filter(document => Number(document.id) !== Number(documentId)))
       setMessageType('success')

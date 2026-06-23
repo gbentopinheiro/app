@@ -4,6 +4,17 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import EditPencilIcon, { editPencilButtonStyle } from '../components/EditPencilIcon'
+import {
+  deleteClient as deleteClientRequest,
+  listClients,
+  saveClient as saveClientRequest,
+} from '../../frontend/controllers/clients-controller.js'
+import {
+  deleteWork as deleteWorkRequest,
+  listWorks,
+  saveWork as saveWorkRequest,
+} from '../../frontend/controllers/works-controller.js'
+import { listWorkAssignments } from '../../frontend/controllers/work-assignments-controller.js'
 import { buildWorkPricingSnapshot, hasWorkPricingChanges } from '../../lib/work-pricing.js'
 
 const pageStyle = {
@@ -1038,13 +1049,7 @@ export function WorksPageView({ forcedClientId = '', dedicatedClientView = false
     setAnnualSummaryError('')
 
     try {
-      const response = await fetch('/api/work-assignments')
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Erro ao carregar afetacoes do resumo anual')
-      }
-
+      const data = await listWorkAssignments({}, 'Erro ao carregar afetacoes do resumo anual')
       const normalizedAssignments = Array.isArray(data) ? data : []
       setAnnualAssignments(normalizedAssignments)
       return normalizedAssignments
@@ -1191,16 +1196,10 @@ export function WorksPageView({ forcedClientId = '', dedicatedClientView = false
     setError('')
 
     try {
-      const [worksResponse, clientsResponse] = await Promise.all([
-        fetch('/api/works'),
-        fetch('/api/clients'),
+      const [worksData, clientsData] = await Promise.all([
+        listWorks('Erro ao carregar obras'),
+        listClients('Erro ao carregar clientes'),
       ])
-
-      const worksData = await worksResponse.json()
-      const clientsData = await clientsResponse.json()
-
-      if (!worksResponse.ok) throw new Error(worksData.error || 'Erro ao carregar obras')
-      if (!clientsResponse.ok) throw new Error(clientsData.error || 'Erro ao carregar clientes')
 
       setWorks(worksData)
       setClients(clientsData)
@@ -1406,18 +1405,7 @@ export function WorksPageView({ forcedClientId = '', dedicatedClientView = false
         notes: clientForm.notes,
       }
 
-      const url = clientForm.id ? `/api/clients/${clientForm.id}` : '/api/clients'
-      const method = clientForm.id ? 'PUT' : 'POST'
-      const response = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Erro ao gravar cliente')
-      }
+      const data = await saveClientRequest(clientForm.id, payload, 'Erro ao gravar cliente')
 
       if (dedicatedClientView) {
         await loadData(String(data.id))
@@ -1436,20 +1424,14 @@ export function WorksPageView({ forcedClientId = '', dedicatedClientView = false
   }
 
   async function saveWork(payload, pricingChangeApplication = null) {
-    const url = form.id ? `/api/works/${form.id}` : '/api/works'
-    const method = form.id ? 'PUT' : 'POST'
-
-    const response = await fetch(url, {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+    const data = await saveWorkRequest(
+      form.id,
+      {
         ...payload,
         pricingChangeApplication,
-      }),
-    })
-
-    const data = await response.json()
-    if (!response.ok) throw new Error(data.error || 'Erro ao gravar obra')
+      },
+      'Erro ao gravar obra',
+    )
 
     await loadData()
     setShowCreateForm(false)
@@ -1555,9 +1537,7 @@ export function WorksPageView({ forcedClientId = '', dedicatedClientView = false
     setSuccess('')
 
     try {
-      const response = await fetch(`/api/works/${workId}`, { method: 'DELETE' })
-      const data = await response.json()
-      if (!response.ok) throw new Error(data.error || 'Erro ao eliminar obra')
+      await deleteWorkRequest(workId, 'Erro ao eliminar obra')
 
       await loadData()
       setSuccess('Obra eliminada com sucesso.')
@@ -1581,12 +1561,7 @@ export function WorksPageView({ forcedClientId = '', dedicatedClientView = false
     setClientFormError('')
 
     try {
-      const response = await fetch(`/api/clients/${clientId}`, { method: 'DELETE' })
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Erro ao remover cliente')
-      }
+      await deleteClientRequest(clientId, 'Erro ao remover cliente')
 
       if (dedicatedClientView) {
         router.push('/works')

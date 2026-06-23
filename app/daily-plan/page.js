@@ -4,6 +4,12 @@ import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import EditPencilIcon, { editPencilButtonStyle } from '../components/EditPencilIcon'
 import TrashBinIcon, { trashBinButtonStyle } from '../components/TrashBinIcon'
+import {
+  deleteWorkAssignment,
+  listWorkAssignments,
+  saveWorkAssignment,
+} from '../../frontend/controllers/work-assignments-controller.js'
+import { saveWorkPlan } from '../../frontend/controllers/work-plans-controller.js'
 import { getDailyPlanLockState } from '../../lib/daily-plan-lock.js'
 import { getDefaultHoursForDate } from '../../lib/default-hours.js'
 import { getRoleLabel, isChefRole } from '../../lib/roles.js'
@@ -629,12 +635,13 @@ export default function DailyPlanPage() {
     setSuccess('')
 
     try {
-      const response = await fetch(`/api/work-assignments?includeDefaults=true&date=${encodeURIComponent(date)}`)
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Erro ao carregar plano diário')
-      }
+      const data = await listWorkAssignments(
+        {
+          includeDefaults: true,
+          date,
+        },
+        'Erro ao carregar plano diário',
+      )
 
       const nextDefaults = data.defaults || { people: [], works: [], workPlans: [] }
       const nextWorkPlans = Array.isArray(nextDefaults.workPlans) ? nextDefaults.workPlans : []
@@ -668,20 +675,14 @@ export default function DailyPlanPage() {
     setSuccess('')
 
     try {
-      const response = await fetch('/api/work-plans', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const data = await saveWorkPlan(
+        null,
+        {
           date: selectedDate,
           clonePreviousDay,
-        }),
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Erro ao criar plano diário')
-      }
+        },
+        'Erro ao criar plano diário',
+      )
 
       setSuccess(
         clonePreviousDay
@@ -946,17 +947,11 @@ export default function DailyPlanPage() {
             hasWorkAccess: selectedPerson && isChefRole(selectedPerson.role) ? assignmentForm.hasWorkAccess === true : false,
           }
 
-      const response = await fetch(assignmentForm.id ? `/api/work-assignments/${assignmentForm.id}` : '/api/work-assignments', {
-        method: assignmentForm.id ? 'PUT' : 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Erro ao criar afetação')
-      }
+      const data = await saveWorkAssignment(
+        assignmentForm.id,
+        payload,
+        'Erro ao criar afetação',
+      )
 
       setSuccess(
         assignmentForm.id
@@ -989,15 +984,7 @@ export default function DailyPlanPage() {
     setSuccess('')
 
     try {
-      const response = await fetch(`/api/work-assignments/${assignment.id}`, {
-        method: 'DELETE',
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Erro ao eliminar afetação')
-      }
+      await deleteWorkAssignment(assignment.id, 'Erro ao eliminar afetação')
 
       setSuccess('Afetação eliminada com sucesso.')
       await loadDailyPlan(selectedDate)
@@ -1066,24 +1053,18 @@ export default function DailyPlanPage() {
     setSuccess('')
 
     try {
-      const response = await fetch(`/api/work-assignments/${assignment.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      await saveWorkAssignment(
+        assignment.id,
+        {
           workPlanId: selectedWorkPlan.id,
           workId: Number(targetWorkId),
           personId: Number(assignment.personId),
           manualHourlyCost: false,
           hourlyCost: getWorkHourlyCostForPerson(targetWork, targetPerson, assignment.hourlyCost),
           notes: assignment.notes || '',
-        }),
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Erro ao mover afetação')
-      }
+        },
+        'Erro ao mover afetação',
+      )
 
       setSuccess(`${assignment.person?.name || 'Pessoa'} movido(a) para a obra #${targetWork.number} - ${targetWork.name}.`)
       await loadDailyPlan(selectedDate)

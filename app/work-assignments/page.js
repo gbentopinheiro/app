@@ -3,6 +3,11 @@
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import EditPencilIcon, { editPencilButtonStyle } from '../components/EditPencilIcon'
+import {
+  deleteWorkAssignment,
+  listWorkAssignments,
+  saveWorkAssignment,
+} from '../../frontend/controllers/work-assignments-controller.js'
 import { getDefaultHoursForDate } from '../../lib/default-hours.js'
 
 const DURATION_OPTIONS = [
@@ -205,12 +210,7 @@ export default function WorkAssignmentsPage() {
     setError('')
 
     try {
-      const response = await fetch('/api/work-assignments?includeDefaults=true')
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Erro ao carregar dados')
-      }
+      const data = await listWorkAssignments({ includeDefaults: true }, 'Erro ao carregar dados')
 
       setDefaults(data.defaults)
       setAssignments(data.items)
@@ -328,20 +328,7 @@ export default function WorkAssignmentsPage() {
         notes: form.notes,
       }
 
-      const url = form.id ? `/api/work-assignments/${form.id}` : '/api/work-assignments'
-      const method = form.id ? 'PUT' : 'POST'
-
-      const response = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Erro ao gravar afetação')
-      }
+      const data = await saveWorkAssignment(form.id, payload, 'Erro ao gravar afetação')
 
       await loadPageData()
       setSuccess(form.id ? 'Afetação atualizada com sucesso.' : `Afetação criada para ${data.person?.name || 'pessoa'}.`)
@@ -361,15 +348,7 @@ export default function WorkAssignmentsPage() {
     setSuccess('')
 
     try {
-      const response = await fetch(`/api/work-assignments/${id}`, {
-        method: 'DELETE',
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Erro ao remover afetação')
-      }
+      await deleteWorkAssignment(id, 'Erro ao remover afetação')
 
       await loadPageData()
       setSuccess('Afetação removida com sucesso.')
@@ -395,24 +374,18 @@ export default function WorkAssignmentsPage() {
     setSuccess('')
 
     try {
-      const response = await fetch(`/api/work-assignments/${assignmentId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const data = await saveWorkAssignment(
+        assignmentId,
+        {
           workId: Number(targetWorkId),
           personId: assignment.personId,
           date: assignment.date,
           hours: assignment.hours,
           hourlyCost: targetWork.defaultHourlyCost ?? assignment.hourlyCost,
           notes: assignment.notes,
-        }),
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Erro ao mover afetação')
-      }
+        },
+        'Erro ao mover afetação',
+      )
 
       await loadPageData()
       setSuccess(`Afetação movida para a obra #${data.work?.number || targetWork.number}.`)

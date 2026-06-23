@@ -3,6 +3,11 @@
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
+import { listPeople } from '../../../../frontend/controllers/people-controller.js'
+import {
+  getWork,
+  saveWork as saveWorkRequest,
+} from '../../../../frontend/controllers/works-controller.js'
 import { buildWorkPricingSnapshot, hasWorkPricingChanges } from '../../../../lib/work-pricing.js'
 
 const pageStyle = {
@@ -148,16 +153,10 @@ export default function WorkSpecialPricingPage() {
       setError('')
 
       try {
-        const [workResponse, peopleResponse] = await Promise.all([
-          fetch(`/api/works/${workId}`),
-          fetch('/api/people'),
+        const [workData, peopleData] = await Promise.all([
+          getWork(workId, 'Erro ao carregar obra'),
+          listPeople('Erro ao carregar pessoas'),
         ])
-
-        const workData = await workResponse.json()
-        const peopleData = await peopleResponse.json()
-
-        if (!workResponse.ok) throw new Error(workData.error || 'Erro ao carregar obra')
-        if (!peopleResponse.ok) throw new Error(peopleData.error || 'Erro ao carregar pessoas')
 
         setWork(workData)
         setPeople(peopleData)
@@ -233,10 +232,9 @@ export default function WorkSpecialPricingPage() {
   }
 
   async function persistSpecialPricing(sanitizedSpecialPricing, pricingChangeApplication = null) {
-    const response = await fetch(`/api/works/${work.id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+    const data = await saveWorkRequest(
+      work.id,
+      {
         number: work.number,
         name: work.name,
         clientId: work.clientId,
@@ -251,13 +249,9 @@ export default function WorkSpecialPricingPage() {
         workingDays: work.workingDays,
         notes: work.notes,
         pricingChangeApplication,
-      }),
-    })
-
-    const data = await response.json()
-    if (!response.ok) {
-      throw new Error(data.error || 'Erro ao guardar preços especiais')
-    }
+      },
+      'Erro ao guardar preços especiais',
+    )
 
     setWork(data)
     setSpecialPricingForm(data.specialPersonHourlyCosts || {})
