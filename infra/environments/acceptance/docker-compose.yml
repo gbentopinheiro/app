@@ -1,0 +1,55 @@
+services:
+  app:
+    container_name: ${APP_CONTAINER_NAME:-bentix-acceptance-app}
+    build:
+      context: ../../..
+      dockerfile: infra/docker/app/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      PORT: 3000
+      HOSTNAME: 0.0.0.0
+    ports:
+      - "${APP_PORT:-3200}:3000"
+    volumes:
+      - bentix-acceptance-app-exports:/app/data/exports
+    networks:
+      - bentix-net
+
+  db:
+    image: mariadb:11.4
+    container_name: ${DB_CONTAINER_NAME:-bentix-acceptance-db}
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      MARIADB_DATABASE: ${DB_NAME}
+      MARIADB_USER: ${DB_USER}
+      MARIADB_PASSWORD: ${DB_PASSWORD}
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+    ports:
+      - "${DB_PORT:-3308}:3306"
+    volumes:
+      - bentix-acceptance-db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mariadb-admin", "ping", "-h", "127.0.0.1", "-u${DB_USER}", "-p${DB_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    networks:
+      - bentix-net
+
+volumes:
+  bentix-acceptance-app-exports:
+    name: bentix-acceptance-app-exports
+  bentix-acceptance-db-data:
+    name: bentix-acceptance-db-data
+
+networks:
+  bentix-net:
+    external: true

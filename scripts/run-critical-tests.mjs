@@ -1,20 +1,45 @@
 import { spawnSync } from 'child_process'
-import { cpSync, existsSync, mkdirSync, rmSync } from 'fs'
+import { cpSync, existsSync, mkdtempSync, mkdirSync, readdirSync, rmSync } from 'fs'
 import { dirname, join } from 'path'
 import { fileURLToPath } from 'url'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 const repoRoot = join(__dirname, '..')
-const sandboxRoot = join(repoRoot, '.tmp', 'critical-tests')
+const sandboxParentRoot = join(repoRoot, '.tmp')
 const copiedEntries = ['app', 'data', 'lib', 'package.json', 'tests']
+const sandboxPrefix = 'critical-tests-'
 
-function resetSandbox() {
-  rmSync(sandboxRoot, { recursive: true, force: true })
-  mkdirSync(sandboxRoot, { recursive: true })
+function removePathRobustly(targetPath) {
+  rmSync(targetPath, {
+    recursive: true,
+    force: true,
+    maxRetries: 20,
+    retryDelay: 100,
+  })
 }
 
-function copySandboxEntries() {
+function cleanupLegacySandboxes() {
+  mkdirSync(sandboxParentRoot, { recursive: true })
+
+  readdirSync(sandboxParentRoot, { withFileTypes: true })
+    .filter(entry => entry.isDirectory())
+    .filter(entry => entry.name === 'critical-tests' || entry.name.startsWith(sandboxPrefix))
+    .forEach(entry => {
+      try {
+        removePathRobustly(join(sandboxParentRoot, entry.name))
+      } catch {
+        // Best effort cleanup only. A stale sandbox must not block the next run.
+      }
+    })
+}
+
+function createSandbox() {
+  mkdirSync(sandboxParentRoot, { recursive: true })
+  return mkdtempSync(join(sandboxParentRoot, sandboxPrefix))
+}
+
+function copySandboxEntries(sandboxRoot) {
   copiedEntries.forEach(entry => {
     const sourcePath = join(repoRoot, entry)
 
@@ -26,8 +51,10 @@ function copySandboxEntries() {
   })
 }
 
-resetSandbox()
-copySandboxEntries()
+cleanupLegacySandboxes()
+
+const sandboxRoot = createSandbox()
+copySandboxEntries(sandboxRoot)
 
 const testProcess = spawnSync(
   process.execPath,
@@ -38,12 +65,18 @@ const testProcess = spawnSync(
     env: {
       ...process.env,
       NODE_ENV: 'test',
+      BENTIX_DATA_SOURCE: 'json',
+      DATABASE_URL: '',
     },
   },
 )
 
 if (testProcess.status === 0) {
-  rmSync(sandboxRoot, { recursive: true, force: true })
+  try {
+    removePathRobustly(sandboxRoot)
+  } catch (error) {
+    console.warn(`Critical test sandbox cleanup skipped: ${error?.code || error?.message || 'unknown error'}`)
+  }
 } else {
   console.error(`Critical test sandbox kept at ${sandboxRoot}`)
 }
