@@ -11,8 +11,19 @@ Regras operacionais:
 - `DEV` e local
 - `TEST`, `ACCEPTANCE` e `PROD` vivem no VPS
 - `PROD` nunca e usado para desenvolvimento
-- secrets reais nunca entram no repositório
+- secrets reais nunca entram no repositorio
 - cada ambiente usa apenas o seu proprio `.env`
+- secrets reais ficam no `.env` do VPS e no Bitwarden
+- secrets reais nunca ficam no Dockerfile
+- secrets reais nunca ficam no Git
+
+Fluxo atual para `TEST`:
+
+`DEV -> GitHub Actions -> SSH -> VPS TEST`
+
+O GitHub Actions valida a app e, se tudo passar, liga por SSH ao VPS para reconstruir o ambiente `TEST` no proprio servidor.
+
+Por agora, `GHCR` fica fora deste fluxo.
 
 ## Arquitetura por Ambiente
 
@@ -71,16 +82,41 @@ Criar uma vez no VPS:
 docker network create bentix-net
 ```
 
-## Subir TEST
+## Deploy TEST via GitHub Actions
+
+O workflow atual para `TEST`:
+
+- corre em `push` para a branch `dev`
+- executa `npm ci`
+- executa `npm run test:critical`
+- executa `npm run build`
+- liga por SSH ao VPS
+- atualiza o checkout em `/opt/bentix/app`
+- recria o ambiente `infra/environments/test`
+
+Secrets necessarios no GitHub:
+
+- `TEST_SSH_HOST`
+- `TEST_SSH_USER`
+- `TEST_SSH_PRIVATE_KEY`
+- `TEST_SSH_PORT`
+
+Comandos executados no VPS pelo workflow:
+
+```bash
+cd /opt/bentix/app
+git fetch origin
+git reset --hard origin/dev
+cd infra/environments/test
+docker compose down
+docker compose up -d --build
+```
+
+## Subir TEST Manualmente
 
 ```bash
 cd infra/environments/test
 cp .env.example .env
-```
-
-Editar `.env` com os valores reais desse ambiente e depois:
-
-```bash
 docker compose up -d --build
 ```
 
@@ -155,6 +191,7 @@ Exemplos:
 
 ## Notas Finais
 
-- esta infraestrutura ainda nao cria deploy automatico
+- esta infraestrutura ainda nao cria deploy automatico para `ACCEPTANCE` ou `PROD`
+- o ambiente `TEST` usa build local no VPS atraves de SSH
 - antes de usar em `PROD`, validar `TEST` e depois `ACCEPTANCE`
 - manter backups separados por ambiente

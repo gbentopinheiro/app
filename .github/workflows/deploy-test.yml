@@ -1,0 +1,49 @@
+name: Deploy Test
+
+on:
+  push:
+    branches:
+      - dev
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run critical tests
+        run: npm run test:critical
+
+      - name: Build application
+        run: npm run build
+
+      - name: Deploy to TEST via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.TEST_SSH_HOST }}
+          username: ${{ secrets.TEST_SSH_USER }}
+          key: ${{ secrets.TEST_SSH_PRIVATE_KEY }}
+          port: ${{ secrets.TEST_SSH_PORT }}
+          script_stop: true
+          script: |
+            set -e
+            cd /opt/bentix/app
+            git fetch origin
+            git reset --hard origin/dev
+            cd infra/environments/test
+            docker compose down
+            docker compose up -d --build
