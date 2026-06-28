@@ -22,6 +22,7 @@ COPY lib ./lib
 COPY server ./server
 COPY scripts ./scripts
 COPY data ./data
+COPY proxy.js ./proxy.js
 
 RUN npm run db:generate
 RUN npm run build
