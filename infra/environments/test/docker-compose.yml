@@ -1,9 +1,11 @@
 services:
-  app:
-    container_name: ${APP_CONTAINER_NAME:-bentix-test-app}
+  web:
+    container_name: ${WEB_CONTAINER_NAME:-bentix-test-web}
     build:
       context: ../../..
       dockerfile: infra/docker/app/Dockerfile
+      args:
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL}
     restart: unless-stopped
     depends_on:
       db:
@@ -13,10 +15,35 @@ services:
     environment:
       PORT: 3000
       HOSTNAME: 0.0.0.0
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL}
     ports:
-      - "${APP_PORT:-3100}:3000"
+      - "${WEB_PORT:-3100}:3000"
     volumes:
-      - bentix-test-app-exports:/app/data/exports
+      - bentix-test-exports:/app/data/exports
+    networks:
+      - bentix-net
+
+  api:
+    container_name: ${API_CONTAINER_NAME:-bentix-test-api}
+    build:
+      context: ../../..
+      dockerfile: infra/docker/app/Dockerfile
+      args:
+        NEXT_PUBLIC_API_BASE_URL: ""
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      PORT: 3000
+      HOSTNAME: 0.0.0.0
+      NEXT_PUBLIC_API_BASE_URL: ""
+    ports:
+      - "${API_PORT:-3101}:3000"
+    volumes:
+      - bentix-test-exports:/app/data/exports
     networks:
       - bentix-net
 
@@ -45,8 +72,8 @@ services:
       - bentix-net
 
 volumes:
-  bentix-test-app-exports:
-    name: bentix-test-app-exports
+  bentix-test-exports:
+    name: bentix-test-exports
   bentix-test-db-data:
     name: bentix-test-db-data
 

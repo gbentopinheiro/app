@@ -1,0 +1,25 @@
+
+> app@1.0.0 dev
+> next dev
+
+▲ Next.js 16.2.9 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://10.5.0.2:3000
+- Environments: .env
+✓ Ready in 394ms
+Creating turbopack project {
+  dir: 'C:\\Users\\gbent\\OneDrive\\Ambiente de Trabalho\\VILAPLANO\\app',
+  testMode: true
+}
+
+ GET /api/auth/payload-key 200 in 225ms (next.js: 53ms, proxy.ts: 133ms, application-code: 39ms)
+ GET /api/auth/payload-key 200 in 11ms (next.js: 3ms, proxy.ts: 4ms, application-code: 4ms)
+ POST /api/auth/login 401 in 535ms (next.js: 159ms, proxy.ts: 4ms, application-code: 372ms)
+ GET /api/auth/payload-key 200 in 55ms (next.js: 18ms, proxy.ts: 33ms, application-code: 5ms)
+ GET /api/auth/payload-key 200 in 44ms (next.js: 17ms, proxy.ts: 24ms, application-code: 4ms)
+ POST /api/auth/login 200 in 370ms (next.js: 83ms, proxy.ts: 4ms, application-code: 283ms)
+ GET /api/auth/payload-key 200 in 9ms (next.js: 2ms, proxy.ts: 3ms, application-code: 4ms)
+ POST /api/auth/login 200 in 252ms (next.js: 2ms, proxy.ts: 3ms, application-code: 247ms)
+ GET /api/auth/payload-key 200 in 26ms (next.js: 19ms, proxy.ts: 3ms, application-code: 4ms)
+ POST /api/auth/login 200 in 340ms (next.js: 91ms, proxy.ts: 3ms, application-code: 246ms)
+ POST /api/process 409 in 289ms (next.js: 160ms, proxy.ts: 6ms, application-code: 123ms)

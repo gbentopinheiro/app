@@ -1,0 +1,34 @@
+
+> app@1.0.0 dev
+> next dev
+
+▲ Next.js 16.2.9 (Turbopack)
+- Local:         http://localhost:3052
+- Network:       http://10.5.0.2:3052
+- Environments: .env
+✓ Ready in 421ms
+Creating turbopack project {
+  dir: 'C:\\Users\\gbent\\OneDrive\\Ambiente de Trabalho\\VILAPLANO\\app',
+  testMode: true
+}
+
+ GET /api/auth/payload-key 200 in 201ms (next.js: 53ms, proxy.ts: 111ms, application-code: 37ms)
+ GET /api/people 200 in 465ms (next.js: 303ms, proxy.ts: 12ms, application-code: 150ms)
+ GET /api/people/1 200 in 872ms (next.js: 840ms, proxy.ts: 8ms, application-code: 23ms)
+ GET /api/auth/payload-key 200 in 11ms (next.js: 3ms, proxy.ts: 4ms, application-code: 4ms)
+ POST /api/process 409 in 206ms (next.js: 45ms, proxy.ts: 5ms, application-code: 156ms)
+ GET /api/people 200 in 31ms (next.js: 4ms, proxy.ts: 4ms, application-code: 23ms)
+ GET /api/people/1 200 in 35ms (next.js: 12ms, proxy.ts: 4ms, application-code: 20ms)
+ POST /api/process 409 in 87ms (next.js: 3ms, proxy.ts: 4ms, application-code: 80ms)
+ GET /api/auth/payload-key 200 in 11ms (next.js: 3ms, proxy.ts: 3ms, application-code: 4ms)
+[?25h
+process ainda nao suporta MySQL
+    at replaceAllPeopleData (lib\people.js:416:9)
+    at POST (app\api\process\route.js:85:53)
+  414 |   }
+  415 |
+> 416 |   throw new Error('A importacao de pessoas via /api/process ainda nao suporta MySQL')
+      |         ^
+  417 | }
+  418 |
+  419 | export { people }

@@ -1,0 +1,10 @@
+Erro ao processar o arquivo: Error: A importacao de pessoas via /api/process ainda nao suporta MySQL
+    at replaceAllPeopleData (lib\people.js:354:9)
+    at POST (app\api\process\route.js:85:53)
+  352 |   }
+  353 |
+> 354 |   throw new Error('A importacao de pessoas via /api/process ainda nao suporta MySQL')
+      |         ^
+  355 | }
+  356 |
+  357 | export { people }

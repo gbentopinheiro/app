@@ -2,8 +2,15 @@ FROM node:22-bookworm-slim AS builder
 
 WORKDIR /app
 
-ENV BENTIX_DATA_SOURCE=json
-ENV NEXT_PUBLIC_API_BASE_URL=""
+ARG NEXT_PUBLIC_API_BASE_URL=""
+
+ENV DATABASE_URL="mysql://user:password@localhost:3306/build_dummy"
+ENV BENTIX_DATA_SOURCE=mysql
+ENV NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL}
+
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends openssl \
+  && rm -rf /var/lib/apt/lists/*
 
 COPY package.json package-lock.json ./
 RUN npm ci
@@ -27,6 +34,10 @@ ENV NODE_ENV=production
 ENV HOSTNAME=0.0.0.0
 ENV PORT=3000
 
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends openssl \
+  && rm -rf /var/lib/apt/lists/*
+
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev
 
@@ -37,6 +48,7 @@ COPY --from=builder /app/app ./app
 COPY --from=builder /app/frontend ./frontend
 COPY --from=builder /app/lib ./lib
 COPY --from=builder /app/server ./server
+COPY --from=builder /app/scripts ./scripts
 COPY --from=builder /app/data ./data
 COPY --from=builder /app/schema.prisma ./schema.prisma
 COPY --from=builder /app/prisma.config.ts ./prisma.config.ts

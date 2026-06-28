@@ -1,0 +1,138 @@
+⨯ TypeError: Cannot read properties of undefined (reading 'upsert')
+    at markCalendarNotificationsSeenDb (lib\db\calendar-notifications-db.js:47:55)
+    at markCalendarNotificationsSeen (lib\calendar-notifications.js:137:41)
+    at CalendarPage (app\calendar\page.js:68:38)
+  45 |   }
+  46 |
+> 47 |   const item = await prisma.calendarNotificationState.upsert({
+     |                                                       ^
+  48 |     where: {
+  49 |       username: normalizedUsername,
+  50 |     }, {
+  digest: '513894526'
+}
+⚠ Blocked cross-origin request to Next.js dev resource /_next/webpack-hmr from "127.0.0.1".
+Cross-origin access to Next.js dev resources is blocked by default for safety.
+
+To allow this host in development, add it to "allowedDevOrigins" in next.config.js and restart the dev server:
+
+// next.config.js
+module.exports = {
+  allowedDevOrigins: ['127.0.0.1'],
+}
+
+Read more: https://nextjs.org/docs/app/api-reference/config/next-config-js/allowedDevOrigins
+⨯ TypeError: Cannot read properties of undefined (reading 'upsert')
+    at markCalendarNotificationsSeenDb (lib\db\calendar-notifications-db.js:47:55)
+    at markCalendarNotificationsSeen (lib\calendar-notifications.js:137:41)
+    at CalendarPage (app\calendar\page.js:68:38)
+  45 |   }
+  46 |
+> 47 |   const item = await prisma.calendarNotificationState.upsert({
+     |                                                       ^
+  48 |     where: {
+  49 |       username: normalizedUsername,
+  50 |     }, {
+  digest: '513894526'
+}
+⨯ TypeError: Cannot read properties of undefined (reading 'findMany')
+    at getAllCalendarEventsDb (lib\db\calendar-events-db.js:194:45)
+    at getAllCalendarEvents (lib\calendar-events.js:257:32)
+    at GET (app\api\calendar-events\route.js:45:54)
+  192 |
+  193 | export async function getAllCalendarEventsDb(filters = {}) {
+> 194 |   const events = await prisma.calendarEvent.findMany({
+      |                                             ^
+  195 |     orderBy: [{ id: 'asc' }],
+  196 |   })
+  197 |
+Persisting failed: Unable to write SST file 00000255.sst
+
+Caused by:
+    O sistema não conseguiu localizar o caminho especificado. (os error 3)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+⨯ Error: ENOENT: no such file or directory, open 'C:\Users\gbent\OneDrive\Ambiente de Trabalho\VILAPLANO\app\.next\dev\server\app\calendar\page\build-manifest.json'
+    at ignore-listed frames {
+  errno: -4058,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: 'C:\\Users\\gbent\\OneDrive\\Ambiente de Trabalho\\VILAPLANO\\app\\.next\\dev\\server\\app\\calendar\\page\\build-manifest.json'
+}
+
+thread 'tokio-runtime-worker' (29212) panicked at turbopack\crates\turbo-tasks-backend\src\backend\operation\mod.rs:197:17:
+Failed to restore task data (corrupted database or bug): Meta for TaskId 1065)
+
+Caused by:
+    0: Looking up task storage for TaskId 1065 from database failed
+    1: Invalid block type
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+thread 'tokio-runtime-worker' (27200) panicked at turbopack\crates\turbo-tasks-backend\src\backend\operation\mod.rs:197:17:
+Failed to restore task data (corrupted database or bug): Meta for TaskId 1065)
+
+Caused by:
+    0: Looking up task storage for TaskId 1065 from database failed
+    1: Invalid block type
+
+-----
+[1m[31mFATAL[39m[0m: An unexpected Turbopack error occurred. A panic log has been written to C:\Users\gbent\AppData\Local\Temp\next-panic-d4a5a4f02e8ea47b2146f7ff0694cd73.log.
+
+To help make Turbopack better, report this error by clicking here: https://bugs.nextjs.org/search?category=turbopack-error-report&title=Turbopack%20Error%3A%20Failed%20to%20restore%20task%20data%20%28corrupted%20database%20or%20bug%29%3A%20Meta%20for%20TaskId%201065%29&body=Turbopack%20version%3A%20%60f37fad94%60%0ANext.js%20version%3A%20%600.0.0%60%0A%0AError%20message%3A%0A%60%60%60%0AFailed%20to%20restore%20task%20data%20%28corrupted%20database%20or%20bug%29%3A%20Meta%20for%20TaskId%201065%29%0A%0ADebug%20info%3A%0A-%20Execution%20of%20get_written_endpoint_with_issues_operation%20failed%0A-%20Failed%20to%20restore%20task%20data%20%28corrupted%20database%20or%20bug%29%3A%20Meta%20for%20TaskId%201065%29%0A%20%20%0A%20%20Caused%20by%3A%0A%20%20%20%20%20%200%3A%20Looking%20up%20task%20storage%20for%20TaskId%201065%20from%20database%20failed%0A%20%20%20%20%20%201%3A%20Invalid%20block%20type%0A%60%60%60&labels=Turbopack,Turbopack%20Panic%20Backtrace
+-----
+
+
+thread 'tokio-runtime-worker' (27200) panicked at turbopack\crates\turbo-tasks-backend\src\backend\operation\mod.rs:197:17:
+Failed to restore task data (corrupted database or bug): Meta for TaskId 190892)
+
+Caused by:
+    0: Looking up task storage for TaskId 190892 from database failed
+    1: Unable to open static sorted file referenced from 00000130.meta
+    2: Unable to open static sorted file 00000124.sst
+    3: Failed to open SST file C:\Users\gbent\OneDrive\Ambiente de Trabalho\VILAPLANO\app\.next\dev\cache/turbopack\f37fad94\00000124.sst
+    4: O sistema não conseguiu localizar o ficheiro especificado. (os error 2)
+⨯ Error [TurbopackInternalError]: Failed to restore task data (corrupted database or bug): Meta for TaskId 1065)
+
+Debug info:
+- Execution of get_written_endpoint_with_issues_operation failed
+- Failed to restore task data (corrupted database or bug): Meta for TaskId 1065)
+  
+  Caused by:
+      0: Looking up task storage for TaskId 1065 from database failed
+      1: Invalid block type
+    at <unknown> (TurbopackInternalError: Failed to restore task data (corrupted database or bug): Meta for TaskId 1065)) {
+  location: 'turbopack\\crates\\turbo-tasks-backend\\src\\backend\\operation\\mod.rs:197:17'
+}
+Error: ENOENT: no such file or directory, open 'C:\Users\gbent\OneDrive\Ambiente de Trabalho\VILAPLANO\app\.next\dev\server\app\calendar\page\build-manifest.json'
+    at ignore-listed frames {
+  errno: -4058,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: 'C:\\Users\\gbent\\OneDrive\\Ambiente de Trabalho\\VILAPLANO\\app\\.next\\dev\\server\\app\\calendar\\page\\build-manifest.json'
+}
+⨯ Error [TurbopackInternalError]: Failed to restore task data (corrupted database or bug): Meta for TaskId 1065)
+
+Debug info:
+- Execution of get_written_endpoint_with_issues_operation failed
+- Failed to restore task data (corrupted database or bug): Meta for TaskId 1065)
+  
+  Caused by:
+      0: Looking up task storage for TaskId 1065 from database failed
+      1: Invalid block type
+    at <unknown> (TurbopackInternalError: Failed to restore task data (corrupted database or bug): Meta for TaskId 1065)) {
+  location: 'turbopack\\crates\\turbo-tasks-backend\\src\\backend\\operation\\mod.rs:197:17'
+}
+Error [TurbopackInternalError]: Failed to restore task data (corrupted database or bug): Meta for TaskId 1065)
+
+Debug info:
+- Execution of get_written_endpoint_with_issues_operation failed
+- Failed to restore task data (corrupted database or bug): Meta for TaskId 1065)
+  
+  Caused by:
+      0: Looking up task storage for TaskId 1065 from database failed
+      1: Invalid block type
+    at <unknown> (TurbopackInternalError: Failed to restore task data (corrupted database or bug): Meta for TaskId 1065)) {
+  location: 'turbopack\\crates\\turbo-tasks-backend\\src\\backend\\operation\\mod.rs:197:17'
+}

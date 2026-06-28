@@ -1,0 +1,30 @@
+
+> app@1.0.0 dev
+> next dev
+
+▲ Next.js 16.2.9 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://10.5.0.2:3000
+- Environments: .env
+✓ Ready in 645ms
+Creating turbopack project {
+  dir: 'C:\\Users\\gbent\\OneDrive\\Ambiente de Trabalho\\VILAPLANO\\app',
+  testMode: true
+}
+
+ GET /api/auth/session 200 in 987ms (next.js: 541ms, proxy.ts: 204ms, application-code: 242ms)
+ GET /api/people/1/documents 200 in 1349ms (next.js: 1256ms, proxy.ts: 17ms, application-code: 77ms)
+ GET /api/people/1/documents 200 in 93ms (next.js: 32ms, proxy.ts: 12ms, application-code: 49ms)
+ GET /login 200 in 378ms (next.js: 142ms, proxy.ts: 8ms, application-code: 228ms)
+ GET /api/auth/session 200 in 36ms (next.js: 4ms, proxy.ts: 10ms, application-code: 23ms)
+ GET /people/1 200 in 3.4s (next.js: 1582ms, proxy.ts: 10ms, application-code: 1796ms)
+ GET /api/people/1/documents 200 in 94ms (next.js: 26ms, proxy.ts: 10ms, application-code: 58ms)
+ POST /api/people/1/documents 201 in 82ms (next.js: 5ms, proxy.ts: 9ms, application-code: 68ms)
+ PUT /api/people/1/documents/3 200 in 1345ms (next.js: 1270ms, proxy.ts: 12ms, application-code: 63ms)
+ DELETE /api/people/1/documents/3 200 in 82ms (next.js: 24ms, proxy.ts: 9ms, application-code: 49ms)
+ GET /api/people/1/documents 200 in 63ms (next.js: 22ms, proxy.ts: 10ms, application-code: 31ms)
+ GET /login 200 in 37ms (next.js: 3ms, proxy.ts: 3ms, application-code: 31ms)
+ GET /calendar 500 in 455ms (next.js: 328ms, proxy.ts: 4ms, application-code: 123ms)
+ GET /calendar 500 in 70ms (next.js: 3ms, proxy.ts: 4ms, application-code: 62ms)
+ GET /api/calendar-events?year=2026&month=06 500 in 297ms (next.js: 176ms, proxy.ts: 8ms, application-code: 113ms)
+[?25h

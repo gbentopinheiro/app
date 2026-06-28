@@ -1,0 +1,27 @@
+
+> app@1.0.0 dev
+> next dev --hostname 127.0.0.1 --port 3001
+
+▲ Next.js 16.2.9 (Turbopack)
+- Local:         http://127.0.0.1:3001
+- Network:       http://127.0.0.1:3001
+- Environments: .env
+✓ Ready in 459ms
+Creating turbopack project {
+  dir: 'C:\\Users\\gbent\\OneDrive\\Ambiente de Trabalho\\VILAPLANO\\app',
+  testMode: true
+}
+
+ GET /login 200 in 364ms (next.js: 85ms, proxy.ts: 136ms, application-code: 143ms)
+ GET /materials 200 in 575ms (next.js: 145ms, proxy.ts: 13ms, application-code: 418ms)
+ GET /api/materials 200 in 186ms (next.js: 142ms, proxy.ts: 8ms, application-code: 37ms)
+ POST /api/materials 201 in 60ms (next.js: 5ms, proxy.ts: 5ms, application-code: 50ms)
+ GET /api/materials 200 in 28ms (next.js: 2ms, proxy.ts: 5ms, application-code: 20ms)
+ PUT /api/materials/1 200 in 826ms (next.js: 771ms, proxy.ts: 12ms, application-code: 44ms)
+ GET /api/materials 200 in 26ms (next.js: 4ms, proxy.ts: 5ms, application-code: 18ms)
+ GET /materials 200 in 50ms (next.js: 3ms, proxy.ts: 4ms, application-code: 42ms)
+ GET /api/materials 200 in 40ms (next.js: 5ms, proxy.ts: 7ms, application-code: 28ms)
+ DELETE /api/materials/1 200 in 47ms (next.js: 15ms, proxy.ts: 4ms, application-code: 28ms)
+ GET /api/materials 200 in 30ms (next.js: 3ms, proxy.ts: 5ms, application-code: 21ms)
+ GET /materials 200 in 54ms (next.js: 3ms, proxy.ts: 5ms, application-code: 46ms)
+ GET /api/materials 200 in 28ms (next.js: 3ms, proxy.ts: 6ms, application-code: 18ms)

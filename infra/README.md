@@ -40,6 +40,18 @@ Cada ambiente no VPS fica preparado com:
 - portas isoladas por ambiente
 - rede Docker externa comum: `bentix-net`
 
+No `TEST`, a fase atual fica separada em dois servicos sem mudar comportamento:
+
+- `web`: frontend Next.js servido em dominio proprio
+- `api`: mesma app Next.js a expor as rotas `app/api`
+- `db`: MariaDB unica do ambiente
+
+Nota tecnica importante:
+
+- nesta fase segura, `web` e `api` continuam a correr a mesma app Next.js
+- o `web` continua a receber `DATABASE_URL`, `AUTH_SECRET` e chaves de login porque ainda existem server components/SSR a ler sessao e dados diretamente
+- isto preserva o comportamento atual enquanto prepara a separacao real backend/frontend numa fase seguinte
+
 ## Estrutura
 
 ```text
@@ -70,7 +82,7 @@ infra/
 
 ## Portas por Ambiente
 
-- `TEST`: app `3100`, db `3307`
+- `TEST`: web `3100`, api `3101`, db `3307`
 - `ACCEPTANCE`: app `3200`, db `3308`
 - `PROD`: app `3300`, db `3309`
 
@@ -120,6 +132,11 @@ cp .env.example .env
 docker compose up -d --build
 ```
 
+Dominios esperados no `TEST`:
+
+- `web-dev.bentixapp.com -> web:3100`
+- `api-dev.bentixapp.com -> api:3101`
+
 ## Subir ACCEPTANCE
 
 ```bash
@@ -160,7 +177,10 @@ O Dockerfile:
 - gera Prisma Client
 - faz `next build`
 - arranca com `npm start`
+- define uma `DATABASE_URL` dummy apenas para o `build` e para o `prisma generate`
+- aceita `NEXT_PUBLIC_API_BASE_URL` como `build arg` para fixar a base da API no bundle do frontend
 - nao copia `.env` para dentro da imagem
+- em runtime, o `.env` do ambiente substitui a `DATABASE_URL` real
 - depende de variaveis de ambiente em runtime
 
 ## Nginx
@@ -172,6 +192,11 @@ Adapta antes de usar:
 - `server_name`
 - certificados TLS
 - politicas de logs
+
+No `TEST`, o exemplo ja separa:
+
+- `web-dev.bentixapp.com` para o container `web`
+- `api-dev.bentixapp.com` para o container `api`
 
 ## Scripts
 

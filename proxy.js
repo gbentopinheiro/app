@@ -7,10 +7,47 @@ import {
   SESSION_COOKIE_NAME,
   shouldUsePermissionPathGuard,
 } from './lib/auth.js'
+import { applyApiCorsHeaders } from './lib/api-cors.js'
 import { isChefRole, isDeveloperRole } from './lib/roles.js'
 
 function isPublicPath(pathname) {
   return pathname === '/login' || pathname.startsWith('/api/auth/')
+}
+
+function isApiPath(pathname) {
+  return pathname === '/api' || pathname.startsWith('/api/')
+}
+
+function isApiPreflightRequest(request) {
+  return (
+    request.method === 'OPTIONS' &&
+    isApiPath(request.nextUrl.pathname) &&
+    Boolean(request.headers.get('origin')) &&
+    Boolean(request.headers.get('access-control-request-method'))
+  )
+}
+
+function withApiCors(request, response) {
+  if (!isApiPath(request.nextUrl.pathname)) {
+    return response
+  }
+
+  applyApiCorsHeaders(response, {
+    origin: request.headers.get('origin'),
+    requestHeaders: request.headers.get('access-control-request-headers'),
+  })
+
+  return response
+}
+
+function buildApiPreflightResponse(request) {
+  const response = new NextResponse(null, { status: 204 })
+  const isAllowedOrigin = applyApiCorsHeaders(response, {
+    origin: request.headers.get('origin'),
+    requestHeaders: request.headers.get('access-control-request-headers'),
+  })
+
+  return isAllowedOrigin ? response : new NextResponse(null, { status: 403 })
 }
 
 function redirectToHttpsInProduction(request) {
@@ -68,6 +105,10 @@ export async function proxy(request) {
     return httpsRedirect
   }
 
+  if (isApiPreflightRequest(request)) {
+    return buildApiPreflightResponse(request)
+  }
+
   const { pathname } = request.nextUrl
 
   if (isPublicPath(pathname)) {
@@ -78,19 +119,19 @@ export async function proxy(request) {
       return NextResponse.redirect(new URL(getDefaultPathForRole(session.role), request.url))
     }
 
-    return NextResponse.next()
+    return withApiCors(request, NextResponse.next())
   }
 
   const token = request.cookies.get(SESSION_COOKIE_NAME)?.value
 
   if (!token) {
-    return buildUnauthorizedResponse(request)
+    return withApiCors(request, buildUnauthorizedResponse(request))
   }
 
   const session = await readSessionToken(token)
 
   if (!session) {
-    return buildUnauthorizedResponse(request, true)
+    return withApiCors(request, buildUnauthorizedResponse(request, true))
   }
 
   if (isChefRole(session.role) && pathname === '/') {
@@ -106,10 +147,10 @@ export async function proxy(request) {
     : canAccessPath(session, pathname)
 
   if (!hasAccess) {
-    return buildForbiddenResponse(request, session)
+    return withApiCors(request, buildForbiddenResponse(request, session))
   }
 
-  return NextResponse.next()
+  return withApiCors(request, NextResponse.next())
 }
 
 export const config = {

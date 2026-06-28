@@ -1,0 +1,8 @@
+⨯ Another next dev server is already running.
+
+- Local:        http://localhost:3000
+- PID:          39416
+- Dir:          C:\Users\gbent\OneDrive\Ambiente de Trabalho\VILAPLANO\app
+- Log:          .next\dev\logs\next-development.log
+
+Run taskkill /PID 39416 /F to stop it.

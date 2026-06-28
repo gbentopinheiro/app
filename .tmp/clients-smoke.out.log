@@ -1,0 +1,8 @@
+
+> app@1.0.0 start
+> next start --hostname 127.0.0.1 --port 3162
+
+▲ Next.js 16.2.0
+- Local:         http://127.0.0.1:3162
+- Network:       http://127.0.0.1:3162
+✓ Ready in 304ms

@@ -58,7 +58,7 @@ copySandboxEntries(sandboxRoot)
 
 const testProcess = spawnSync(
   process.execPath,
-  ['--test', '--test-concurrency=1', 'tests/critical-flows.test.mjs'],
+  ['--test', '--test-concurrency=1', 'tests/critical-flows.test.mjs', 'tests/cors-proxy.test.mjs'],
   {
     cwd: sandboxRoot,
     stdio: 'inherit',

@@ -1,0 +1,17 @@
+
+> app@1.0.0 dev
+> next dev
+
+▲ Next.js 16.2.9 (Turbopack)
+- Local:         http://localhost:3053
+- Network:       http://10.5.0.2:3053
+- Environments: .env
+✓ Ready in 976ms
+Creating turbopack project {
+  dir: 'C:\\Users\\gbent\\OneDrive\\Ambiente de Trabalho\\VILAPLANO\\app',
+  testMode: true
+}
+
+ GET /api/auth/payload-key 200 in 521ms (next.js: 141ms, proxy.ts: 273ms, application-code: 108ms)
+ GET /api/work-assignments 200 in 769ms (next.js: 340ms, proxy.ts: 30ms, application-code: 400ms)
+[?25h
