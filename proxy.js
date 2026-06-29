@@ -3,6 +3,7 @@ import {
   canAccessPath,
   canAccessPathByPermission,
   getDefaultPathForRole,
+  getExpiredSessionCookieOptions,
   readSessionToken,
   SESSION_COOKIE_NAME,
   shouldUsePermissionPathGuard,
@@ -68,13 +69,7 @@ function redirectToHttpsInProduction(request) {
 }
 
 function clearSessionCookie(response) {
-  response.cookies.set(SESSION_COOKIE_NAME, '', {
-    httpOnly: true,
-    sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
-    path: '/',
-    expires: new Date(0),
-  })
+  response.cookies.set(SESSION_COOKIE_NAME, '', getExpiredSessionCookieOptions())
 
   return response
 }

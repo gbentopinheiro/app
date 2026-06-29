@@ -15,14 +15,13 @@ RUN apt-get update \
 COPY package.json package-lock.json ./
 RUN npm ci
 
-COPY schema.prisma prisma.config.ts next.config.js ./
+COPY schema.prisma prisma.config.ts next.config.js proxy.js ./
 COPY app ./app
 COPY frontend ./frontend
 COPY lib ./lib
 COPY server ./server
 COPY scripts ./scripts
 COPY data ./data
-COPY proxy.js ./proxy.js
 
 RUN npm run db:generate
 RUN npm run build
@@ -54,6 +53,7 @@ COPY --from=builder /app/data ./data
 COPY --from=builder /app/schema.prisma ./schema.prisma
 COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
 COPY --from=builder /app/next.config.js ./next.config.js
+COPY --from=builder /app/proxy.js ./proxy.js
 
 EXPOSE 3000
 
