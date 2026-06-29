@@ -1,10 +1,10 @@
 import {
-  createClientDb,
-  deleteClientDb,
-  getAllClientsDb,
-  getClientByIdDb,
-  updateClientDb,
-} from '../../lib/db/clients-db.js'
+  createClientData,
+  deleteClientData,
+  getAllClientsData,
+  getClientByIdData,
+  updateClientData,
+} from '../../lib/clients.js'
 import { hasPermission } from '../../lib/permissions.js'
 import { getAllWorksData } from '../../lib/works.js'
 import { HttpError } from '../errors/http-error.js'
@@ -29,7 +29,7 @@ function toClientMutationError(error, fallbackMessage) {
 
 export async function getClientsListService(session) {
   ensurePermission(session, 'clients.read')
-  return getAllClientsDb()
+  return getAllClientsData()
 }
 
 export async function createClientService(session, body) {
@@ -42,7 +42,7 @@ export async function createClientService(session, body) {
   }
 
   try {
-    return await createClientDb({ name, vatNumber, contactName, email, phone, notes })
+    return await createClientData({ name, vatNumber, contactName, email, phone, notes })
   } catch (error) {
     throw toClientMutationError(error, 'Erro ao criar cliente')
   }
@@ -51,7 +51,7 @@ export async function createClientService(session, body) {
 export async function getClientByIdService(session, id) {
   ensurePermission(session, 'clients.read')
 
-  const client = await getClientByIdDb(id)
+  const client = await getClientByIdData(id)
 
   if (!client) {
     throw new HttpError(404, 'Cliente nao encontrado')
@@ -66,7 +66,7 @@ export async function updateClientService(session, id, body) {
   const { name, vatNumber, contactName, email, phone, notes } = body || {}
 
   try {
-    const client = await updateClientDb(id, { name, vatNumber, contactName, email, phone, notes })
+    const client = await updateClientData(id, { name, vatNumber, contactName, email, phone, notes })
 
     if (!client) {
       throw new HttpError(404, 'Cliente nao encontrado')
@@ -91,7 +91,7 @@ export async function deleteClientService(session, id) {
     throw new HttpError(409, 'Nao e possivel remover um cliente associado a obras existentes')
   }
 
-  const deleted = await deleteClientDb(id)
+  const deleted = await deleteClientData(id)
 
   if (!deleted) {
     throw new HttpError(404, 'Cliente nao encontrado')

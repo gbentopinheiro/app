@@ -155,16 +155,20 @@ seedFixtureData()
 
 const { getAccessIdentityByUsername } = await import('../lib/access-identities.js')
 const { canApproveHours, createSessionToken, getDefaultPathForRole, readSessionToken } = await import('../lib/auth.js')
+const { getAllClients } = await import('../lib/clients.js')
 const { decryptProtectedPayload, getLoginTransportPublicKey } = await import('../lib/login-transport.js')
 const { verifyPassword } = await import('../lib/passwords.js')
 const { getEntityRoleLabel, getRoleDisplayLabel } = await import('../lib/roles.js')
+const { deleteClientService } = await import('../server/services/clients-service.js')
+const { deleteWorkService } = await import('../server/services/works-service.js')
 const {
   createWorkAssignment,
   getAllWorkAssignments,
   submitWorkAssignment,
   updateWorkAssignment,
 } = await import('../lib/work-assignments.js')
-const { getWorkPlanByDate } = await import('../lib/work-plans.js')
+const { getAllWorkPlans, getWorkPlanByDate } = await import('../lib/work-plans.js')
+const { getAllWorks } = await import('../lib/works.js')
 
 beforeEach(() => {
   seedFixtureData()
@@ -301,4 +305,35 @@ test('aprovar horas guarda approvedHours e respeita a regra admin-only', () => {
   assert.equal(approvedAssignment.approvedHours, 7)
   assert.equal(approvedAssignment.adminApprovedBy, 'Administrador Teste')
   assert.equal(approvedAssignment.adminApprovedAt, '2030-01-17T19:00:00.000Z')
+})
+
+test('remover obra limpa afetacoes antigas e permite remover o cliente a seguir', async () => {
+  createWorkAssignment({
+    date: '2030-01-18',
+    workId: 1,
+    personId: 3,
+    hours: 8,
+    notes: 'Afetacao historica',
+  })
+
+  const adminSession = {
+    role: 'admin',
+    accountType: 'operational',
+  }
+
+  assert.equal(getAllWorks().length, 1)
+  assert.equal(getAllWorkAssignments({ workId: 1 }).length, 1)
+  assert.equal(getAllWorkPlans().length, 1)
+
+  const deleteWorkResult = await deleteWorkService(adminSession, 1)
+
+  assert.equal(deleteWorkResult.message, 'Obra removida com sucesso')
+  assert.equal(getAllWorks().length, 0)
+  assert.equal(getAllWorkAssignments({ workId: 1 }).length, 0)
+  assert.equal(getAllWorkPlans().length, 0)
+
+  const deleteClientResult = await deleteClientService(adminSession, 1)
+
+  assert.equal(deleteClientResult.message, 'Cliente removido com sucesso')
+  assert.equal(getAllClients().length, 0)
 })

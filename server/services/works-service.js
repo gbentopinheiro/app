@@ -1,9 +1,11 @@
 import { getClientByIdData } from '../../lib/clients.js'
 import { hasPermission } from '../../lib/permissions.js'
 import {
+  deleteWorkAssignmentData,
   getAllWorkAssignmentsData,
   repriceWorkAssignmentsForWorkData,
 } from '../../lib/work-assignments.js'
+import { deleteWorkPlanData } from '../../lib/work-plans.js'
 import {
   createWorkData,
   deleteWorkData,
@@ -23,6 +25,54 @@ function toWorkMutationError(error, fallbackMessage) {
   const message = String(error?.message || fallbackMessage).trim() || fallbackMessage
   const status = message === 'Ja existe uma obra com esse numero nesta empresa' ? 409 : 500
   return new HttpError(status, message)
+}
+
+async function removeWorkAssignmentsAndEmptyPlans(workId) {
+  const linkedAssignments = await getAllWorkAssignmentsData({ workId })
+
+  if (linkedAssignments.length === 0) {
+    return {
+      removedAssignments: 0,
+      removedWorkPlans: 0,
+    }
+  }
+
+  const affectedWorkPlanIds = Array.from(
+    new Set(
+      linkedAssignments
+        .map(assignment => Number(assignment.workPlanId))
+        .filter(Number.isInteger),
+    ),
+  )
+
+  for (const assignment of linkedAssignments) {
+    const deleted = await deleteWorkAssignmentData(assignment.id)
+
+    if (!deleted) {
+      throw new HttpError(500, 'Erro ao remover afetacoes antigas da obra')
+    }
+  }
+
+  let removedWorkPlans = 0
+
+  for (const workPlanId of affectedWorkPlanIds) {
+    const remainingAssignments = await getAllWorkAssignmentsData({ workPlanId })
+
+    if (remainingAssignments.length > 0) {
+      continue
+    }
+
+    const deletedWorkPlan = await deleteWorkPlanData(workPlanId)
+
+    if (deletedWorkPlan) {
+      removedWorkPlans += 1
+    }
+  }
+
+  return {
+    removedAssignments: linkedAssignments.length,
+    removedWorkPlans,
+  }
 }
 
 export async function getWorksListService(session) {
@@ -193,28 +243,13 @@ export async function deleteWorkService(session, id) {
   if (!currentWork) {
     throw new HttpError(404, 'Obra nao encontrada')
   }
-
-  const linkedAssignments = await getAllWorkAssignmentsData({ workId: id })
-
-  if (linkedAssignments.length > 0) {
-    throw new HttpError(
-      409,
-      'Nao e possivel remover uma obra com afetacoes associadas. Remove primeiro as afetacoes dessa obra.',
-    )
-  }
+  await removeWorkAssignmentsAndEmptyPlans(id)
 
   let deleted = false
 
   try {
     deleted = await deleteWorkData(id)
   } catch (error) {
-    if (error?.code === 'P2003') {
-      throw new HttpError(
-        409,
-        'Nao e possivel remover uma obra com afetacoes associadas. Remove primeiro as afetacoes dessa obra.',
-      )
-    }
-
     throw error
   }
 
