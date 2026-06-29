@@ -1,6 +1,9 @@
 import { getClientByIdData } from '../../lib/clients.js'
 import { hasPermission } from '../../lib/permissions.js'
-import { repriceWorkAssignmentsForWorkData } from '../../lib/work-assignments.js'
+import {
+  getAllWorkAssignmentsData,
+  repriceWorkAssignmentsForWorkData,
+} from '../../lib/work-assignments.js'
 import {
   createWorkData,
   deleteWorkData,
@@ -47,7 +50,7 @@ export async function createWorkService(session, body) {
   } = body || {}
 
   if (!name) {
-    throw new HttpError(400, 'Nome da obra é obrigatório')
+    throw new HttpError(400, 'Nome da obra e obrigatorio')
   }
 
   if (!clientId || !(await getClientByIdData(clientId))) {
@@ -55,15 +58,15 @@ export async function createWorkService(session, body) {
   }
 
   if (defaultHourlyCost !== undefined && Number(defaultHourlyCost) < 0) {
-    throw new HttpError(400, 'defaultHourlyCost não pode ser negativo')
+    throw new HttpError(400, 'defaultHourlyCost nao pode ser negativo')
   }
 
   if (startDate && Number.isNaN(new Date(startDate).getTime())) {
-    throw new HttpError(400, 'startDate tem de ser uma data válida')
+    throw new HttpError(400, 'startDate tem de ser uma data valida')
   }
 
   if (endDate && Number.isNaN(new Date(endDate).getTime())) {
-    throw new HttpError(400, 'endDate tem de ser uma data válida')
+    throw new HttpError(400, 'endDate tem de ser uma data valida')
   }
 
   try {
@@ -93,7 +96,7 @@ export async function getWorkByIdService(session, id) {
   const work = await getWorkByIdData(id)
 
   if (!work) {
-    throw new HttpError(404, 'Obra não encontrada')
+    throw new HttpError(404, 'Obra nao encontrada')
   }
 
   return work
@@ -120,19 +123,19 @@ export async function updateWorkService(session, id, body) {
   } = body || {}
 
   if (clientId !== undefined && (!clientId || !(await getClientByIdData(clientId)))) {
-    throw new HttpError(400, 'A obra tem de pertencer a um cliente válido')
+    throw new HttpError(400, 'A obra tem de pertencer a um cliente valido')
   }
 
   if (defaultHourlyCost !== undefined && Number(defaultHourlyCost) < 0) {
-    throw new HttpError(400, 'defaultHourlyCost não pode ser negativo')
+    throw new HttpError(400, 'defaultHourlyCost nao pode ser negativo')
   }
 
   if (startDate && Number.isNaN(new Date(startDate).getTime())) {
-    throw new HttpError(400, 'startDate tem de ser uma data válida')
+    throw new HttpError(400, 'startDate tem de ser uma data valida')
   }
 
   if (endDate && Number.isNaN(new Date(endDate).getTime())) {
-    throw new HttpError(400, 'endDate tem de ser uma data válida')
+    throw new HttpError(400, 'endDate tem de ser uma data valida')
   }
 
   if (
@@ -160,7 +163,7 @@ export async function updateWorkService(session, id, body) {
     })
 
     if (!updatedWork) {
-      throw new HttpError(404, 'Obra não encontrada')
+      throw new HttpError(404, 'Obra nao encontrada')
     }
 
     const repricedAssignmentsCount = pricingChangeApplication?.startDate
@@ -185,10 +188,38 @@ export async function updateWorkService(session, id, body) {
 export async function deleteWorkService(session, id) {
   ensurePermission(session, 'works.delete')
 
-  const deleted = await deleteWorkData(id)
+  const currentWork = await getWorkByIdData(id)
+
+  if (!currentWork) {
+    throw new HttpError(404, 'Obra nao encontrada')
+  }
+
+  const linkedAssignments = await getAllWorkAssignmentsData({ workId: id })
+
+  if (linkedAssignments.length > 0) {
+    throw new HttpError(
+      409,
+      'Nao e possivel remover uma obra com afetacoes associadas. Remove primeiro as afetacoes dessa obra.',
+    )
+  }
+
+  let deleted = false
+
+  try {
+    deleted = await deleteWorkData(id)
+  } catch (error) {
+    if (error?.code === 'P2003') {
+      throw new HttpError(
+        409,
+        'Nao e possivel remover uma obra com afetacoes associadas. Remove primeiro as afetacoes dessa obra.',
+      )
+    }
+
+    throw error
+  }
 
   if (!deleted) {
-    throw new HttpError(404, 'Obra não encontrada')
+    throw new HttpError(500, 'Erro ao remover obra')
   }
 
   return { message: 'Obra removida com sucesso' }

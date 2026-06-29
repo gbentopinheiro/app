@@ -5,8 +5,8 @@ import {
   getClientByIdDb,
   updateClientDb,
 } from '../../lib/db/clients-db.js'
-import { getAllWorksDb } from '../../lib/db/works-db.js'
 import { hasPermission } from '../../lib/permissions.js'
+import { getAllWorksData } from '../../lib/works.js'
 import { HttpError } from '../errors/http-error.js'
 
 function ensurePermission(session, permissionKey, message = 'Sem permissao para gerir clientes.') {
@@ -85,7 +85,7 @@ export async function updateClientService(session, id, body) {
 export async function deleteClientService(session, id) {
   ensurePermission(session, 'clients.delete')
 
-  const linkedWorks = (await getAllWorksDb()).filter(work => Number(work.clientId) === Number.parseInt(id, 10))
+  const linkedWorks = (await getAllWorksData()).filter(work => Number(work.clientId) === Number.parseInt(id, 10))
 
   if (linkedWorks.length > 0) {
     throw new HttpError(409, 'Nao e possivel remover um cliente associado a obras existentes')
