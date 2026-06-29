@@ -64,7 +64,10 @@ function runStage(stageIndex) {
   }
 
   if (result.status !== 0) {
-    process.exit(result.status ?? 1)
+    const error = new Error(`Falha na etapa: ${stage.label}`)
+    error.exitCode = result.status ?? 1
+    error.alreadyLogged = true
+    throw error
   }
 }
 
@@ -103,7 +106,11 @@ async function verifyImportSafety(confirmation) {
 
     console.error('Importacao bloqueada para evitar apagar dados existentes sem confirmacao explicita.')
     console.error(`Repete o comando com ${MYSQL_SETUP_CONFIRM_FLAG} ou define ${MYSQL_SETUP_CONFIRM_ENV}=1 apenas para esta execucao.`)
-    process.exit(1)
+
+    const error = new Error('Importacao bloqueada por verificacao de seguranca.')
+    error.exitCode = 1
+    error.alreadyLogged = true
+    throw error
   } finally {
     if (prisma) {
       await prisma.$disconnect()
@@ -112,7 +119,10 @@ async function verifyImportSafety(confirmation) {
 }
 
 main().catch(error => {
-  console.error('')
-  console.error('Falha ao preparar a base MySQL/MariaDB:', error)
-  process.exit(1)
+  if (!error?.alreadyLogged) {
+    console.error('')
+    console.error('Falha ao preparar a base MySQL/MariaDB:', error)
+  }
+
+  process.exit(error?.exitCode ?? 1)
 })

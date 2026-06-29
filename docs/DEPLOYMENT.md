@@ -95,11 +95,15 @@ npm run db:setup:mysql -- --confirm-existing-data
 Validacoes recomendadas antes de promover:
 
 ```bash
-npm run db:setup:mysql
 npm run db:validate:mysql
 npm run test:critical
 npm run build
 ```
+
+Nota:
+
+- `npm run db:setup:mysql` e um comando de bootstrap ou reimportacao controlada
+- nao deve ser tratado como passo obrigatorio de todos os deploys
 
 ## Swagger / OpenAPI
 
