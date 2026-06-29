@@ -1,6 +1,8 @@
-const configuredApiBaseUrl = String(process.env.NEXT_PUBLIC_API_BASE_URL || '')
-  .trim()
-  .replace(/\/+$/, '')
+import { resolvePublicAppConfig } from '../../config/app.public.js'
+
+function getConfiguredApiBaseUrl() {
+  return resolvePublicAppConfig().apiBaseUrl
+}
 
 export function resolveApiUrl(path) {
   const rawPath = String(path || '').trim()
@@ -14,6 +16,7 @@ export function resolveApiUrl(path) {
   }
 
   const normalizedPath = rawPath.startsWith('/') ? rawPath : `/${rawPath}`
+  const configuredApiBaseUrl = getConfiguredApiBaseUrl()
   return configuredApiBaseUrl ? `${configuredApiBaseUrl}${normalizedPath}` : normalizedPath
 }
 

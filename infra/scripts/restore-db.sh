@@ -5,10 +5,10 @@ ENVIRONMENT="${1:-}"
 BACKUP_FILE="${2:-}"
 
 case "$ENVIRONMENT" in
-  test|acceptance|production)
+  dev|production)
     ;;
   *)
-    echo "Uso: ./infra/scripts/restore-db.sh {test|acceptance|production} /caminho/backup.sql" >&2
+    echo "Uso: ./infra/scripts/restore-db.sh {dev|production} /caminho/backup.sql" >&2
     exit 1
     ;;
 esac

@@ -3,10 +3,12 @@ FROM node:22-bookworm-slim AS builder
 WORKDIR /app
 
 ARG NEXT_PUBLIC_API_BASE_URL=""
+ARG NEXT_PUBLIC_APP_ENV="local"
 
 ENV DATABASE_URL="mysql://user:password@localhost:3306/build_dummy"
 ENV BENTIX_DATA_SOURCE=mysql
 ENV NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL}
+ENV NEXT_PUBLIC_APP_ENV=${NEXT_PUBLIC_APP_ENV}
 
 RUN apt-get update \
   && apt-get install -y --no-install-recommends openssl \
@@ -17,6 +19,7 @@ RUN npm ci
 
 COPY schema.prisma prisma.config.ts next.config.js proxy.js ./
 COPY app ./app
+COPY config ./config
 COPY frontend ./frontend
 COPY lib ./lib
 COPY server ./server
@@ -45,6 +48,7 @@ COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/app ./app
+COPY --from=builder /app/config ./config
 COPY --from=builder /app/frontend ./frontend
 COPY --from=builder /app/lib ./lib
 COPY --from=builder /app/server ./server

@@ -1,4 +1,4 @@
-name: Deploy Test
+name: Deploy Dev
 
 on:
   push:
@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 jobs:
-  deploy-test:
+  deploy-dev:
     runs-on: ubuntu-latest
 
     steps:
@@ -31,19 +31,19 @@ jobs:
       - name: Build application
         run: npm run build
 
-      - name: Deploy to TEST via SSH
+      - name: Deploy to DEV via SSH
         uses: appleboy/ssh-action@v1.2.0
         with:
-          host: ${{ secrets.TEST_SSH_HOST }}
-          username: ${{ secrets.TEST_SSH_USER }}
-          key: ${{ secrets.TEST_SSH_PRIVATE_KEY }}
-          port: ${{ secrets.TEST_SSH_PORT }}
+          host: ${{ secrets.DEV_SSH_HOST }}
+          username: ${{ secrets.DEV_SSH_USER }}
+          key: ${{ secrets.DEV_SSH_PRIVATE_KEY }}
+          port: ${{ secrets.DEV_SSH_PORT }}
           script_stop: true
           script: |
             set -e
             cd /opt/bentix/app
             git fetch origin
             git reset --hard origin/dev
-            cd infra/environments/test
+            cd infra/environments/dev
             docker compose down
             docker compose up -d --build

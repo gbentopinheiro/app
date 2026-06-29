@@ -1,6 +1,6 @@
 server {
   listen 80;
-  server_name web-dev.bentixapp.com;
+  server_name dev.bentixapp.com;
 
   location / {
     proxy_pass http://127.0.0.1:3100;

@@ -4,10 +4,10 @@ set -euo pipefail
 ENVIRONMENT="${1:-}"
 
 case "$ENVIRONMENT" in
-  test|acceptance|production)
+  dev|production)
     ;;
   *)
-    echo "Uso: ./infra/scripts/backup-db.sh {test|acceptance|production}" >&2
+    echo "Uso: ./infra/scripts/backup-db.sh {dev|production}" >&2
     exit 1
     ;;
 esac

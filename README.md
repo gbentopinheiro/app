@@ -69,6 +69,28 @@ O arquivo Excel deve ter o seguinte formato:
 - Exibição dos resultados com nomes e preços encontrados.
 - API REST para gestão de pessoas.
 
+## Configuracao da URL da API
+
+A base URL publica da REST API ficou centralizada em ficheiros de configuracao por ambiente:
+
+- `config/app.local.js`
+- `config/app.dev.js`
+- `config/app.prod.js`
+- `config/app.public.js`
+
+Regras de resolucao:
+
+- `NEXT_PUBLIC_APP_ENV` aceita apenas `local`, `dev` ou `prod`
+- `NEXT_PUBLIC_API_BASE_URL`, quando definido, sobrepoe a URL do perfil
+- sem override, o frontend usa a URL definida em `config/app.<ambiente>.js`
+- a configuracao publica e lida em build time no bundle do Next.js
+
+Exemplos rapidos:
+
+- local: `NEXT_PUBLIC_APP_ENV=local`
+- DEV com frontend em `https://dev.bentixapp.com` e API em `https://api-dev.bentixapp.com`: `NEXT_PUBLIC_APP_ENV=dev`
+- PROD com API separada: `NEXT_PUBLIC_APP_ENV=prod`
+
 ## API REST para Pessoas
 
 ### Endpoints

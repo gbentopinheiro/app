@@ -1,10 +1,11 @@
 services:
   web:
-    container_name: ${WEB_CONTAINER_NAME:-bentix-test-web}
+    container_name: ${WEB_CONTAINER_NAME:-bentix-dev-web}
     build:
       context: ../../..
       dockerfile: infra/docker/app/Dockerfile
       args:
+        NEXT_PUBLIC_APP_ENV: ${NEXT_PUBLIC_APP_ENV}
         NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL}
     restart: unless-stopped
     depends_on:
@@ -15,20 +16,22 @@ services:
     environment:
       PORT: 3000
       HOSTNAME: 0.0.0.0
+      NEXT_PUBLIC_APP_ENV: ${NEXT_PUBLIC_APP_ENV}
       NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL}
     ports:
       - "${WEB_PORT:-3100}:3000"
     volumes:
-      - bentix-test-exports:/app/data/exports
+      - bentix-dev-exports:/app/data/exports
     networks:
       - bentix-net
 
   api:
-    container_name: ${API_CONTAINER_NAME:-bentix-test-api}
+    container_name: ${API_CONTAINER_NAME:-bentix-dev-api}
     build:
       context: ../../..
       dockerfile: infra/docker/app/Dockerfile
       args:
+        NEXT_PUBLIC_APP_ENV: local
         NEXT_PUBLIC_API_BASE_URL: ""
     restart: unless-stopped
     depends_on:
@@ -39,17 +42,18 @@ services:
     environment:
       PORT: 3000
       HOSTNAME: 0.0.0.0
+      NEXT_PUBLIC_APP_ENV: local
       NEXT_PUBLIC_API_BASE_URL: ""
     ports:
       - "${API_PORT:-3101}:3000"
     volumes:
-      - bentix-test-exports:/app/data/exports
+      - bentix-dev-exports:/app/data/exports
     networks:
       - bentix-net
 
   db:
     image: mariadb:11.4
-    container_name: ${DB_CONTAINER_NAME:-bentix-test-db}
+    container_name: ${DB_CONTAINER_NAME:-bentix-dev-db}
     restart: unless-stopped
     env_file:
       - .env
@@ -61,7 +65,7 @@ services:
     ports:
       - "${DB_PORT:-3307}:3306"
     volumes:
-      - bentix-test-db-data:/var/lib/mysql
+      - bentix-dev-db-data:/var/lib/mysql
     healthcheck:
       test: ["CMD", "mariadb-admin", "ping", "-h", "127.0.0.1", "-u${DB_USER}", "-p${DB_PASSWORD}"]
       interval: 10s
@@ -72,10 +76,10 @@ services:
       - bentix-net
 
 volumes:
-  bentix-test-exports:
-    name: bentix-test-exports
-  bentix-test-db-data:
-    name: bentix-test-db-data
+  bentix-dev-exports:
+    name: bentix-dev-exports
+  bentix-dev-db-data:
+    name: bentix-dev-db-data
 
 networks:
   bentix-net:

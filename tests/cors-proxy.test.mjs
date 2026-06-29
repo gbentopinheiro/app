@@ -10,7 +10,7 @@ import {
 
 test('usa origins por defeito para o frontend separado em DEV e localhost', () => {
   assert.deepEqual(resolveAllowedApiCorsOrigins(''), [
-    'https://test.bentixapp.com',
+    'https://dev.bentixapp.com',
     'http://localhost:3000',
     'http://127.0.0.1:3000',
   ])
@@ -18,17 +18,17 @@ test('usa origins por defeito para o frontend separado em DEV e localhost', () =
 
 test('aceita lista configurada de origins CORS e remove espacos e duplicados', () => {
   assert.deepEqual(
-    resolveAllowedApiCorsOrigins(' https://test.bentixapp.com, https://test.bentixapp.com , https://foo.example '),
-    ['https://test.bentixapp.com', 'https://foo.example'],
+    resolveAllowedApiCorsOrigins(' https://dev.bentixapp.com, https://dev.bentixapp.com , https://foo.example '),
+    ['https://dev.bentixapp.com', 'https://foo.example'],
   )
 })
 
 test('resolve apenas o origin exato permitido', () => {
-  const allowedOrigins = 'https://test.bentixapp.com,https://foo.example'
+  const allowedOrigins = 'https://dev.bentixapp.com,https://foo.example'
 
   assert.equal(
-    resolveApiCorsOrigin('https://test.bentixapp.com/', allowedOrigins),
-    'https://test.bentixapp.com',
+    resolveApiCorsOrigin('https://dev.bentixapp.com/', allowedOrigins),
+    'https://dev.bentixapp.com',
   )
   assert.equal(resolveApiCorsOrigin('https://bar.example', allowedOrigins), null)
 })
@@ -44,12 +44,12 @@ test('ecoa headers pedidos no preflight e cai para defaults quando necessario', 
 test('aplica headers CORS completos quando o origin e permitido', () => {
   const response = new Response(null, { status: 204 })
   const applied = applyApiCorsHeaders(response, {
-    origin: 'https://test.bentixapp.com',
+    origin: 'https://dev.bentixapp.com',
     requestHeaders: 'content-type',
   })
 
   assert.equal(applied, true)
-  assert.equal(response.headers.get('Access-Control-Allow-Origin'), 'https://test.bentixapp.com')
+  assert.equal(response.headers.get('Access-Control-Allow-Origin'), 'https://dev.bentixapp.com')
   assert.equal(response.headers.get('Access-Control-Allow-Credentials'), 'true')
   assert.equal(response.headers.get('Access-Control-Allow-Methods'), API_CORS_ALLOWED_METHODS)
   assert.equal(response.headers.get('Access-Control-Allow-Headers'), 'content-type')
@@ -65,7 +65,7 @@ test('nao aplica headers CORS quando o origin nao e permitido', () => {
   const applied = applyApiCorsHeaders(response, {
     origin: 'https://bar.example',
     requestHeaders: 'content-type',
-    rawAllowedOrigins: 'https://test.bentixapp.com',
+    rawAllowedOrigins: 'https://dev.bentixapp.com',
   })
 
   assert.equal(applied, false)
