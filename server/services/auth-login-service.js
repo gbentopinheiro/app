@@ -35,6 +35,7 @@ function buildAdminSession(user) {
     username: user.username,
     name: user.name || user.username,
     role: 'admin',
+    chefCategory: null,
     accountType: ACCOUNT_TYPE_ADMIN,
     workIds: [],
   }
@@ -47,6 +48,7 @@ function buildDeveloperSession(user) {
     username: user.username,
     name: user.name || user.username,
     role: ROLE_DEVELOPER,
+    chefCategory: null,
     accountType: ACCOUNT_TYPE_DEVELOPER,
     workIds: [],
   }
@@ -59,6 +61,7 @@ function buildAccessIdentitySession(identity, user) {
     username: user.username,
     name: identity?.person?.name || user.name || user.username,
     role: identity?.person?.role || identity?.role || user.person?.role || user.role,
+    chefCategory: identity?.person?.chefCategory || user.person?.chefCategory || null,
     accountType: ACCOUNT_TYPE_OPERATIONAL,
     workIds: Array.isArray(identity?.works) ? identity.works.map(work => work.id) : [],
   }

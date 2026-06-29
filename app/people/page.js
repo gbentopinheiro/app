@@ -17,6 +17,9 @@ import { listWorkAssignments } from '../../frontend/controllers/work-assignments
 import { createProtectedPayload } from '../../lib/browser-protected-payload.js'
 import { getApprovedAssignmentHours } from '../../lib/work-assignment-approval.js'
 import {
+  CHEF_CATEGORY_CARPINTEIRO,
+  CHEF_CATEGORY_FERRAJEIRO,
+  CHEF_CATEGORY_TROLHA,
   ROLE_ADMIN,
   ROLE_CARPINTEIRO,
   ROLE_CHEF_PRIMEIRA,
@@ -25,9 +28,10 @@ import {
   ROLE_GRUISTA,
   ROLE_RESPONSAVEL,
   ROLE_TROLHA,
-  getRoleLabel,
+  getRoleDisplayLabel,
   isWorkerRole,
   roleRequiresAppAccess,
+  roleSupportsChefCategory,
   roleUsesWorkScope,
 } from '../../lib/roles.js'
 
@@ -356,10 +360,15 @@ const emptyPersonForm = {
   price: '',
   monthlyPrice: '',
   role: ROLE_CARPINTEIRO,
+  chefCategory: '',
   accessIdentityId: null,
   accessUsername: '',
   accessPassword: '',
   accessWorkIds: [],
+}
+
+function getPersonRoleLabel(person) {
+  return getRoleDisplayLabel(person?.role, person?.chefCategory)
 }
 
 function formatMonthLabel(monthKey) {
@@ -1814,6 +1823,7 @@ export default function PeoplePage() {
   const canCreatePeople = Boolean(viewerRole) && (canManagePeople || isResponsavelView)
   const isMonthlyForm = Number(form.monthlyPrice) > 0
   const roleNeedsAccess = roleRequiresAppAccess(form.role)
+  const formUsesChefCategory = roleSupportsChefCategory(form.role)
   const formUsesWorkScope = roleUsesWorkScope(form.role)
 
   useEffect(() => {
@@ -2007,13 +2017,15 @@ export default function PeoplePage() {
 
   function handleChange(event) {
     const { name, value, selectedOptions } = event.target
+    const nextValue =
+      name === 'accessWorkIds'
+        ? Array.from(selectedOptions, option => option.value)
+        : value
 
     setForm(current => ({
       ...current,
-      [name]:
-        name === 'accessWorkIds'
-          ? Array.from(selectedOptions, option => option.value)
-          : value,
+      [name]: nextValue,
+      ...(name === 'role' && !roleSupportsChefCategory(nextValue) ? { chefCategory: '' } : {}),
     }))
     setFormErrors(current => ({ ...current, [name]: '' }))
   }
@@ -2040,6 +2052,7 @@ export default function PeoplePage() {
     const wantsAccessConfiguration = roleNeedsAccess
 
     if (!form.role) nextErrors.role = 'Seleciona o role.'
+    if (formUsesChefCategory && !form.chefCategory) nextErrors.chefCategory = 'Seleciona a especialização do chefe.'
     if (wantsAccessConfiguration && !form.accessUsername.trim()) nextErrors.accessUsername = 'O nome de utilizador é obrigatório.'
     if (wantsAccessConfiguration && !form.accessIdentityId && !reusableAccessIdentity && !form.accessPassword.trim()) {
       nextErrors.accessPassword = 'A palavra-passe é obrigatória.'
@@ -2075,6 +2088,7 @@ export default function PeoplePage() {
       price: person.price ?? 0,
       monthlyPrice: person.monthlyPrice ?? 0,
       role: person.role || ROLE_CARPINTEIRO,
+      chefCategory: person.chefCategory || '',
       accessIdentityId: accessIdentity?.id || null,
       accessUsername: accessIdentity?.username || '',
       accessPassword: '',
@@ -2151,6 +2165,7 @@ export default function PeoplePage() {
         price: Number(form.price),
         monthlyPrice: Number(form.monthlyPrice),
         role: form.role,
+        chefCategory: formUsesChefCategory ? form.chefCategory : null,
         accessIdentity: roleNeedsAccess
           ? {
               id: form.accessIdentityId,
@@ -2203,7 +2218,7 @@ export default function PeoplePage() {
       hourlyPrice: Number(person.price) || 0,
       monthlyPrice: Number(person.monthlyPrice) || 0,
       billingType: person.isMonthlyBilling ? 'Mensal' : 'Horária',
-      roleLabel: getRoleLabel(person.role),
+      roleLabel: getPersonRoleLabel(person),
     }))
   }
 
@@ -2416,7 +2431,7 @@ export default function PeoplePage() {
                 fontWeight: 700,
               }}
             >
-              {getRoleLabel(person.role)}
+              {getPersonRoleLabel(person)}
             </span>
           )}
         </div>
@@ -2533,7 +2548,7 @@ export default function PeoplePage() {
                   <select name="role" value={form.role} onChange={handleChange} style={inputStyle}>
                     <option value={ROLE_ADMIN}>Administrador</option>
                     <option value={ROLE_RESPONSAVEL}>Responsável</option>
-                    <option value={ROLE_CHEF_PRIMEIRA}>Chefe de primeira</option>
+                    <option value={ROLE_CHEF_PRIMEIRA}>Chefe</option>
                     <option value={ROLE_CHEF_SEGUNDA}>Chefe de segunda</option>
                     <option value={ROLE_CARPINTEIRO}>Carpinteiro</option>
                     <option value={ROLE_FERRAJEIRO}>Ferrajeiro</option>
@@ -2542,6 +2557,21 @@ export default function PeoplePage() {
                   </select>
                   {formErrors.role && <span style={{ color: '#b42318', fontSize: '13px' }}>{formErrors.role}</span>}
                 </label>
+
+                {formUsesChefCategory && (
+                  <label style={compactFieldStyle}>
+                    Especialização do chefe
+                    <select name="chefCategory" value={form.chefCategory} onChange={handleChange} style={inputStyle}>
+                      <option value="">Seleciona a especialização</option>
+                      <option value={CHEF_CATEGORY_TROLHA}>Chefe de Trolhas</option>
+                      <option value={CHEF_CATEGORY_FERRAJEIRO}>Chefe de Ferrajeiros</option>
+                      <option value={CHEF_CATEGORY_CARPINTEIRO}>Chefe de Carpinteiros</option>
+                    </select>
+                    {formErrors.chefCategory && (
+                      <span style={{ color: '#b42318', fontSize: '13px' }}>{formErrors.chefCategory}</span>
+                    )}
+                  </label>
+                )}
 
                   <label style={compactFieldStyle}>
                     Preço hora
@@ -2753,7 +2783,7 @@ export default function PeoplePage() {
                     <article style={statCardStyle}>
                       <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>Função</div>
                       <div style={{ marginTop: '8px', fontSize: '28px', fontWeight: 700 }}>
-                        {getRoleLabel(selectedPerson.role)}
+                        {getPersonRoleLabel(selectedPerson)}
                       </div>
                     </article>
                   </div>
@@ -2963,7 +2993,7 @@ export default function PeoplePage() {
                           <div style={{ minWidth: 0 }}>
                             <strong style={{ display: 'block' }}>{person.name}</strong>
                             <span style={{ color: 'var(--vp-text-muted)', fontSize: '13px' }}>
-                              {getRoleLabel(person.role)}
+                              {getPersonRoleLabel(person)}
                             </span>
                           </div>
                         </div>

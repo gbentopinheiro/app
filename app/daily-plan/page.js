@@ -13,7 +13,7 @@ import {
 import { saveWorkPlan } from '../../frontend/controllers/work-plans-controller.js'
 import { getDailyPlanLockState } from '../../lib/daily-plan-lock.js'
 import { getDefaultHoursForDate } from '../../lib/default-hours.js'
-import { getRoleLabel, isChefRole } from '../../lib/roles.js'
+import { getEntityRoleLabel, getRoleLabel, isChefRole } from '../../lib/roles.js'
 
 const pageStyle = {
   minHeight: '100vh',
@@ -358,7 +358,7 @@ function getManualHourlyCostSuggestions(work, person) {
   if (roleCost !== undefined && roleCost !== null && roleCost !== '') {
     suggestions.push({
       key: `role-${person.role}`,
-      label: `Preço de ${getRoleLabel(person.role)}`,
+      label: `Preço de ${getEntityRoleLabel(person)}`,
       value: Number(roleCost),
     })
   }
@@ -543,7 +543,7 @@ export default function DailyPlanPage() {
     }
 
     if (selectedWork.roleHourlyCosts?.[selectedPerson.role] !== undefined) {
-      return `role ${getRoleLabel(selectedPerson.role)}`
+      return `role ${getEntityRoleLabel(selectedPerson)}`
     }
 
     return 'default da obra'
@@ -1329,7 +1329,7 @@ export default function DailyPlanPage() {
                                 <strong style={{ fontWeight: 900 }}>{assignment.person?.name || `Pessoa ${assignment.personId}`}</strong>
                               </div>
                               <p style={{ margin: '6px 0 0', color: 'var(--vp-text-muted)', fontSize: '13px', fontWeight: 700 }}>
-                                {getRoleLabel(assignment.person?.role)}
+                                {getEntityRoleLabel(assignment.person)}
                               </p>
                               {duplicateNonChefPersonIds.has(String(assignment.personId)) && (
                                 <p style={{ margin: '6px 0 0', color: '#b45309', fontSize: '13px', fontWeight: 700 }}>
@@ -1482,7 +1482,7 @@ export default function DailyPlanPage() {
                 {filteredUnassignedPeople.map(person => (
                   <li key={person.id} style={personListItemStyle}>
                     <strong>{person.name}</strong>
-                    <span style={{ color: 'var(--vp-text-muted)' }}>{getRoleLabel(person.role)}</span>
+                    <span style={{ color: 'var(--vp-text-muted)' }}>{getEntityRoleLabel(person)}</span>
                   </li>
                 ))}
               </ul>
@@ -1516,7 +1516,7 @@ export default function DailyPlanPage() {
                     <option value="">Seleciona uma pessoa</option>
                     {sortedPeople.map(person => (
                       <option key={person.id} value={person.id}>
-                        {person.name}
+                        {person.name} ({getEntityRoleLabel(person)})
                       </option>
                     ))}
                   </select>

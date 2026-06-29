@@ -29,6 +29,10 @@ COPY data ./data
 RUN npm run db:generate
 RUN npm run build
 
+FROM builder AS migrator
+
+CMD ["npm", "run", "db:push"]
+
 FROM node:22-bookworm-slim AS runner
 
 WORKDIR /app

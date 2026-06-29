@@ -27,9 +27,13 @@ No ambiente `DEV`, a infraestrutura continua separada em tres servicos:
 - `api`: a mesma app Next.js a expor `app/api/*`
 - `db`: MariaDB do ambiente
 
+Existe ainda um servico transitório:
+
+- `migrate`: arranca antes da app e executa `prisma db push`
+
 Isto preserva o comportamento atual sem mexer na logica da aplicacao. O `web` continua a receber variaveis de runtime porque ainda existem server components e SSR a ler sessao e dados diretamente.
 
-No ambiente `PROD`, o `docker-compose` continua com um servico `app` e um servico `db`. O reverse proxy pode expor `bentixapp.com` e `api.bentixapp.com` para o mesmo upstream `app` sem mudar a logica interna.
+No ambiente `PROD`, o `docker-compose` continua com um servico `app` e um servico `db`, mais um servico transitório `migrate` para sincronizar schema antes do arranque. O reverse proxy pode expor `bentixapp.com` e `api.bentixapp.com` para o mesmo upstream `app` sem mudar a logica interna.
 
 ## Estrutura
 
@@ -78,6 +82,14 @@ cp .env.example .env
 docker compose up -d --build
 ```
 
+O `docker compose up -d --build` arranca primeiro o servico `migrate`, aplica `prisma db push` na base de dados do ambiente e so depois sobe `web` e `api`.
+
+Para popular uma base DEV nova com os dados snapshot, usar no repositorio da app:
+
+```bash
+npm run db:setup:mysql
+```
+
 Dominios esperados:
 
 - `dev.bentixapp.com -> web:3100`
@@ -91,6 +103,14 @@ Subida manual:
 cd infra/environments/production
 cp .env.example .env
 docker compose up -d --build
+```
+
+O `docker compose up -d --build` arranca primeiro o servico `migrate`, aplica `prisma db push` na base de dados do ambiente e so depois sobe `app`.
+
+Para popular uma base PROD nova com os dados snapshot, usar no repositorio da app:
+
+```bash
+npm run db:setup:mysql
 ```
 
 Dominios esperados:
@@ -108,6 +128,28 @@ Dominios esperados:
 - `AUTH_SECRET`
 - `LOGIN_PUBLIC_KEY_PEM`
 - `LOGIN_PRIVATE_KEY_PEM`
+
+## Bootstrap Seguro da Base
+
+O comando recomendado para preparar uma base MySQL/MariaDB nova e:
+
+```bash
+npm run db:setup:mysql
+```
+
+Fluxo:
+
+1. sincroniza schema com `prisma db push`
+2. importa o snapshot JSON para MySQL
+3. valida as contagens finais
+
+Se forem detetados dados aplicacionais existentes, a importacao fica bloqueada por defeito. Para repetir uma reimportacao intencional:
+
+```bash
+npm run db:setup:mysql -- --confirm-existing-data
+```
+
+Tambem e suportada a variavel `BENTIX_CONFIRM_MYSQL_IMPORT=1`, mas deve ser usada apenas de forma temporaria e explicita.
 
 Mapeamento operacional:
 
@@ -144,6 +186,7 @@ O Dockerfile:
 - instala dependencias com `npm ci`
 - gera Prisma Client
 - faz `next build`
+- expõe um target `migrator` para correr `prisma db push`
 - arranca com `npm start`
 - define uma `DATABASE_URL` dummy para `build` e `prisma generate`
 - aceita `NEXT_PUBLIC_APP_ENV` e `NEXT_PUBLIC_API_BASE_URL` como `build args`

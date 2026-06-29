@@ -12,6 +12,7 @@
     "test:critical": "node scripts/run-critical-tests.mjs",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
+    "db:setup:mysql": "node scripts/setup-mysql-db.mjs",
     "db:studio": "prisma studio",
     "db:export:json": "node scripts/export-json-snapshot.mjs",
     "db:import:mysql": "node scripts/import-json-to-mysql.mjs",

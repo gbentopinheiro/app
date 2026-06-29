@@ -157,6 +157,7 @@ const { getAccessIdentityByUsername } = await import('../lib/access-identities.j
 const { canApproveHours, createSessionToken, getDefaultPathForRole, readSessionToken } = await import('../lib/auth.js')
 const { decryptProtectedPayload, getLoginTransportPublicKey } = await import('../lib/login-transport.js')
 const { verifyPassword } = await import('../lib/passwords.js')
+const { getEntityRoleLabel, getRoleDisplayLabel } = await import('../lib/roles.js')
 const {
   createWorkAssignment,
   getAllWorkAssignments,
@@ -227,6 +228,13 @@ test('login valida payload protegido, password e sessao do chefe', async () => {
   assert.equal(session.accountType, 'operational')
   assert.deepEqual(session.workIds, [1])
   assert.equal(getDefaultPathForRole(session.role), '/daily-hours')
+})
+
+test('especializacao do chefe de segunda usa labels de exibicao sem criar novos roles', () => {
+  assert.equal(getRoleDisplayLabel('chef_segunda', 'ferrajeiro'), 'Chefe de Ferrajeiros')
+  assert.equal(getRoleDisplayLabel('chef_segunda', ''), 'Chefe de segunda')
+  assert.equal(getEntityRoleLabel({ role: 'chef_segunda', chefCategory: 'carpinteiro' }), 'Chefe de Carpinteiros')
+  assert.equal(getEntityRoleLabel({ role: 'chef_primeira' }), 'Chefe')
 })
 
 test('criar afetação cria o work plan pela empresa da obra', () => {

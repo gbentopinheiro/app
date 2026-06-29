@@ -10,6 +10,7 @@ import {
   saveWorkAssignment,
 } from '../../frontend/controllers/work-assignments-controller.js'
 import { getDefaultHoursForDate } from '../../lib/default-hours.js'
+import { getEntityRoleLabel } from '../../lib/roles.js'
 
 const DURATION_OPTIONS = [
   0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5, 6,
@@ -483,7 +484,7 @@ export default function WorkAssignmentsPage() {
                       <option value="">Seleciona uma pessoa</option>
                       {defaults.people.map(person => (
                         <option key={person.id} value={person.id}>
-                          {person.name}
+                          {person.name} ({getEntityRoleLabel(person)})
                         </option>
                       ))}
                     </select>
@@ -656,6 +657,9 @@ export default function WorkAssignmentsPage() {
                         >
                           <div>
                             <strong>{assignment.person?.name || `Pessoa ${assignment.personId}`}</strong>
+                            <p style={{ margin: '6px 0 0', color: 'var(--vp-text-muted)', fontSize: '13px', fontWeight: 700 }}>
+                              {getEntityRoleLabel(assignment.person)}
+                            </p>
                             <p style={{ margin: '6px 0 0', color: 'var(--vp-text-muted)' }}>
                               {assignment.date} | {assignment.hours}h | {assignment.hourlyCost}/h | Total {assignment.totalCost}
                             </p>

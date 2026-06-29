@@ -16,8 +16,11 @@ import {
 import { hasPermission } from '../../lib/permissions.js'
 import {
   DEFAULT_ROLE,
+  normalizeChefCategory,
+  normalizeRole,
   isResponsavelRole,
   roleRequiresAppAccess,
+  roleSupportsChefCategory,
   roleUsesWorkScope,
 } from '../../lib/roles.js'
 import { HttpError } from '../errors/http-error.js'
@@ -119,8 +122,31 @@ function getPeopleMutationStatus(error) {
 }
 
 function toPeopleMutationError(error, fallbackMessage) {
+  if (error instanceof HttpError) {
+    return error
+  }
+
   const message = String(error?.message || fallbackMessage).trim() || fallbackMessage
   return new HttpError(getPeopleMutationStatus(error), message)
+}
+
+function normalizeChefCategoryForRole(role, chefCategory) {
+  const normalizedRole = normalizeRole(role)
+  const normalizedChefCategory = normalizeChefCategory(chefCategory)
+
+  if (!roleSupportsChefCategory(normalizedRole)) {
+    if (normalizedChefCategory) {
+      throw new HttpError(400, 'A especializacao de chefe so pode ser usada no role Chefe de segunda.')
+    }
+
+    return null
+  }
+
+  if (!normalizedChefCategory) {
+    throw new HttpError(400, 'Seleciona a especializacao do Chefe de segunda.')
+  }
+
+  return normalizedChefCategory
 }
 
 async function getDocumentAlertsByPersonId() {
@@ -208,7 +234,7 @@ export async function createPersonService(session, body) {
     throw new HttpError(403, 'Sem permissao para criar pessoas.')
   }
 
-  const { name, price, monthlyPrice, role, accessIdentity } = body || {}
+  const { name, price, monthlyPrice, role, chefCategory, accessIdentity } = body || {}
 
   if (!canCreateFull) {
     if (!String(name || '').trim()) {
@@ -242,7 +268,15 @@ export async function createPersonService(session, body) {
   }
 
   try {
-    const newPerson = await createPersonData({ name, price, monthlyPrice, role })
+    const normalizedRole = normalizeRole(role)
+    const normalizedChefCategory = normalizeChefCategoryForRole(normalizedRole, chefCategory)
+    const newPerson = await createPersonData({
+      name,
+      price,
+      monthlyPrice,
+      role: normalizedRole,
+      chefCategory: normalizedChefCategory,
+    })
 
     try {
       await syncAccessIdentityForPerson(newPerson.id, newPerson.role, accessIdentity)
@@ -272,7 +306,7 @@ export async function getPersonByIdService(session, id) {
 export async function updatePersonService(session, id, body) {
   ensurePermission(session, 'people.update_full', 'Sem permissao para atualizar pessoas.')
 
-  const { name, price, monthlyPrice, role, accessIdentity } = body || {}
+  const { name, price, monthlyPrice, role, chefCategory, accessIdentity } = body || {}
   const currentPerson = await getPersonByIdData(id)
 
   if (!currentPerson) {
@@ -288,7 +322,16 @@ export async function updatePersonService(session, id, body) {
   }
 
   try {
-    const updatedPerson = await updatePersonData(id, { name, price, monthlyPrice, role })
+    const nextRole = role !== undefined ? normalizeRole(role) : currentPerson.role
+    const nextChefCategoryInput = chefCategory !== undefined ? chefCategory : currentPerson.chefCategory
+    const nextChefCategory = normalizeChefCategoryForRole(nextRole, nextChefCategoryInput)
+    const updatedPerson = await updatePersonData(id, {
+      name,
+      price,
+      monthlyPrice,
+      role: nextRole,
+      chefCategory: nextChefCategory,
+    })
 
     if (!updatedPerson) {
       throw new HttpError(404, 'Pessoa nao encontrada')
@@ -304,6 +347,7 @@ export async function updatePersonService(session, id, body) {
         price: currentPerson.price,
         monthlyPrice: currentPerson.monthlyPrice,
         role: currentPerson.role,
+        chefCategory: currentPerson.chefCategory,
       })
       throw error
     }

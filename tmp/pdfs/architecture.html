@@ -1,0 +1,468 @@
+<!doctype html>
+<html lang="pt">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Bentix Architecture</title>
+  <style>
+  @page {
+    size: A4;
+    margin: 16mm 14mm 18mm;
+  }
+  :root {
+    color-scheme: light;
+    --ink: #14243d;
+    --muted: #51657f;
+    --line: #d8e1ec;
+    --soft: #f4f7fb;
+    --accent: #0f4c81;
+    --accent-soft: #e7f0fb;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Segoe UI", Arial, sans-serif;
+    color: var(--ink);
+    background: white;
+    font-size: 10.5pt;
+    line-height: 1.5;
+  }
+  main {
+    max-width: 180mm;
+    margin: 0 auto;
+  }
+  h1, h2, h3, h4 {
+    color: #0e2f57;
+    break-after: avoid-page;
+    page-break-after: avoid;
+    margin-top: 0;
+  }
+  h1 {
+    font-size: 24pt;
+    margin-bottom: 14pt;
+    padding-bottom: 8pt;
+    border-bottom: 2px solid var(--accent);
+  }
+  h2 {
+    font-size: 16pt;
+    margin-top: 20pt;
+    margin-bottom: 8pt;
+    padding: 6pt 8pt;
+    background: var(--accent-soft);
+    border-left: 4px solid var(--accent);
+  }
+  h3 {
+    font-size: 12.5pt;
+    margin-top: 14pt;
+    margin-bottom: 6pt;
+  }
+  h4 {
+    font-size: 11pt;
+    margin-top: 10pt;
+    margin-bottom: 4pt;
+  }
+  p { margin: 0 0 8pt; }
+  ul, ol {
+    margin: 0 0 10pt 18pt;
+    padding: 0;
+  }
+  li { margin: 0 0 4pt; }
+  code {
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 9.3pt;
+    background: #eef3f8;
+    padding: 1pt 3pt;
+    border-radius: 3px;
+  }
+  pre {
+    margin: 8pt 0 12pt;
+    padding: 10pt 11pt;
+    background: #0f1722;
+    color: #e8eef6;
+    border-radius: 7px;
+    overflow: hidden;
+    white-space: pre-wrap;
+    word-break: break-word;
+    page-break-inside: avoid;
+  }
+  pre code {
+    background: transparent;
+    color: inherit;
+    padding: 0;
+    border-radius: 0;
+    font-size: 8.9pt;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 8pt 0 12pt;
+    table-layout: fixed;
+    page-break-inside: avoid;
+  }
+  th, td {
+    border: 1px solid var(--line);
+    padding: 6pt 7pt;
+    text-align: left;
+    vertical-align: top;
+    word-break: break-word;
+  }
+  th {
+    background: var(--soft);
+    color: #15375d;
+    font-weight: 700;
+  }
+  .meta {
+    margin-bottom: 14pt;
+    color: var(--muted);
+    font-size: 9pt;
+  }
+</style>
+</head>
+<body>
+  <main>
+    <div class="meta">Documento gerado a partir de <code>docs/ARCHITECTURE.md</code>.</div>
+    <h1>Bentix Architecture</h1>
+<h2>Visão Geral</h2>
+<p>A Bentix é uma plataforma de gestão operacional para equipas e obras. A aplicação concentra num único produto:</p>
+<ul><li>autenticação e sessão de utilizador</li><li>gestão de pessoas e identidades de acesso</li><li>clientes e obras</li><li>planeamento diário e afetações</li><li>registo, submissão e aprovação de horas</li><li>materiais, notificações e ferramentas técnicas de suporte</li></ul>
+<h3>Stack tecnológica</h3>
+<ul><li><code>Next.js 16</code> com <code>App Router</code></li><li><code>React 19</code></li><li><code>Node.js 22</code> em Docker</li><li><code>Prisma 7</code> com <code>@prisma/adapter-mariadb</code></li><li><code>MariaDB 11.4</code></li><li><code>Nginx</code> como reverse proxy</li><li><code>Cloudflare</code> para DNS e edge proxy</li><li><code>Swagger UI</code> / OpenAPI para documentação da API</li><li><code>node:test</code> para testes críticos automatizados</li></ul>
+<h3>Princípios da arquitetura</h3>
+<ul><li>monorepo único para frontend, API HTTP e acesso a dados</li><li>rotas <code>app/api/*</code> finas, sem lógica de negócio relevante</li><li>separação clara entre <code>controllers</code>, <code>services</code> e <code>lib</code></li><li>configuração pública centralizada por ambiente em <code>config/</code></li><li>autenticação por cookie HTTP-only e sessão assinada</li><li>MySQL/MariaDB como fonte operacional principal</li><li>preparação para futura separação real entre frontend e backend, sem partir contratos atuais</li></ul>
+<h2>Arquitetura Geral</h2>
+<p>Diagrama lógico principal:</p>
+<pre><code>Browser
+   │
+   ▼
+Web (Next.js)
+   │
+REST API
+   │
+MariaDB</code></pre>
+<h3>Papel de cada camada</h3>
+<h4>Browser</h4>
+<p>O browser executa a interface React entregue pelo Next.js, mantém o cookie de sessão e faz chamadas <code>fetch</code> para a API com <code>credentials: include</code>.</p>
+<h4>Web (Next.js)</h4>
+<p>O Next.js cumpre dois papéis:</p>
+<ul><li>serve as páginas e componentes da aplicação</li><li>expõe a API em <code>app/api/*</code></li><li>executa <code>proxy.js</code> para guards de acesso, redireção HTTPS em produção e preflight/CORS das rotas API</li></ul>
+<p>Na prática, a app continua monolítica. Mesmo quando frontend e API são publicados em subdomínios diferentes, o código continua no mesmo repositório e a mesma imagem Docker é reutilizada.</p>
+<h4>REST API</h4>
+<p>A API usa a seguinte cadeia interna:</p>
+<pre><code>app/api/*/route.js
+   │
+   ▼
+server/controllers/*
+   │
+   ▼
+server/services/*
+   │
+   ▼
+lib/*  +  lib/db/*</code></pre>
+<p>As <code>route.js</code> recebem o pedido HTTP, os <code>controllers</code> tratam do boundary HTTP, os <code>services</code> concentram regras aplicacionais e <code>lib/db/*</code> fala diretamente com Prisma.</p>
+<h4>MariaDB</h4>
+<p>MariaDB é a base de dados persistente alvo da aplicação. O acesso é feito por Prisma e centralizado em <code>lib/prisma.js</code> e <code>lib/prisma-adapter.js</code>.</p>
+<h3>Diagrama de deployment atual</h3>
+<pre><code>Browser
+   │
+   ▼
+Cloudflare
+   │
+   ▼
+Nginx
+   │
+   ├── dev.bentixapp.com  ─────► web / app
+   └── api-*.bentixapp.com ────► api / app
+                                   │
+                                   ▼
+                                Prisma
+                                   │
+                                   ▼
+                                MariaDB</code></pre>
+<h2>Ambientes</h2>
+<p>A arquitetura suportada é apenas:</p>
+<ul><li><code>LOCAL</code></li><li><code>DEV</code></li><li><code>PROD</code></li></ul>
+<h3>Resumo por ambiente</h3>
+<table><thead><tr><th>Ambiente</th><th>Frontend</th><th>API</th><th>Base de dados</th><th>Execução</th></tr></thead><tbody><tr><td><code>LOCAL</code></td><td><code>http://localhost:3000</code></td><td>mesma origem em <code>/api/*</code></td><td>MySQL/MariaDB local, tipicamente <code>bentix_local</code></td><td><code>npm run dev</code></td></tr><tr><td><code>DEV</code></td><td><code>https://dev.bentixapp.com</code></td><td><code>https://api-dev.bentixapp.com</code></td><td>MariaDB Docker <code>bentix_dev</code></td><td><code>docker compose</code></td></tr><tr><td><code>PROD</code></td><td><code>https://bentixapp.com</code></td><td><code>https://api.bentixapp.com</code></td><td>MariaDB Docker <code>bentix_prod</code></td><td><code>docker compose</code></td></tr></tbody></table>
+<h3>LOCAL</h3>
+<ul><li>o frontend e a API correm no mesmo processo Next.js</li><li>o browser usa URLs relativas <code>/api/*</code></li><li>não existe separação por subdomínio</li><li>o cookie pode ser host-only, sem <code>Domain</code></li><li>a base de dados é configurada por <code>DATABASE_URL</code></li></ul>
+<h3>DEV</h3>
+<ul><li>o frontend é publicado em <code>dev.bentixapp.com</code></li><li>a API é publicada em <code>api-dev.bentixapp.com</code></li><li>o <code>docker-compose</code> cria três serviços físicos: <code>web</code>, <code>api</code> e <code>db</code></li><li><code>web</code> e <code>api</code> usam a mesma app Next.js, mas com propósito de publicação diferente</li><li>para partilha de sessão entre subdomínios, o cookie deve usar <code>SESSION_COOKIE_DOMAIN=.bentixapp.com</code></li></ul>
+<h3>PROD</h3>
+<ul><li>o frontend é publicado em <code>bentixapp.com</code></li><li>a API é publicada em <code>api.bentixapp.com</code></li><li>hoje o <code>docker-compose</code> de produção tem dois serviços físicos: <code>app</code> e <code>db</code></li><li>logicamente existem os papéis <code>web</code> e <code>api</code>, mas ambos são expostos pelo mesmo serviço <code>app</code> atrás do Nginx</li><li>isto mantém a arquitetura atual simples sem alterar a lógica da aplicação</li></ul>
+<h3>Configuração por ambiente</h3>
+<p>A configuração pública da URL da API está em:</p>
+<ul><li><code>config/app.local.js</code></li><li><code>config/app.dev.js</code></li><li><code>config/app.prod.js</code></li><li><code>config/app.public.js</code></li></ul>
+<p>Regras:</p>
+<ul><li><code>NEXT_PUBLIC_APP_ENV</code> aceita apenas <code>local</code>, <code>dev</code> ou <code>prod</code></li><li><code>NEXT_PUBLIC_API_BASE_URL</code>, quando definido, faz override da URL do perfil</li><li>sem override, a app usa a URL definida em <code>config/app.&lt;ambiente&gt;.js</code></li></ul>
+<h2>Estrutura da aplicação</h2>
+<pre><code>frontend/
+app/
+server/
+lib/
+config/
+infra/
+tests/</code></pre>
+<h3><code>frontend/</code></h3>
+<p>Camada cliente para consumo da API a partir de componentes React.</p>
+<ul><li><code>frontend/api/api-client.js</code> resolve a base URL e executa <code>fetch</code></li><li><code>frontend/controllers/*</code> encapsulam chamadas à API e evitam espalhar detalhes de transporte pela UI</li></ul>
+<h3><code>app/</code></h3>
+<p>Camada Next.js App Router.</p>
+<ul><li>páginas e layouts</li><li>componentes React server/client</li><li>rotas HTTP em <code>app/api/*</code></li><li>Swagger UI em <code>/developer/api-docs</code></li></ul>
+<h3><code>server/</code></h3>
+<p>Camada HTTP e aplicação.</p>
+<ul><li><code>server/controllers/*</code>: parsing de requests, sessão, autorização, mapeamento de erros</li><li><code>server/services/*</code>: lógica de aplicação e orquestração</li><li><code>server/responses/*</code>: helpers de resposta HTTP</li><li><code>server/errors/*</code>: erros tipados</li><li><code>server/docs/*</code>: OpenAPI servido pela própria aplicação</li></ul>
+<h3><code>lib/</code></h3>
+<p>Camada transversal de domínio e infraestrutura interna.</p>
+<ul><li>autenticação, cookies e sessão</li><li>permissões, roles e perfis de acesso</li><li>acesso a dados por entidade</li><li>helpers de negócio reutilizáveis</li><li>compatibilidade legacy e alguns fallbacks técnicos</li></ul>
+<p>Dentro de <code>lib/</code>:</p>
+<ul><li><code>lib/db/*</code> contém a camada de acesso a dados por entidade</li><li><code>lib/prisma.js</code> e <code>lib/prisma-adapter.js</code> inicializam Prisma</li><li><code>lib/data-source.js</code> escolhe entre <code>mysql</code> e fallback <code>json</code></li></ul>
+<h3><code>config/</code></h3>
+<p>Configuração pública da aplicação por ambiente.</p>
+<ul><li>seleciona a base URL da API consumida pelo frontend</li><li>isola a configuração de ambiente do código de negócio</li></ul>
+<h3><code>infra/</code></h3>
+<p>Infraestrutura versionada.</p>
+<ul><li><code>infra/environments/*</code>: <code>docker-compose</code> e <code>.env.example</code></li><li><code>infra/docker/app/Dockerfile</code>: build e runtime da imagem da app</li><li><code>infra/nginx/*</code>: reverse proxy por ambiente</li><li><code>infra/scripts/*</code>: utilitários operacionais</li></ul>
+<h3><code>tests/</code></h3>
+<p>Testes críticos automatizados.</p>
+<ul><li>fluxo de autenticação</li><li>CORS</li><li>configuração pública por ambiente</li><li>opções do cookie de sessão</li><li>fluxos críticos de planeamento e afetações</li></ul>
+<h2>Fluxo de autenticação</h2>
+<p>Fluxo completo:</p>
+<pre><code>Browser
+   │
+   ▼
+GET /login
+   │
+   ▼
+GET /api/auth/payload-key
+   │
+   ▼
+Browser cifra credenciais
+   │
+   ▼
+POST /api/auth/login
+   │
+   ▼
+Cookie bentix_session
+   │
+   ▼
+GET /api/auth/session e restantes rotas
+   │
+   ▼
+GET /api/auth/logout
+   │
+   ▼
+Cookie expirado</code></pre>
+<h3>Passo a passo</h3>
+<ol><li>O utilizador abre <code>/login</code>.</li><li>O frontend pede a chave pública em <code>/api/auth/payload-key</code>.</li><li>O browser cifra o payload de login com AES-GCM e cifra a chave efémera com RSA-OAEP.</li><li>O frontend envia <code>POST /api/auth/login</code> com <code>protectedPayload</code>.</li><li><code>server/controllers/auth-login-controller.js</code> lê o corpo protegido.</li><li><code>lib/login-transport.js</code> decifra o payload.</li><li><code>server/services/auth-login-service.js</code> valida username/password, verifica bloqueios, atualiza auditoria e cria o token de sessão.</li><li><code>lib/auth.js</code> assina a sessão com <code>AUTH_SECRET</code> e devolve um token HMAC.</li><li>A resposta define o cookie <code>bentix_session</code> com <code>HttpOnly</code>, <code>Path=/</code> e política de <code>SameSite</code>/<code>Domain</code> dependente do ambiente.</li><li>Nas chamadas seguintes, o browser envia o cookie automaticamente porque <code>frontend/api/api-client.js</code> usa <code>credentials: include</code>.</li><li><code>proxy.js</code> e <code>lib/server-session.js</code> validam a sessão antes de permitir acesso a páginas e endpoints protegidos.</li><li>Em <code>/api/auth/logout</code>, a aplicação expira o mesmo cookie com as mesmas opções base.</li></ol>
+<h3>Sessão e reidratação</h3>
+<p>A aplicação não confia apenas no cookie bruto. Depois de validar a assinatura, <code>lib/server-session.js</code> volta a carregar o utilizador e o estado de acesso a partir da fonte de dados ativa.</p>
+<p>Isto permite:</p>
+<ul><li>invalidar contas desativadas</li><li>recalcular permissões e perfis de acesso</li><li>atualizar <code>workIds</code> e identidade operacional</li></ul>
+<h3>Cookie de sessão</h3>
+<p>Comportamento atual:</p>
+<ul><li><code>HttpOnly=true</code></li><li><code>Path=/</code></li><li><code>SameSite=Lax</code> em host local sem <code>SESSION_COOKIE_DOMAIN</code></li><li><code>SameSite=None</code> quando existe <code>SESSION_COOKIE_DOMAIN</code></li><li><code>Secure=true</code> em produção e sempre que existe <code>SESSION_COOKIE_DOMAIN</code></li></ul>
+<p>Exemplo esperado para DEV/PROD com frontend e API em subdomínios distintos:</p>
+<pre><code>Domain=.bentixapp.com; SameSite=None; Secure; HttpOnly; Path=/</code></pre>
+<h2>Fluxo de uma chamada REST API</h2>
+<p>Diagrama pedido:</p>
+<pre><code>Browser
+↓
+Web
+↓
+api-client
+↓
+REST API
+↓
+Service
+↓
+Prisma
+↓
+MariaDB</code></pre>
+<h3>Explicação passo a passo</h3>
+<h4>1. Browser</h4>
+<p>O utilizador interage com a página ou componente.</p>
+<h4>2. Web</h4>
+<p>O frontend Next.js renderiza a UI e aciona uma ação do utilizador. Em páginas client-side, isto acontece dentro de componentes React ou de <code>frontend/controllers/*</code>.</p>
+<h4>3. <code>api-client</code></h4>
+<p><code>frontend/api/api-client.js</code>:</p>
+<ul><li>valida o path pedido</li><li>resolve a base URL via <code>config/app.public.js</code></li><li>usa <code>NEXT_PUBLIC_APP_ENV</code> e <code>NEXT_PUBLIC_API_BASE_URL</code></li><li>executa <code>fetch(..., { credentials: 'include' })</code></li></ul>
+<p>Em <code>LOCAL</code>, a URL final é relativa, por exemplo <code>/api/people</code>.</p>
+<p>Em <code>DEV</code>, a URL final é tipicamente <code>https://api-dev.bentixapp.com/api/people</code>.</p>
+<p>Em <code>PROD</code>, a URL final é tipicamente <code>https://api.bentixapp.com/api/people</code>.</p>
+<h4>4. REST API</h4>
+<p>O pedido entra numa <code>route.js</code> em <code>app/api/*</code>. A rota:</p>
+<ul><li>chama um controller</li><li>converte o resultado em <code>NextResponse</code></li><li>converte erros tipados em <code>status codes</code></li></ul>
+<p>Antes de chegar ao controller, <code>proxy.js</code> pode:</p>
+<ul><li>responder ao preflight <code>OPTIONS</code></li><li>aplicar headers CORS para chamadas cross-origin</li><li>recusar pedidos sem sessão ou sem permissão</li></ul>
+<h4>5. Service</h4>
+<p>O controller delega a lógica aplicacional para <code>server/services/*</code>.</p>
+<p>Exemplo típico:</p>
+<ul><li>valida sessão</li><li>verifica permissões</li><li>valida input</li><li>orquestra operações</li></ul>
+<h4>6. Prisma</h4>
+<p>Os <code>services</code> usam <code>lib/*</code> e <code>lib/db/*</code>, que por sua vez usam Prisma para falar com MariaDB.</p>
+<h4>7. MariaDB</h4>
+<p>MariaDB persiste o estado da aplicação: pessoas, utilizadores, obras, afetações, eventos, permissões e restantes entidades.</p>
+<h3>Exemplo real: <code>GET /api/people</code></h3>
+<pre><code>app/api/people/route.js
+   │
+   ▼
+server/controllers/people-controller.js
+   │
+   ▼
+server/services/people-service.js
+   │
+   ▼
+lib/people.js
+   │
+   ▼
+lib/db/people-db.js
+   │
+   ▼
+Prisma
+   │
+   ▼
+MariaDB</code></pre>
+<h2>Configuração</h2>
+<h3>Variáveis principais</h3>
+<table><thead><tr><th>Variável</th><th>Papel</th><th>Onde é usada</th><th>Leitura principal</th></tr></thead><tbody><tr><td><code>NEXT_PUBLIC_APP_ENV</code></td><td>escolhe o perfil público <code>local/dev/prod</code></td><td><code>config/app.public.js</code>, frontend bundle</td><td>build time</td></tr><tr><td><code>NEXT_PUBLIC_API_BASE_URL</code></td><td>override explícito da base URL da API</td><td><code>config/app.public.js</code>, frontend bundle</td><td>build time</td></tr><tr><td><code>SESSION_COOKIE_DOMAIN</code></td><td>define partilha do cookie entre subdomínios</td><td><code>lib/auth.js</code></td><td>runtime</td></tr><tr><td><code>DATABASE_URL</code></td><td>ligação Prisma/MariaDB</td><td><code>lib/prisma.js</code>, <code>lib/prisma-adapter.js</code></td><td>runtime</td></tr><tr><td><code>AUTH_SECRET</code></td><td>assinatura HMAC da sessão</td><td><code>lib/auth.js</code></td><td>runtime</td></tr></tbody></table>
+<h3><code>NEXT_PUBLIC_APP_ENV</code></h3>
+<ul><li>valores suportados: <code>local</code>, <code>dev</code>, <code>prod</code></li><li>seleciona <code>config/app.local.js</code>, <code>config/app.dev.js</code> ou <code>config/app.prod.js</code></li><li>é embebida na app pelo processo de build</li></ul>
+<h3><code>NEXT_PUBLIC_API_BASE_URL</code></h3>
+<ul><li>é opcional</li><li>quando definido, tem prioridade sobre a URL do perfil</li><li>é útil para forçar uma API alternativa sem mudar código</li></ul>
+<h3><code>SESSION_COOKIE_DOMAIN</code></h3>
+<ul><li>em branco no <code>LOCAL</code>, para cookie host-only</li><li><code>.bentixapp.com</code> em <code>DEV</code> e tipicamente também em <code>PROD</code>, para partilhar sessão entre <code>web</code> e <code>api</code></li></ul>
+<h3><code>DATABASE_URL</code></h3>
+<ul><li>define a base de dados real usada pela aplicação em runtime</li><li>também existe uma <code>DATABASE_URL</code> dummy no Docker build para permitir <code>prisma generate</code> e <code>next build</code></li><li>a dummy não deve ser confundida com a ligação real de produção</li></ul>
+<h3><code>AUTH_SECRET</code></h3>
+<ul><li>segredo usado para assinar e validar o conteúdo da sessão</li><li>obrigatório em produção</li><li>sem este valor, a aplicação não consegue validar cookies de sessão de forma segura</li></ul>
+<h3>Build time vs runtime</h3>
+<pre><code>Build time
+  - NEXT_PUBLIC_APP_ENV
+  - NEXT_PUBLIC_API_BASE_URL
+
+Runtime
+  - DATABASE_URL
+  - AUTH_SECRET
+  - SESSION_COOKIE_DOMAIN
+  - LOGIN_PUBLIC_KEY_PEM
+  - LOGIN_PRIVATE_KEY_PEM</code></pre>
+<p>Nota importante:</p>
+<ul><li>no Docker atual, <code>NEXT_PUBLIC_*</code> entra como <code>ARG</code> e <code>ENV</code> antes de <code>next build</code></li><li>por isso, para efeitos do browser, a configuração pública deve ser tratada como configuração de build</li></ul>
+<h2>Docker</h2>
+<h3>Imagem da aplicação</h3>
+<p>O Dockerfile em <code>infra/docker/app/Dockerfile</code>:</p>
+<ul><li>usa <code>node:22-bookworm-slim</code></li><li>instala dependências</li><li>executa <code>npm run db:generate</code></li><li>executa <code>npm run build</code></li><li>copia <code>.next</code>, código e artefactos necessários para a imagem final</li></ul>
+<h3>DEV</h3>
+<p>Topologia física atual:</p>
+<pre><code>web  -&gt; frontend publicado em dev.bentixapp.com
+api  -&gt; mesma app Next.js publicada em api-dev.bentixapp.com
+db   -&gt; MariaDB do ambiente dev</code></pre>
+<p>Notas:</p>
+<ul><li><code>web</code> e <code>api</code> usam a mesma imagem</li><li><code>web</code> recebe <code>NEXT_PUBLIC_APP_ENV=dev</code></li><li><code>api</code> recebe <code>NEXT_PUBLIC_APP_ENV=local</code> para não se autoapontar para outra API pública</li></ul>
+<p>Como arrancar:</p>
+<pre><code>cd infra/environments/dev
+cp .env.example .env
+docker compose up -d --build</code></pre>
+<h3>PROD</h3>
+<p>Topologia lógica desejada:</p>
+<pre><code>web  -&gt; bentixapp.com
+api  -&gt; api.bentixapp.com
+db   -&gt; MariaDB de produção</code></pre>
+<p>Topologia física atual no repositório:</p>
+<pre><code>app  -&gt; serve os papéis web + api
+db   -&gt; MariaDB de produção</code></pre>
+<p>Isto significa:</p>
+<ul><li><code>bentixapp.com</code> e <code>api.bentixapp.com</code> apontam ambos para o mesmo serviço <code>app</code></li><li>a separação em produção é hoje lógica e por hostname, não por dois containers distintos</li></ul>
+<p>Como arrancar:</p>
+<pre><code>cd infra/environments/production
+cp .env.example .env
+docker compose up -d --build</code></pre>
+<h2>Nginx</h2>
+<h3>DEV</h3>
+<p><code>infra/nginx/dev.conf.example</code> publica:</p>
+<ul><li><code>dev.bentixapp.com -&gt; 127.0.0.1:3100</code></li><li><code>api-dev.bentixapp.com -&gt; 127.0.0.1:3101</code></li></ul>
+<h3>PROD</h3>
+<p><code>infra/nginx/production.conf.example</code> publica:</p>
+<ul><li><code>bentixapp.com -&gt; 127.0.0.1:3300</code></li><li><code>api.bentixapp.com -&gt; 127.0.0.1:3300</code></li></ul>
+<h3>Papel do Nginx</h3>
+<ul><li>termina TLS</li><li>publica hostnames distintos</li><li>encaminha tráfego para os serviços Docker corretos</li><li>preserva headers como <code>Host</code>, <code>X-Forwarded-For</code> e <code>X-Forwarded-Proto</code></li></ul>
+<h2>Cloudflare</h2>
+<p>Registos DNS mínimos necessários:</p>
+<table><thead><tr><th>Nome</th><th>Tipo sugerido</th><th>Destino</th><th>Uso</th></tr></thead><tbody><tr><td><code>@</code></td><td><code>A</code> ou <code>CNAME</code></td><td>IP/hostname do VPS</td><td>frontend PROD</td></tr><tr><td><code>api</code></td><td><code>A</code> ou <code>CNAME</code></td><td>IP/hostname do VPS</td><td>API PROD</td></tr><tr><td><code>dev</code></td><td><code>A</code> ou <code>CNAME</code></td><td>IP/hostname do VPS</td><td>frontend DEV</td></tr><tr><td><code>api-dev</code></td><td><code>A</code> ou <code>CNAME</code></td><td>IP/hostname do VPS</td><td>API DEV</td></tr></tbody></table>
+<p>Recomendações práticas:</p>
+<ul><li>usar proxy da Cloudflare ativo quando o ambiente já estiver público</li><li>usar modo TLS <code>Full (strict)</code> quando existir certificado válido no origin</li><li>garantir que os hostnames publicados no Nginx existem também no DNS</li></ul>
+<p>Fluxo resumido:</p>
+<pre><code>Browser
+   │
+   ▼
+Cloudflare DNS / Proxy
+   │
+   ▼
+Nginx no VPS
+   │
+   ▼
+Docker service</code></pre>
+<h2>Fluxo de Deploy</h2>
+<p>Fluxo manual de referência:</p>
+<pre><code>Developer
+   ↓
+git commit
+   ↓
+git push
+   ↓
+git pull servidor
+   ↓
+docker compose build
+   ↓
+docker compose up</code></pre>
+<h3>Equivalente atual em DEV</h3>
+<p>O repositório já inclui <code>/.github/workflows/deploy-dev.yml</code>, que automatiza o deploy de <code>DEV</code>:</p>
+<pre><code>Developer
+   ↓
+push na branch dev
+   ↓
+GitHub Actions
+   ↓
+npm ci
+   ↓
+npm run test:critical
+   ↓
+npm run build
+   ↓
+SSH para o servidor
+   ↓
+git fetch / reset
+   ↓
+docker compose up -d --build</code></pre>
+<h2>Convenções do projeto</h2>
+<h3>Como adicionar páginas</h3>
+<ol><li>Criar a página em <code>app/&lt;rota&gt;/page.js</code>.</li><li>Se a página exigir sessão, usar <code>getServerSession()</code> e redirecionar quando necessário.</li><li>Para componentes client-side, chamar <code>frontend/controllers/*</code> em vez de fazer <code>fetch</code> ad hoc espalhado pela UI.</li></ol>
+<h3>Como adicionar controllers</h3>
+<p><code>server/controllers/*</code> deve:</p>
+<ul><li>ler params, query e body</li><li>obter sessão quando necessário</li><li>transformar pedidos protegidos com <code>readProtectedRequestJson</code></li><li>chamar exatamente um ou poucos services</li><li>devolver <code>jsonResponse(...)</code> ou equivalente</li><li>não falar diretamente com Prisma</li></ul>
+<h3>Como adicionar services</h3>
+<p><code>server/services/*</code> deve:</p>
+<ul><li>validar regras de negócio</li><li>verificar permissões</li><li>orquestrar chamadas a <code>lib/*</code></li><li>lançar <code>HttpError</code> quando a resposta HTTP precisa de um status explícito</li></ul>
+<h3>Como adicionar endpoints REST</h3>
+<ol><li>Criar <code>app/api/&lt;rota&gt;/route.js</code>.</li><li>Manter a rota fina, usando <code>toNextResponse</code> e <code>toNextErrorResponse</code>.</li><li>Criar ou reutilizar o controller em <code>server/controllers/*</code>.</li><li>Criar ou reutilizar o service em <code>server/services/*</code>.</li><li>Atualizar <code>server/docs/openapi-phase1.js</code> quando o endpoint for público/documentado.</li></ol>
+<h3>Como adicionar chamadas frontend para a API</h3>
+<ol><li>Criar função em <code>frontend/controllers/&lt;dominio&gt;-controller.js</code>.</li><li>Usar <code>apiFetch</code> ou <code>apiFetchJson</code>.</li><li>Deixar a resolução da URL sempre a cargo de <code>frontend/api/api-client.js</code>.</li></ol>
+<h3>Como adicionar permissões</h3>
+<ol><li>Declarar a permission key em <code>lib/permissions.js</code>.</li><li>Adicionar a key aos perfis adequados em <code>ACCESS_PROFILE_PERMISSION_KEYS</code>.</li><li>Aplicar a regra no service com <code>hasPermission(...)</code> ou <code>requireSessionPermissionService(...)</code>.</li><li>Se a nova rota/página tiver guard por path, atualizar o mapeamento em <code>lib/auth.js</code>.</li></ol>
+<h3>Convenção de boundary HTTP</h3>
+<p>O padrão esperado para a API é:</p>
+<pre><code>route.js -&gt; controller -&gt; service -&gt; lib -&gt; lib/db -&gt; Prisma</code></pre>
+<p>Qualquer desvio a este padrão deve ser excecional e justificado.</p>
+<h2>Roadmap</h2>
+<p>Pontos ainda relevantes antes de uma operação de produção mais robusta:</p>
+<ul><li>fechar runbooks e documentação operacional completa</li><li>validar backup e restore ponta a ponta</li><li>reforçar observabilidade, logs e alertas</li><li>consolidar gestão de secrets fora de ficheiros locais</li><li>automatizar rollout e rollback também para produção</li><li>reduzir dependências legacy baseadas em ficheiros onde ainda existirem</li><li>manter a separação futura do backend como evolução arquitetural, não como requisito imediato</li></ul>
+<h3>Leitura prática do roadmap</h3>
+<p>A arquitetura atual já suporta operação em <code>LOCAL</code>, <code>DEV</code> e <code>PROD</code>, mas ainda há trabalho de maturidade operacional. O principal gap não está na existência de páginas ou endpoints, mas em:</p>
+<ul><li>automação de operações</li><li>monitorização</li><li>disciplina de segredos</li><li>rotinas de recuperação</li></ul>
+<p>Em resumo:</p>
+<pre><code>Arquitetura funcional: pronta
+Maturidade operacional: ainda em evolução
+Separação backend/frontend: preparada, mas ainda não executada</code></pre>
+  </main>
+</body>
+</html>

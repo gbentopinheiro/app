@@ -7,7 +7,7 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 const repoRoot = join(__dirname, '..')
 const sandboxParentRoot = join(repoRoot, '.tmp')
-const copiedEntries = ['app', 'config', 'data', 'frontend', 'lib', 'package.json', 'tests']
+const copiedEntries = ['app', 'config', 'data', 'frontend', 'lib', 'package.json', 'scripts', 'tests']
 const sandboxPrefix = 'critical-tests-'
 
 function removePathRobustly(targetPath) {
@@ -63,6 +63,7 @@ const testProcess = spawnSync(
     '--test-concurrency=1',
     'tests/critical-flows.test.mjs',
     'tests/cors-proxy.test.mjs',
+    'tests/db-setup-mysql.test.mjs',
     'tests/public-app-config.test.mjs',
     'tests/session-cookie-options.test.mjs',
   ],

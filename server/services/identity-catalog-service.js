@@ -13,7 +13,7 @@ import { getAllAccessProfilesDb } from '../../lib/db/access-profiles-db.js'
 import { getAllLoginAttemptsDb } from '../../lib/db/login-attempts-db.js'
 import { getAllPermissionsDb } from '../../lib/db/permissions-db.js'
 import { PERMISSION_DEFINITIONS } from '../../lib/permissions.js'
-import { getRoleLabel, normalizeRole } from '../../lib/roles.js'
+import { getEntityRoleLabel, normalizeRole } from '../../lib/roles.js'
 
 const ACCESS_PROFILE_DEFINITION_MAP = new Map(
   ACCESS_PROFILE_DEFINITIONS.map(definition => [definition.key, definition]),
@@ -186,7 +186,7 @@ function mapManagedUser(user, context = {}) {
     name: String(user.name || user.username || '').trim() || 'Sem nome',
     username: String(user.username || '').trim(),
     role,
-    roleLabel: role ? getRoleLabel(role) : 'Sem role',
+    roleLabel: role ? getEntityRoleLabel(user) : 'Sem role',
     accountType: String(user.accountType || '').trim(),
     accountTypeLabel: getAccountTypeLabel(user.accountType),
     accessProfileId,

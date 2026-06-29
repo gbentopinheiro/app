@@ -80,9 +80,22 @@ npm run build
 npm run start
 ```
 
+Para uma base MySQL/MariaDB nova, preparar os dados antes do arranque funcional:
+
+```bash
+npm run db:setup:mysql
+```
+
+Se a base ja tiver dados e a reimportacao for intencional, repetir com confirmacao explicita:
+
+```bash
+npm run db:setup:mysql -- --confirm-existing-data
+```
+
 Validacoes recomendadas antes de promover:
 
 ```bash
+npm run db:setup:mysql
 npm run db:validate:mysql
 npm run test:critical
 npm run build

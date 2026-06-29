@@ -31,13 +31,7 @@ BENTIX_DATA_SOURCE="mysql"
 npm run db:generate
 ```
 
-## 4. Criar as tabelas no MySQL
-
-```powershell
-npm run db:push
-```
-
-## 5. Exportar o snapshot dos JSON atuais
+## 4. Exportar o snapshot dos JSON atuais
 
 ```powershell
 npm run db:export:json
@@ -47,19 +41,25 @@ Isto cria:
 
 - [data/exports/mysql-migration-snapshot.json](</c:/Users/gbent/OneDrive/Ambiente de Trabalho/VILAPLANO/app/data/exports/mysql-migration-snapshot.json:1>)
 
-## 6. Importar para MySQL
+## 5. Preparar a base MySQL de forma segura
 
 ```powershell
-npm run db:import:mysql
+npm run db:setup:mysql
 ```
 
-## 7. Validar as contagens
+Isto executa por ordem:
+
+- `npx prisma db push`
+- `npm run db:import:mysql`
+- `npm run db:validate:mysql`
+
+Se a base ja tiver dados aplicacionais e a reimportacao for intencional:
 
 ```powershell
-npm run db:validate:mysql
+npm run db:setup:mysql -- --confirm-existing-data
 ```
 
-## 8. Estado atual do projeto
+## 6. Estado atual do projeto
 
 Nesta fase:
 
@@ -68,7 +68,7 @@ Nesta fase:
 - a migracao de dados fica automatizada
 - a troca da fonte de dados pode ser feita faseadamente depois
 
-## 9. Mapeamento principal
+## 7. Mapeamento principal
 
 - `companies.json` -> `companies`
 - `clients.json` -> `clients`

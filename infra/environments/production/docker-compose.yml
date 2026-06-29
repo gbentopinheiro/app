@@ -1,4 +1,22 @@
 services:
+  migrate:
+    container_name: ${MIGRATE_CONTAINER_NAME:-bentix-production-migrate}
+    build:
+      context: ../../..
+      dockerfile: infra/docker/app/Dockerfile
+      target: migrator
+      args:
+        NEXT_PUBLIC_APP_ENV: local
+        NEXT_PUBLIC_API_BASE_URL: ""
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+    networks:
+      - bentix-net
+
   app:
     container_name: ${APP_CONTAINER_NAME:-bentix-production-app}
     build:
@@ -11,6 +29,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     env_file:
       - .env
     environment:

@@ -9,6 +9,7 @@ export function buildAuthenticatedSessionPayload(session) {
       username: session.username,
       name: session.name,
       role: session.role,
+      chefCategory: session.chefCategory || null,
       accountType: session.accountType,
       accessProfileId: session.accessProfileId,
       accessProfile: session.accessProfile,

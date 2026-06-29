@@ -251,7 +251,7 @@ const workDayOptions = [
 ]
 
 const rolePriceOptions = [
-  { value: 'chef_primeira', label: 'Chefe de primeira' },
+  { value: 'chef_primeira', label: 'Chefe' },
   { value: 'chef_segunda', label: 'Chefe de segunda' },
   { value: 'carpinteiro', label: 'Carpinteiro' },
   { value: 'ferrajeiro', label: 'Ferrajeiro' },

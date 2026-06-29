@@ -22,9 +22,27 @@ Seguem as tabelas centrais definidas em `schema.prisma`:
 
 Comandos relevantes:
 
+- `npm run db:setup:mysql`
 - `npm run db:import:mysql`
 - `npm run db:baseline:mysql`
 - `npm run db:validate:mysql`
+
+### `npm run db:setup:mysql`
+
+Este passa a ser o comando recomendado para preparar uma base MySQL/MariaDB nova.
+
+Fluxo executado:
+
+1. `npx prisma db push`
+2. `npm run db:import:mysql`
+3. `npm run db:validate:mysql`
+
+Comportamento de seguranca:
+
+- se a base nao tiver dados aplicacionais, avanca sem confirmacao extra
+- se detetar dados existentes, bloqueia a importacao destrutiva
+- para continuar de forma explicita, usar `npm run db:setup:mysql -- --confirm-existing-data`
+- como alternativa, usar a variavel `BENTIX_CONFIRM_MYSQL_IMPORT=1` apenas nessa execucao
 
 ### `npm run db:validate:mysql`
 
@@ -46,10 +64,16 @@ A baseline de validacao:
 
 O processo de migracao usa:
 
+- `npm run db:setup:mysql`
 - `npm run db:import:mysql`
 - snapshot em `data/exports/mysql-migration-snapshot.json`
 
 Esse snapshot consolida os dados legacy e depois repovoa as tabelas MySQL alvo.
+
+Nota importante:
+
+- `npm run db:import:mysql` continua a ser um passo low-level e destrutivo
+- para uso normal em DEV/PROD, preferir `npm run db:setup:mysql`
 
 ## Entidades Migradas
 

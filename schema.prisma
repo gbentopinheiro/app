@@ -116,6 +116,7 @@ model Person {
   monthlyPrice     Decimal              @default(0) @map("monthly_price") @db.Decimal(10, 2)
   isMonthlyBilling Boolean              @default(false) @map("is_monthly_billing")
   role             Role
+  chefCategory     String?              @map("chef_category") @db.VarChar(32)
   company          Company              @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   user             User?
   workAssignments  WorkAssignment[]

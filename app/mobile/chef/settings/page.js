@@ -5,7 +5,7 @@ import ChangePasswordForm from '../../../account-settings/ChangePasswordForm'
 import NotificationSettingsForm from '../../../account-settings/NotificationSettingsForm'
 import MobileNotificationPermissionCard from './MobileNotificationPermissionCard'
 import { getServerSession } from '../../../../lib/server-session.js'
-import { getRoleLabel, isChefRole } from '../../../../lib/roles.js'
+import { getRoleDisplayLabel, isChefRole } from '../../../../lib/roles.js'
 import { ViewportPage, ViewportScrollArea, ViewportShell } from '../../../components/ViewportLayout.js'
 
 const pageStyle = {
@@ -168,7 +168,7 @@ export default async function ChefMobileSettingsPage() {
             </div>
             <div style={infoCardStyle}>
               <p style={infoLabelStyle}>Perfil</p>
-              <p style={infoValueStyle}>{getRoleLabel(session.role)}</p>
+              <p style={infoValueStyle}>{getRoleDisplayLabel(session.role, session.chefCategory)}</p>
             </div>
           </div>
         </section>

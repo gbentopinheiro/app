@@ -91,6 +91,28 @@ Exemplos rapidos:
 - DEV com frontend em `https://dev.bentixapp.com` e API em `https://api-dev.bentixapp.com`: `NEXT_PUBLIC_APP_ENV=dev`
 - PROD com API separada: `NEXT_PUBLIC_APP_ENV=prod`
 
+## Bootstrap MySQL / MariaDB
+
+Para preparar uma base nova com o fluxo suportado:
+
+```bash
+npm run db:setup:mysql
+```
+
+O comando executa por ordem:
+
+- `npx prisma db push`
+- `npm run db:import:mysql`
+- `npm run db:validate:mysql`
+
+Se ja existirem dados aplicacionais, o processo para antes da importacao destrutiva e exige confirmacao explicita:
+
+```bash
+npm run db:setup:mysql -- --confirm-existing-data
+```
+
+Em alternativa, podes usar `BENTIX_CONFIRM_MYSQL_IMPORT=1` apenas nessa execucao.
+
 ## API REST para Pessoas
 
 ### Endpoints
