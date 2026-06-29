@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import EditPencilIcon, { editPencilButtonStyle } from '../components/EditPencilIcon'
+import { ViewportPage, ViewportScrollArea, ViewportShell } from '../components/ViewportLayout.js'
 import { fetchAuthSession } from '../../frontend/controllers/auth-controller.js'
 import {
   fetchDailyWorkNotes,
@@ -1061,8 +1062,8 @@ export default function DailyHoursPage() {
   }
 
   return (
-    <main style={pageStyle}>
-      <div style={shellStyle}>
+    <ViewportPage lockViewport style={pageStyle}>
+      <ViewportShell fillHeight style={shellStyle}>
         <section style={heroStyle}>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
             <div>
@@ -1110,8 +1111,9 @@ export default function DailyHoursPage() {
           </div>
         </section>
 
-        <section style={topBarStyle}>
-          <div style={statGridStyle}>
+        <ViewportScrollArea style={{ '--vp-page-scroll-gap': '24px' }}>
+          <section style={topBarStyle}>
+          <div className="vp-responsive-stat-grid" style={statGridStyle}>
             <article style={{ ...statCardStyle, gridColumn: 'span 2' }}>
               <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>
                 {isChef ? 'Obras do dia' : 'Obras atribuídas'}
@@ -1705,8 +1707,9 @@ export default function DailyHoursPage() {
           {error && <p style={{ margin: '18px 0 0', color: '#b42318' }}>{error}</p>}
           {success && <p style={{ margin: '18px 0 0', color: '#1f7a45' }}>{success}</p>}
         </section>
-      </div>
-    </main>
+        </ViewportScrollArea>
+      </ViewportShell>
+    </ViewportPage>
   )
 }
 

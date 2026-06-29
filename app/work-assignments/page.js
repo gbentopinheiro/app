@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import EditPencilIcon, { editPencilButtonStyle } from '../components/EditPencilIcon'
+import { ViewportPage, ViewportScrollArea, ViewportShell } from '../components/ViewportLayout.js'
 import {
   deleteWorkAssignment,
   listWorkAssignments,
@@ -405,8 +406,8 @@ export default function WorkAssignmentsPage() {
   ).size
 
   return (
-    <main style={pageStyle}>
-      <div style={shellStyle}>
+    <ViewportPage lockViewport style={pageStyle}>
+      <ViewportShell fillHeight style={shellStyle}>
         <section style={heroStyle}>
           <Link href="/" style={{ color: 'var(--vp-accent)', textDecoration: 'none', fontWeight: 700 }}>            {'<- '}Voltar ao menu
           </Link>
@@ -419,8 +420,9 @@ export default function WorkAssignmentsPage() {
 
         </section>
 
-        <section style={topBarStyle}>
-          <div style={statGridStyle}>
+        <ViewportScrollArea style={{ '--vp-page-scroll-gap': '24px' }}>
+          <section style={topBarStyle}>
+          <div className="vp-responsive-stat-grid" style={statGridStyle}>
             <article style={statCardStyle}>
               <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>Afetações</div>
               <div style={{ marginTop: '8px', fontSize: '32px', fontWeight: 700 }}>{totalAssignments}</div>
@@ -674,7 +676,8 @@ export default function WorkAssignmentsPage() {
             </div>
           )}
         </section>
-      </div>
-    </main>
+        </ViewportScrollArea>
+      </ViewportShell>
+    </ViewportPage>
   )
 }

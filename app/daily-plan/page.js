@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import EditPencilIcon, { editPencilButtonStyle } from '../components/EditPencilIcon'
 import TrashBinIcon, { trashBinButtonStyle } from '../components/TrashBinIcon'
+import { ViewportPage, ViewportScrollArea, ViewportShell } from '../components/ViewportLayout.js'
 import {
   deleteWorkAssignment,
   listWorkAssignments,
@@ -1106,8 +1107,8 @@ export default function DailyPlanPage() {
   const isDailyPlanLockedForDate = dailyPlanLockState.locked
 
   return (
-    <main style={pageStyle}>
-      <div style={shellStyle}>
+    <ViewportPage lockViewport style={pageStyle}>
+      <ViewportShell fillHeight style={shellStyle}>
         <section style={heroStyle}>
           <div style={topBarStyle}>
             <div>
@@ -1146,7 +1147,8 @@ export default function DailyPlanPage() {
             </div>
           </div>
         </section>
-        <section style={topSummaryGridStyle}>
+        <ViewportScrollArea style={{ '--vp-page-scroll-gap': '24px' }}>
+        <section className="vp-responsive-stat-grid" style={topSummaryGridStyle}>
           <article style={topSummaryCardStyle}>
             <div style={topSummaryLabelStyle}>Data</div>
             <input
@@ -1427,11 +1429,12 @@ export default function DailyPlanPage() {
 
           </section>
         )}
-      </div>
+        </ViewportScrollArea>
+      </ViewportShell>
 
       {showUnassignedPeopleModal && (
         <div style={modalBackdropStyle} onClick={closeUnassignedPeopleModal}>
-          <section style={modalCardStyle} onClick={(event) => event.stopPropagation()}>
+          <section className="vp-modal-card" style={modalCardStyle} onClick={(event) => event.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
               <div>
                 <p style={{ margin: 0, textTransform: 'uppercase', letterSpacing: '0.12em', fontSize: '12px', color: 'var(--vp-text-soft)' }}>
@@ -1490,7 +1493,7 @@ export default function DailyPlanPage() {
 
       {showAddModal && selectedWorkPlan && (
         <div style={modalBackdropStyle} onClick={closeAddModal}>
-          <section style={modalCardStyle} onClick={(event) => event.stopPropagation()}>
+          <section className="vp-modal-card" style={modalCardStyle} onClick={(event) => event.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center' }}>
               <div>
                 <h2 style={{ margin: 0 }}>{assignmentForm.id ? 'Editar afetação' : 'Adicionar afetação'}</h2>
@@ -1720,7 +1723,7 @@ export default function DailyPlanPage() {
 
       {showMessageModal && selectedWorkPlan && (
         <div style={modalBackdropStyle} onClick={closeMessageModal}>
-          <section style={modalCardStyle} onClick={(event) => event.stopPropagation()}>
+          <section className="vp-modal-card" style={modalCardStyle} onClick={(event) => event.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center' }}>
               <h2 style={{ margin: 0 }}>Importar mensagem</h2>
               <button type="button" onClick={closeMessageModal} style={closeButtonStyle} aria-label="Fechar">
@@ -1794,7 +1797,7 @@ export default function DailyPlanPage() {
           </section>
         </div>
       )}
-    </main>
+    </ViewportPage>
   )
 }
 

@@ -6,6 +6,7 @@ import { getOperationNotifications } from '../../lib/operation-notifications.js'
 import { hasPermission } from '../../lib/permissions.js'
 import { isResponsavelRole } from '../../lib/roles.js'
 import { getServerSession } from '../../lib/server-session.js'
+import { ViewportPage, ViewportScrollArea, ViewportShell } from '../components/ViewportLayout.js'
 
 const pageStyle = {
   minHeight: '100vh',
@@ -66,8 +67,8 @@ export default async function NotificationsPage() {
   })
 
   return (
-    <main style={pageStyle}>
-      <div style={shellStyle}>
+    <ViewportPage lockViewport style={pageStyle}>
+      <ViewportShell fillHeight style={shellStyle}>
         <section style={heroStyle}>
           <Link href="/" style={backLinkStyle}>
             Voltar ao menu
@@ -75,8 +76,10 @@ export default async function NotificationsPage() {
           <h1 style={titleStyle}>Central de notificações</h1>
         </section>
 
-        <NotificationsClient initialNotifications={notifications} />
-      </div>
-    </main>
+        <ViewportScrollArea style={{ '--vp-page-scroll-gap': '22px' }}>
+          <NotificationsClient initialNotifications={notifications} />
+        </ViewportScrollArea>
+      </ViewportShell>
+    </ViewportPage>
   )
 }

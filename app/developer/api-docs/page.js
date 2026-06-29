@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation'
 import { hasPermission } from '../../../lib/permissions.js'
 import { getServerSession } from '../../../lib/server-session.js'
 import SwaggerUiClient from './SwaggerUiClient'
+import { ViewportPage, ViewportScrollArea, ViewportShell } from '../../components/ViewportLayout.js'
 
 const swaggerUiCssPromise = readFile(
   join(process.cwd(), 'node_modules', 'swagger-ui-dist', 'swagger-ui.css'),
@@ -128,8 +129,8 @@ export default async function DeveloperApiDocsPage() {
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: swaggerUiCss }} />
-      <main style={pageStyle}>
-        <div style={shellStyle}>
+      <ViewportPage lockViewport style={pageStyle}>
+        <ViewportShell fillHeight style={shellStyle}>
           <section style={heroStyle}>
             <div style={heroTopStyle}>
               <span style={badgeStyle}>Bentix API Docs</span>
@@ -155,11 +156,13 @@ export default async function DeveloperApiDocsPage() {
             </div>
           </section>
 
-          <section style={panelStyle}>
-            <SwaggerUiClient specUrl="/api/docs/openapi.json" />
-          </section>
-        </div>
-      </main>
+          <ViewportScrollArea style={{ '--vp-page-scroll-gap': '22px' }}>
+            <section style={panelStyle}>
+              <SwaggerUiClient specUrl="/api/docs/openapi.json" />
+            </section>
+          </ViewportScrollArea>
+        </ViewportShell>
+      </ViewportPage>
     </>
   )
 }

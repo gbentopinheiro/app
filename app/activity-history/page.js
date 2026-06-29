@@ -12,6 +12,7 @@ import { hasPermission } from '../../lib/permissions.js'
 import { isDeveloperRole } from '../../lib/roles.js'
 import { getServerSession } from '../../lib/server-session.js'
 import { getAllWorksData } from '../../lib/works.js'
+import { ViewportPage, ViewportScrollArea, ViewportShell } from '../components/ViewportLayout.js'
 
 const pageStyle = {
   minHeight: '100vh',
@@ -288,8 +289,8 @@ export default async function ActivityHistoryPage({ searchParams }) {
   const exportHref = `/api/activity-history/export?${buildQueryString(history.filters)}`
 
   return (
-    <main style={pageStyle}>
-      <div style={shellStyle}>
+    <ViewportPage lockViewport style={pageStyle}>
+      <ViewportShell fillHeight style={shellStyle}>
         <section style={heroStyle}>
           <Link href={backHref} style={backLinkStyle}>
             {'<- '}{backLabel}
@@ -297,7 +298,8 @@ export default async function ActivityHistoryPage({ searchParams }) {
           <h1 style={titleStyle}>Historico de atividades</h1>
         </section>
 
-        <section style={panelStyle}>
+        <ViewportScrollArea style={{ '--vp-page-scroll-gap': '22px' }}>
+          <section style={panelStyle}>
           <h2 style={sectionTitleStyle}>Filtros</h2>
           <p style={sectionMetaStyle}>Escolhe o período, a data de referência, uma pessoa ou uma obra e exporta exatamente esse resultado.</p>
 
@@ -411,7 +413,8 @@ export default async function ActivityHistoryPage({ searchParams }) {
           events={history.noteEvents}
           emptyText="Sem notas para os filtros escolhidos."
         />
-      </div>
-    </main>
+        </ViewportScrollArea>
+      </ViewportShell>
+    </ViewportPage>
   )
 }

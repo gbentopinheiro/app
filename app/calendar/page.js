@@ -7,6 +7,7 @@ import { isFeatureEnabled } from '../../lib/feature-flags.js'
 import { getAllPeopleData } from '../../lib/people.js'
 import { hasPermission } from '../../lib/permissions.js'
 import { getServerSession } from '../../lib/server-session.js'
+import { ViewportPage, ViewportScrollArea, ViewportShell } from '../components/ViewportLayout.js'
 
 const pageStyle = {
   minHeight: '100vh',
@@ -80,8 +81,8 @@ export default async function CalendarPage() {
     .sort((left, right) => left.localeCompare(right, 'pt-PT'))
 
   return (
-    <main style={pageStyle}>
-      <div style={shellStyle}>
+    <ViewportPage lockViewport style={pageStyle}>
+      <ViewportShell fillHeight style={shellStyle}>
         <section style={heroStyle}>
           <Link href="/" style={backLinkStyle}>
             Voltar ao menu
@@ -89,14 +90,16 @@ export default async function CalendarPage() {
           <h1 style={titleStyle}>Calendário</h1>
         </section>
 
-        <CalendarClient
-          initialMonthKey={initialMonthKey}
-          weekdays={weekdays}
-          initialEvents={initialEvents}
-          todayDate={todayDate}
-          peopleNames={peopleNames}
-        />
-      </div>
-    </main>
+        <ViewportScrollArea style={{ '--vp-page-scroll-gap': '22px' }}>
+          <CalendarClient
+            initialMonthKey={initialMonthKey}
+            weekdays={weekdays}
+            initialEvents={initialEvents}
+            todayDate={todayDate}
+            peopleNames={peopleNames}
+          />
+        </ViewportScrollArea>
+      </ViewportShell>
+    </ViewportPage>
   )
 }

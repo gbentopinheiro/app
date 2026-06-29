@@ -6,6 +6,7 @@ import NotificationSettingsForm from './NotificationSettingsForm'
 import { hasPermission } from '../../lib/permissions.js'
 import { getServerSession } from '../../lib/server-session.js'
 import { getRoleLabel, isChefRole } from '../../lib/roles.js'
+import { ViewportPage, ViewportScrollArea, ViewportShell } from '../components/ViewportLayout.js'
 
 const pageStyle = {
   minHeight: '100vh',
@@ -121,8 +122,8 @@ export default async function AccountSettingsPage() {
   const shouldShowRole = !isChef
 
   return (
-    <main style={pageStyle}>
-      <div style={shellStyle}>
+    <ViewportPage lockViewport style={pageStyle}>
+      <ViewportShell fillHeight style={shellStyle}>
         <section style={heroStyle}>
           <div
             style={{
@@ -157,7 +158,8 @@ export default async function AccountSettingsPage() {
           </p>
         </section>
 
-        <section style={cardStyle}>
+        <ViewportScrollArea style={{ '--vp-page-scroll-gap': '22px' }}>
+          <section style={cardStyle}>
           <div style={gridStyle}>
             <div style={fieldStyle}>
               <p style={labelStyle}>Nome</p>
@@ -176,8 +178,9 @@ export default async function AccountSettingsPage() {
           </div>
           {isChef && <NotificationSettingsForm />}
           <ChangePasswordForm />
-        </section>
-      </div>
-    </main>
+          </section>
+        </ViewportScrollArea>
+      </ViewportShell>
+    </ViewportPage>
   )
 }

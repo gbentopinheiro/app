@@ -1,6 +1,7 @@
 ﻿import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import LogoutButton from './components/LogoutButton'
+import { ViewportPage, ViewportScrollArea, ViewportShell } from './components/ViewportLayout.js'
 import { isFeatureEnabled } from '../lib/feature-flags.js'
 import { getServerSession } from '../lib/server-session.js'
 import { isChefRole, isResponsavelRole } from '../lib/roles.js'
@@ -60,7 +61,7 @@ const containerStyle = {
   margin: '0 auto',
   height: '100%',
   display: 'grid',
-  gridTemplateRows: 'auto auto 1fr',
+  gridTemplateRows: 'auto minmax(0, 1fr)',
   gap: '16px',
   minHeight: 0,
 }
@@ -1224,8 +1225,8 @@ export default async function Home() {
     : modules
 
   return (
-    <main style={pageStyle}>
-      <div style={containerStyle}>
+    <ViewportPage lockViewport style={pageStyle}>
+      <ViewportShell fillHeight style={containerStyle}>
         <section style={heroStyle}>
           <div style={heroBlueGlowStyle} />
           <div style={heroOrangeGlowStyle} />
@@ -1283,6 +1284,7 @@ export default async function Home() {
           </div>
         </section>
 
+        <ViewportScrollArea style={{ '--vp-page-scroll-gap': '16px' }}>
         <section style={dashboardSectionStyle}>
           <div style={dashboardHeaderStyle}>
             <div>
@@ -1290,8 +1292,8 @@ export default async function Home() {
             </div>
           </div>
 
-          <div style={isResponsavel ? responsavelDashboardBodyStyle : dashboardBodyStyle}>
-            <div style={dashboardGridStyle}>
+          <div className="vp-responsive-split-grid-sm" style={isResponsavel ? responsavelDashboardBodyStyle : dashboardBodyStyle}>
+            <div className="vp-responsive-dashboard-grid" style={dashboardGridStyle}>
               {!isResponsavel && (
                 <div style={workStatusTableStyle}>
                   <h3 style={workStatusTitleStyle}>Estado operacional</h3>
@@ -1489,7 +1491,8 @@ export default async function Home() {
             </Link>
           ))}
         </section>
-      </div>
-    </main>
+        </ViewportScrollArea>
+      </ViewportShell>
+    </ViewportPage>
   )
 }

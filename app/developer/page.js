@@ -17,6 +17,7 @@ import { getAllPeopleData } from '../../lib/people.js'
 import { hasPermission } from '../../lib/permissions.js'
 import { getServerSession } from '../../lib/server-session.js'
 import { getAllWorksData } from '../../lib/works.js'
+import { ViewportPage, ViewportScrollArea, ViewportShell } from '../components/ViewportLayout.js'
 
 const pageStyle = {
   minHeight: '100vh',
@@ -431,8 +432,9 @@ export default async function DeveloperPage() {
     .sort((left, right) => Number(left.number || 0) - Number(right.number || 0))
 
   return (
-    <main style={pageStyle}>
-      <div style={shellStyle}>
+    <ViewportPage lockViewport style={pageStyle}>
+      <ViewportShell fillHeight style={shellStyle}>
+        <ViewportScrollArea style={{ '--vp-page-scroll-gap': '22px' }}>
         <DeveloperSectionGroup
           eyebrow="Visao Geral"
           heading="Resumo tecnico da area Developer"
@@ -599,7 +601,8 @@ export default async function DeveloperPage() {
         >
           <AuditTrailPanel />
         </DeveloperSectionGroup>
-      </div>
-    </main>
+        </ViewportScrollArea>
+      </ViewportShell>
+    </ViewportPage>
   )
 }

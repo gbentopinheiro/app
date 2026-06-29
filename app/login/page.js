@@ -5,6 +5,7 @@ import { useState } from 'react'
 import { loginWithProtectedPayload } from '../../frontend/controllers/auth-controller.js'
 import { createProtectedPayload } from '../../lib/browser-protected-payload.js'
 import { BentixLogo } from './components/BentixLogo'
+import { ViewportPage, ViewportScrollArea, ViewportShell } from '../components/ViewportLayout.js'
 
 const pageStyle = {
   height: '100vh',
@@ -344,8 +345,8 @@ export default function LoginPage() {
   }
 
   return (
-    <main style={pageStyle}>
-      <div className="login-shell" style={shellStyle}>
+    <ViewportPage lockViewport style={pageStyle}>
+      <ViewportShell className="login-shell" style={shellStyle}>
         <div style={shellBackdropStyle} aria-hidden="true">
           <div style={shellBackdropImageStyle} />
           <div style={shellBackdropOverlayStyle} />
@@ -378,7 +379,7 @@ export default function LoginPage() {
           </div>
         </section>
 
-        <section className="login-panel-wrap" style={panelWrapStyle}>
+        <ViewportScrollArea as="section" className="login-panel-wrap" style={panelWrapStyle}>
           <div className="login-panel" style={panelStyle}>
             <div style={panelHeaderStyle}>
               <h2 style={panelTitleStyle}>
@@ -442,8 +443,8 @@ export default function LoginPage() {
               </a>
             </p>
           </div>
-        </section>
-      </div>
+        </ViewportScrollArea>
+      </ViewportShell>
 
       <style jsx>{`
         .submit-button,
@@ -503,7 +504,7 @@ export default function LoginPage() {
           }
         }
       `}</style>
-    </main>
+    </ViewportPage>
   )
 }
 

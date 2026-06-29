@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import EditPencilIcon, { editPencilButtonStyle } from '../components/EditPencilIcon'
+import { ViewportPage, ViewportScrollArea, ViewportShell } from '../components/ViewportLayout.js'
 import {
   deleteClient as deleteClientRequest,
   listClients,
@@ -1641,8 +1642,8 @@ export function WorksPageView({ forcedClientId = '', dedicatedClientView = false
   }
 
   return (
-    <main style={pageStyle}>
-      <div style={shellStyle}>
+    <ViewportPage lockViewport style={pageStyle}>
+      <ViewportShell fillHeight style={shellStyle}>
         <section style={heroStyle}>
           <Link
             href={dedicatedClientView ? '/works' : '/'}
@@ -1666,8 +1667,9 @@ export function WorksPageView({ forcedClientId = '', dedicatedClientView = false
 
         </section>
 
+        <ViewportScrollArea style={{ '--vp-page-scroll-gap': '24px' }}>
         <section style={topBarStyle}>
-          <div style={statGridStyle}>
+          <div className="vp-responsive-stat-grid" style={statGridStyle}>
             <article style={statCardStyle}>
               <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>Clientes</div>
               <div style={{ marginTop: '8px', fontSize: '32px', fontWeight: 700 }}>{clients.length}</div>
@@ -1964,11 +1966,12 @@ export function WorksPageView({ forcedClientId = '', dedicatedClientView = false
           )}
         </section>
         )}
-      </div>
+        </ViewportScrollArea>
+      </ViewportShell>
 
       {showCreateForm && (
         <div style={modalBackdropStyle} onClick={cancelCreate}>
-          <section style={modalCardStyle} onClick={(event) => event.stopPropagation()}>
+          <section className="vp-modal-card" style={modalCardStyle} onClick={(event) => event.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center' }}>
               <div>
                 <h2 style={{ margin: 0 }}>{form.id ? 'Editar obra' : 'Adicionar nova obra'}</h2>
@@ -2124,7 +2127,7 @@ export function WorksPageView({ forcedClientId = '', dedicatedClientView = false
 
       {showClientForm && (
         <div style={modalBackdropStyle} onClick={cancelClientForm}>
-          <section style={{ ...modalCardStyle, width: 'min(760px, 100%)' }} onClick={(event) => event.stopPropagation()}>
+          <section className="vp-modal-card" style={{ ...modalCardStyle, width: 'min(760px, 100%)' }} onClick={(event) => event.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
               <div>
                 <h2 style={{ margin: 0 }}>{clientForm.id ? 'Editar cliente' : 'Novo cliente'}</h2>
@@ -2190,7 +2193,7 @@ export function WorksPageView({ forcedClientId = '', dedicatedClientView = false
 
       {showPricingChangeModal && (
         <div style={modalBackdropStyle} onClick={() => !submitting && setShowPricingChangeModal(false)}>
-          <section style={{ ...modalCardStyle, width: 'min(720px, 100%)' }} onClick={(event) => event.stopPropagation()}>
+          <section className="vp-modal-card" style={{ ...modalCardStyle, width: 'min(720px, 100%)' }} onClick={(event) => event.stopPropagation()}>
             <div style={{ display: 'grid', gap: '12px' }}>
               <h2 style={{ margin: 0 }}>Alteracao de precos da obra</h2>
               <p style={{ margin: 0, color: 'var(--vp-text-muted)' }}>
@@ -2218,7 +2221,7 @@ export function WorksPageView({ forcedClientId = '', dedicatedClientView = false
           </section>
         </div>
       )}
-    </main>
+    </ViewportPage>
   )
 }
 

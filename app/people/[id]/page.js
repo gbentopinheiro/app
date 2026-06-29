@@ -9,6 +9,7 @@ import { getApprovedAssignmentTotalCost, isAssignmentApproved } from '../../../l
 import { getRoleLabel, isResponsavelRole, roleRequiresAppAccess, roleUsesWorkScope } from '../../../lib/roles.js'
 import { getServerSession } from '../../../lib/server-session.js'
 import { getAllWorkAssignmentsData } from '../../../lib/work-assignments.js'
+import { ViewportPage, ViewportScrollArea, ViewportShell } from '../../components/ViewportLayout.js'
 
 export const dynamic = 'force-dynamic'
 
@@ -298,17 +299,19 @@ export default async function PersonDetailPage({ params }) {
 
   if (isResponsavelRole(session.role)) {
     return (
-      <main style={pageStyle}>
-        <div style={shellStyle}>
+      <ViewportPage lockViewport style={pageStyle}>
+        <ViewportShell fillHeight style={shellStyle}>
           <section style={heroStyle}>
             <Link href="/people" style={{ color: 'var(--vp-accent)', textDecoration: 'none', fontWeight: 700 }}>
               Voltar à gestão de pessoas
             </Link>
             <h1 style={{ margin: '10px 0 0', fontSize: '46px', lineHeight: 1.05 }}>{person.name}</h1>
           </section>
-          <PersonDocumentsPanel personId={person.id} initialDocuments={personDocuments} />
-        </div>
-      </main>
+          <ViewportScrollArea style={{ '--vp-page-scroll-gap': '24px' }}>
+            <PersonDocumentsPanel personId={person.id} initialDocuments={personDocuments} />
+          </ViewportScrollArea>
+        </ViewportShell>
+      </ViewportPage>
     )
   }
 
@@ -321,8 +324,8 @@ export default async function PersonDetailPage({ params }) {
   const workedDays = new Set(assignments.map(assignment => assignment.date).filter(Boolean)).size
 
   return (
-    <main style={pageStyle}>
-      <div style={shellStyle}>
+    <ViewportPage lockViewport style={pageStyle}>
+      <ViewportShell fillHeight style={shellStyle}>
         <section style={heroStyle}>
           <Link href="/people" style={{ color: 'var(--vp-accent)', textDecoration: 'none', fontWeight: 700 }}>
             Voltar à gestão de pessoas
@@ -333,7 +336,8 @@ export default async function PersonDetailPage({ params }) {
           </p>}
         </section>
 
-        <section style={statGridStyle}>
+        <ViewportScrollArea style={{ '--vp-page-scroll-gap': '24px' }}>
+          <section style={statGridStyle}>
           <article style={statCardStyle}>
             <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>Tipo</div>
             <div style={{ marginTop: '8px', fontSize: '28px', fontWeight: 700 }}>
@@ -523,8 +527,9 @@ export default async function PersonDetailPage({ params }) {
             </div>
           </section>
         )}
-      </div>
-    </main>
+        </ViewportScrollArea>
+      </ViewportShell>
+    </ViewportPage>
   )
 }
 

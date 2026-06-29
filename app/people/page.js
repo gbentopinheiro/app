@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 import * as XLSX from 'xlsx'
 import EditPencilIcon, { editPencilButtonStyle } from '../components/EditPencilIcon'
+import { ViewportPage, ViewportScrollArea, ViewportShell } from '../components/ViewportLayout.js'
 import {
   deletePerson,
   listPeople,
@@ -2429,8 +2430,8 @@ export default function PeoplePage() {
   }
 
   return (
-    <main style={pageStyle}>
-      <div style={shellStyle}>
+    <ViewportPage lockViewport style={pageStyle}>
+      <ViewportShell fillHeight style={shellStyle}>
         <section style={heroStyle}>
           <Link href="/" style={{ color: 'var(--vp-accent)', textDecoration: 'none', fontWeight: 700 }}>
             Voltar ao menu
@@ -2445,9 +2446,10 @@ export default function PeoplePage() {
           </h1>
         </section>
 
+        <ViewportScrollArea style={{ '--vp-page-scroll-gap': '24px' }}>
         {canManagePeople && (
           <section style={topBarStyle}>
-            <div style={statGridStyle}>
+            <div className="vp-responsive-stat-grid" style={statGridStyle}>
               <article style={statCardStyle}>
                 <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>Pessoas totais</div>
                 <div style={{ marginTop: '8px', fontSize: '32px', fontWeight: 700 }}>{people.length}</div>
@@ -2622,7 +2624,7 @@ export default function PeoplePage() {
           </section>
         )}
 
-        <div style={canManagePeople ? layoutStyle : { display: 'grid' }}>
+        <div className={canManagePeople ? 'vp-responsive-split-grid' : ''} style={canManagePeople ? layoutStyle : { display: 'grid' }}>
           <section style={panelStyle}>
             <div style={isResponsavelView ? responsavelListHeaderStyle : {}}>
               <h2 style={{ marginTop: 0, marginBottom: isResponsavelView ? 0 : undefined }}>Lista de pessoas</h2>
@@ -2845,11 +2847,12 @@ export default function PeoplePage() {
             </section>
           )}
         </div>
-      </div>
+        </ViewportScrollArea>
+      </ViewportShell>
 
       {canManagePeople && showExportModal && (
         <div style={modalBackdropStyle} onClick={closeExportModal}>
-          <section style={modalCardStyle} onClick={(event) => event.stopPropagation()}>
+          <section className="vp-modal-card" style={modalCardStyle} onClick={(event) => event.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center' }}>
               <div>
                 <h2 style={{ margin: 0 }}>Exportar pessoas</h2>
@@ -2996,7 +2999,7 @@ export default function PeoplePage() {
           </section>
         </div>
       )}
-    </main>
+    </ViewportPage>
   )
 }
 

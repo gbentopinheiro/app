@@ -6,6 +6,7 @@ import NotificationSettingsForm from '../../../account-settings/NotificationSett
 import MobileNotificationPermissionCard from './MobileNotificationPermissionCard'
 import { getServerSession } from '../../../../lib/server-session.js'
 import { getRoleLabel, isChefRole } from '../../../../lib/roles.js'
+import { ViewportPage, ViewportScrollArea, ViewportShell } from '../../../components/ViewportLayout.js'
 
 const pageStyle = {
   minHeight: '100vh',
@@ -132,8 +133,8 @@ export default async function ChefMobileSettingsPage() {
   const isChef = isChefRole(session.role)
 
   return (
-    <main style={pageStyle}>
-      <div style={phoneShellStyle}>
+    <ViewportPage lockViewport style={pageStyle}>
+      <ViewportShell fillHeight style={phoneShellStyle}>
         <section style={heroStyle}>
           <div style={topBarStyle}>
             <Link href="/mobile/chef" style={backLinkStyle}>
@@ -153,7 +154,8 @@ export default async function ChefMobileSettingsPage() {
           <h1 style={titleStyle}>Definições</h1>
         </section>
 
-        <section style={cardStyle}>
+        <ViewportScrollArea style={{ '--vp-page-scroll-gap': '14px' }}>
+          <section style={cardStyle}>
           <h2 style={sectionTitleStyle}>Conta</h2>
           <div style={infoGridStyle}>
             <div style={infoCardStyle}>
@@ -188,7 +190,8 @@ export default async function ChefMobileSettingsPage() {
             />
           </section>
         ) : null}
-      </div>
-    </main>
+        </ViewportScrollArea>
+      </ViewportShell>
+    </ViewportPage>
   )
 }

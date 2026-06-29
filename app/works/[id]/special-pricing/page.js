@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 import { listPeople } from '../../../../frontend/controllers/people-controller.js'
+import { ViewportPage, ViewportScrollArea, ViewportShell } from '../../../components/ViewportLayout.js'
 import {
   getWork,
   saveWork as saveWorkRequest,
@@ -325,8 +326,8 @@ export default function WorkSpecialPricingPage() {
   }
 
   return (
-    <main style={pageStyle}>
-      <div style={shellStyle}>
+    <ViewportPage lockViewport style={pageStyle}>
+      <ViewportShell fillHeight style={shellStyle}>
         <section style={heroPanelStyle}>
           <Link href={`/works/${workId}`} style={{ color: 'var(--vp-accent)', textDecoration: 'none', fontWeight: 700 }}>
             Voltar à obra
@@ -350,6 +351,7 @@ export default function WorkSpecialPricingPage() {
           )}
         </section>
 
+        <ViewportScrollArea style={{ '--vp-page-scroll-gap': '24px' }}>
         {!loading && !error && work && (
           <section style={panelStyle}>
             <p style={{ marginTop: 0, color: 'var(--vp-text-muted)' }}>
@@ -445,7 +447,7 @@ export default function WorkSpecialPricingPage() {
 
         {showPricingChangeModal && (
           <div style={modalBackdropStyle} onClick={() => !saving && setShowPricingChangeModal(false)}>
-            <section style={modalCardStyle} onClick={(event) => event.stopPropagation()}>
+            <section className="vp-modal-card" style={modalCardStyle} onClick={(event) => event.stopPropagation()}>
               <div style={{ display: 'grid', gap: '12px' }}>
                 <h2 style={{ margin: 0 }}>Alteracao de precos da obra</h2>
                 <p style={{ margin: 0, color: 'var(--vp-text-muted)' }}>
@@ -473,7 +475,8 @@ export default function WorkSpecialPricingPage() {
             </section>
           </div>
         )}
-      </div>
-    </main>
+        </ViewportScrollArea>
+      </ViewportShell>
+    </ViewportPage>
   )
 }

@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import EditPencilIcon, { editPencilButtonStyle } from '../components/EditPencilIcon'
+import { ViewportPage, ViewportScrollArea, ViewportShell } from '../components/ViewportLayout.js'
 import {
   deleteMaterial,
   listMaterials,
@@ -608,8 +609,8 @@ export default function MaterialsClient() {
   }
 
   return (
-    <main style={pageStyle}>
-      <div style={shellStyle}>
+    <ViewportPage lockViewport style={pageStyle}>
+      <ViewportShell fillHeight style={shellStyle}>
         <section style={heroStyle}>
           <div style={heroGlowStyle} />
           <div style={heroContentStyle}>
@@ -630,7 +631,7 @@ export default function MaterialsClient() {
               </p>
             </div>
 
-            <div style={statsGridStyle}>
+            <div className="vp-responsive-stat-grid" style={statsGridStyle}>
               <article style={heroStatCardStyle}>
                 <p style={heroStatLabelStyle}>Materiais totais</p>
                 <p style={heroStatValueStyle}>{materials.length}</p>
@@ -650,6 +651,7 @@ export default function MaterialsClient() {
           </div>
         </section>
 
+        <ViewportScrollArea style={{ '--vp-page-scroll-gap': '24px' }}>
         {showForm && (
           <section style={panelStyle}>
             <div style={toolbarStyle}>
@@ -746,7 +748,7 @@ export default function MaterialsClient() {
           </section>
         )}
 
-        <section style={layoutStyle}>
+        <section className="vp-responsive-split-grid" style={layoutStyle}>
           <section style={panelStyle}>
             <div style={listHeaderStyle}>
               <div style={toolbarStyle}>
@@ -878,7 +880,8 @@ export default function MaterialsClient() {
 
         {!showForm && error ? <p style={messageErrorStyle}>{error}</p> : null}
         {!showForm && success ? <p style={messageSuccessStyle}>{success}</p> : null}
-      </div>
-    </main>
+        </ViewportScrollArea>
+      </ViewportShell>
+    </ViewportPage>
   )
 }

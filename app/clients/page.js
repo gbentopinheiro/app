@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import EditPencilIcon, { editPencilButtonStyle } from '../components/EditPencilIcon'
+import { ViewportPage, ViewportScrollArea, ViewportShell } from '../components/ViewportLayout.js'
 import {
   deleteClient,
   listClients,
@@ -245,8 +246,8 @@ export default function ClientsPage() {
   const selectedClient = clients.find(client => client.id === selectedClientId) || null
 
   return (
-    <main style={pageStyle}>
-      <div style={shellStyle}>
+    <ViewportPage lockViewport style={pageStyle}>
+      <ViewportShell fillHeight style={shellStyle}>
         <section style={heroStyle}>
           <Link href="/" style={{ color: 'var(--vp-accent)', textDecoration: 'none', fontWeight: 700 }}>
             Voltar ao menu
@@ -260,6 +261,7 @@ export default function ClientsPage() {
 
         </section>
 
+        <ViewportScrollArea style={{ '--vp-page-scroll-gap': '24px' }}>
         <section style={{ display: 'flex', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' }}>
           <div style={panelStyle}>
             <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>Clientes totais</div>
@@ -338,7 +340,10 @@ export default function ClientsPage() {
           </section>
         )}
 
-        <section style={{ display: 'grid', gridTemplateColumns: 'minmax(320px, 0.95fr) minmax(0, 1.3fr)', gap: '24px' }}>
+        <section
+          className="vp-responsive-split-grid"
+          style={{ display: 'grid', gridTemplateColumns: 'minmax(320px, 0.95fr) minmax(0, 1.3fr)', gap: '24px' }}
+        >
           <section style={panelStyle}>
             <h2 style={{ marginTop: 0 }}>Lista de clientes</h2>
             {loading && <p>A carregar clientes...</p>}
@@ -401,7 +406,8 @@ export default function ClientsPage() {
             )}
           </section>
         </section>
-      </div>
-    </main>
+        </ViewportScrollArea>
+      </ViewportShell>
+    </ViewportPage>
   )
 }

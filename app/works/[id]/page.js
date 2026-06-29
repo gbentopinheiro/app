@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 import * as XLSX from 'xlsx'
 import EditPencilIcon, { editPencilButtonStyle } from '../../components/EditPencilIcon'
+import { ViewportPage, ViewportScrollArea, ViewportShell } from '../../components/ViewportLayout.js'
 import { listWorkAssignments } from '../../../frontend/controllers/work-assignments-controller.js'
 import { getWork } from '../../../frontend/controllers/works-controller.js'
 import { getApprovedAssignmentHours, getApprovedAssignmentTotalCost } from '../../../lib/work-assignment-approval.js'
@@ -1500,8 +1501,8 @@ export default function WorkDetailPage() {
   }
 
   return (
-    <main style={pageStyle}>
-      <div style={shellStyle}>
+    <ViewportPage lockViewport style={pageStyle}>
+      <ViewportShell fillHeight style={shellStyle}>
         <section style={heroPanelStyle}>
           <Link
             href={work?.clientId ? `/works/client/${work.clientId}` : '/works'}
@@ -1523,9 +1524,10 @@ export default function WorkDetailPage() {
           )}
         </section>
 
+        <ViewportScrollArea style={{ '--vp-page-scroll-gap': '24px' }}>
         {!loading && !error && work && (
           <>
-            <section style={statGridStyle}>
+            <section className="vp-responsive-stat-grid" style={statGridStyle}>
               <article style={statCardStyle}>
                 <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>Estado</div>
                 <div style={{ marginTop: '8px', fontSize: '28px', fontWeight: 700 }}>{getWorkStatusLabel(work.status)}</div>
@@ -1669,11 +1671,12 @@ export default function WorkDetailPage() {
             </section>
           </>
         )}
-      </div>
+        </ViewportScrollArea>
+      </ViewportShell>
 
       {showClientModal && client && (
         <div style={modalBackdropStyle} onClick={closeClientModal}>
-          <section style={modalCardStyle} onClick={(event) => event.stopPropagation()}>
+          <section className="vp-modal-card" style={modalCardStyle} onClick={(event) => event.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
               <div>
                 <p style={{ margin: 0, textTransform: 'uppercase', letterSpacing: '0.12em', fontSize: '12px', color: 'var(--vp-text-soft)' }}>
@@ -1702,7 +1705,7 @@ export default function WorkDetailPage() {
 
       {showExportModal && (
         <div style={modalBackdropStyle} onClick={closeExportModal}>
-          <section style={modalCardStyle} onClick={(event) => event.stopPropagation()}>
+          <section className="vp-modal-card" style={modalCardStyle} onClick={(event) => event.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
               <div>
                 <p style={{ margin: 0, textTransform: 'uppercase', letterSpacing: '0.12em', fontSize: '12px', color: 'var(--vp-text-soft)' }}>
@@ -1746,6 +1749,6 @@ export default function WorkDetailPage() {
           </section>
         </div>
       )}
-    </main>
+    </ViewportPage>
   )
 }

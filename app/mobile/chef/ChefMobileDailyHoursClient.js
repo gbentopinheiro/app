@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import LogoutButton from '../../components/LogoutButton'
+import { ViewportPage, ViewportScrollArea, ViewportShell } from '../../components/ViewportLayout.js'
 import {
   fetchChefDailyHoursData,
   fetchChefWorkNotes,
@@ -974,8 +975,8 @@ export default function ChefMobileDailyHoursClient({ initialSession, previewMode
   }
 
   return (
-    <main style={pageStyle}>
-      <div style={phoneShellStyle}>
+    <ViewportPage lockViewport style={pageStyle}>
+      <ViewportShell fillHeight style={phoneShellStyle}>
         <section style={heroStyle}>
           <h1 style={titleStyle}>Registo Diário</h1>
 
@@ -999,6 +1000,7 @@ export default function ChefMobileDailyHoursClient({ initialSession, previewMode
           </div>
         </section>
 
+        <ViewportScrollArea style={{ '--vp-page-scroll-gap': '14px' }}>
         {error ? <p style={messageStyle('error')}>{error}</p> : null}
         {success ? <p style={messageStyle('success')}>{success}</p> : null}
 
@@ -1110,7 +1112,7 @@ export default function ChefMobileDailyHoursClient({ initialSession, previewMode
             ) : null}
           </div>
 
-          <div style={{ marginTop: '16px', ...statGridStyle }}>
+          <div className="vp-responsive-stat-grid" style={{ marginTop: '16px', ...statGridStyle }}>
             <div style={statCardStyle}>
               <div style={{ color: 'var(--vp-text-muted)', fontSize: '11px', fontWeight: 800, letterSpacing: '0.08em' }}>PESSOAS</div>
               <div style={{ marginTop: '6px', fontSize: '24px', fontWeight: 900 }}>{selectedWorkEntries.length}</div>
@@ -1268,7 +1270,8 @@ export default function ChefMobileDailyHoursClient({ initialSession, previewMode
             })}
           </div>
         </section>
-      </div>
+        </ViewportScrollArea>
+      </ViewportShell>
 
       <div style={submitSectionStyle}>
         <button
@@ -1286,6 +1289,6 @@ export default function ChefMobileDailyHoursClient({ initialSession, previewMode
                 : 'Sem registos pendentes'}
         </button>
       </div>
-    </main>
+    </ViewportPage>
   )
 }

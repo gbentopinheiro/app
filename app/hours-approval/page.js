@@ -7,6 +7,7 @@ import {
   listWorkAssignments,
 } from '../../frontend/controllers/work-assignments-controller.js'
 import { isAssignmentApproved } from '../../lib/work-assignment-approval.js'
+import { ViewportPage, ViewportScrollArea, ViewportShell } from '../components/ViewportLayout.js'
 
 const pageStyle = {
   minHeight: '100vh',
@@ -255,8 +256,8 @@ export default function HoursApprovalPage() {
   }
 
   return (
-    <main style={pageStyle}>
-      <div style={shellStyle}>
+    <ViewportPage lockViewport style={pageStyle}>
+      <ViewportShell fillHeight style={shellStyle}>
         <section style={heroStyle}>
           <Link href="/" style={{ color: 'var(--vp-accent)', textDecoration: 'none', fontWeight: 700 }}>
             Voltar ao menu
@@ -270,8 +271,9 @@ export default function HoursApprovalPage() {
 
         </section>
 
-        <section style={topBarStyle}>
-          <div style={statGridStyle}>
+        <ViewportScrollArea style={{ '--vp-page-scroll-gap': '24px' }}>
+          <section style={topBarStyle}>
+          <div className="vp-responsive-stat-grid" style={statGridStyle}>
             <article style={statCardStyle}>
               <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>
                 Pendentes de Aprovação
@@ -382,7 +384,8 @@ export default function HoursApprovalPage() {
             </div>
           </section>
         )}
-      </div>
-    </main>
+        </ViewportScrollArea>
+      </ViewportShell>
+    </ViewportPage>
   )
 }
