@@ -121,6 +121,7 @@ const modalCardStyle = {
   width: 'min(920px, 100%)',
   maxHeight: 'calc(100vh - 48px)',
   overflowY: 'auto',
+  boxSizing: 'border-box',
   background: 'var(--vp-surface-soft)',
   border: '1px solid var(--vp-border)',
   borderRadius: '28px',
@@ -257,6 +258,11 @@ const primaryFieldsRowStyle = {
 
 const wideFieldStyle = {
   gridColumn: '1 / -1',
+}
+
+const personModalPrimaryFieldsStyle = {
+  ...primaryFieldsRowStyle,
+  gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
 }
 
 const primaryButtonStyle = {
@@ -2720,13 +2726,8 @@ export default function PeoplePage() {
                 <form onSubmit={handleSubmit} style={{ display: 'grid', gap: '14px', marginTop: '18px' }}>
                   <div style={{ display: 'grid', gap: '12px' }}>
                     <p style={formSectionTitleStyle}>Dados da pessoa</p>
-                    <div
-                      style={{
-                        ...primaryFieldsRowStyle,
-                        gridTemplateColumns: '420px 220px 220px 220px',
-                      }}
-                    >
-                      <label style={{ ...mediumFieldStyle, maxWidth: '420px' }}>
+                    <div style={personModalPrimaryFieldsStyle}>
+                      <label style={{ ...labelStyle, ...wideFieldStyle }}>
                         Nome
                         <input type="text" name="name" value={form.name} onChange={handleChange} style={inputStyle} />
                         {formErrors.name && <span style={{ color: '#b42318', fontSize: '13px' }}>{formErrors.name}</span>}
