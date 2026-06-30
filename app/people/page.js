@@ -15,6 +15,7 @@ import { listAccessIdentities } from '../../frontend/controllers/access-identiti
 import { getAuthSession } from '../../frontend/controllers/auth-controller.js'
 import { listWorkAssignments } from '../../frontend/controllers/work-assignments-controller.js'
 import { createProtectedPayload } from '../../lib/browser-protected-payload.js'
+import { normalizePersonPricingInput } from '../../lib/person-pricing.js'
 import { getApprovedAssignmentHours } from '../../lib/work-assignment-approval.js'
 import {
   CHEF_CATEGORY_CARPINTEIRO,
@@ -2034,10 +2035,11 @@ export default function PeoplePage() {
     }
 
     const nextErrors = {}
+    const normalizedPricing = normalizePersonPricingInput(form)
 
     if (!form.name.trim()) nextErrors.name = 'O nome é obrigatório.'
-    if (form.monthlyPrice === '' || Number(form.monthlyPrice) < 0) nextErrors.monthlyPrice = 'O preço mensal não pode ser negativo.'
-    if (form.price === '' || Number(form.price) < 0) {
+    if (normalizedPricing.monthlyPrice < 0) nextErrors.monthlyPrice = 'O preço mensal não pode ser negativo.'
+    if (normalizedPricing.price < 0) {
       nextErrors.price = 'O preço hora não pode ser negativo.'
     }
     const wantsAccessConfiguration = roleNeedsAccess
@@ -2150,10 +2152,11 @@ export default function PeoplePage() {
         return
       }
 
+      const normalizedPricing = normalizePersonPricingInput(form)
       const payload = {
         name: form.name,
-        price: Number(form.price),
-        monthlyPrice: Number(form.monthlyPrice),
+        price: normalizedPricing.price,
+        monthlyPrice: normalizedPricing.monthlyPrice,
         role: form.role,
         chefCategory: formUsesChefCategory ? form.chefCategory : null,
         accessIdentity: roleNeedsAccess

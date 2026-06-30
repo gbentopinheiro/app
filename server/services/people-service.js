@@ -14,6 +14,7 @@ import {
   updatePersonData,
 } from '../../lib/people.js'
 import { hasPermission } from '../../lib/permissions.js'
+import { normalizePersonPricingInput } from '../../lib/person-pricing.js'
 import {
   DEFAULT_ROLE,
   normalizeChefCategory,
@@ -235,6 +236,7 @@ export async function createPersonService(session, body) {
   }
 
   const { name, price, monthlyPrice, role, chefCategory, accessIdentity } = body || {}
+  const normalizedPricing = normalizePersonPricingInput({ price, monthlyPrice })
 
   if (!canCreateFull) {
     if (!String(name || '').trim()) {
@@ -259,11 +261,11 @@ export async function createPersonService(session, body) {
     }
   }
 
-  if (!name || price === undefined || monthlyPrice === undefined) {
-    throw new HttpError(400, 'Nome, preco e monthlyPrice sao obrigatorios')
+  if (!String(name || '').trim()) {
+    throw new HttpError(400, 'Nome obrigatorio.')
   }
 
-  if (Number(price) < 0 || Number(monthlyPrice) < 0) {
+  if (normalizedPricing.price < 0 || normalizedPricing.monthlyPrice < 0) {
     throw new HttpError(400, 'Preco e monthlyPrice nao podem ser negativos')
   }
 
@@ -272,8 +274,8 @@ export async function createPersonService(session, body) {
     const normalizedChefCategory = normalizeChefCategoryForRole(normalizedRole, chefCategory)
     const newPerson = await createPersonData({
       name,
-      price,
-      monthlyPrice,
+      price: normalizedPricing.price,
+      monthlyPrice: normalizedPricing.monthlyPrice,
       role: normalizedRole,
       chefCategory: normalizedChefCategory,
     })
@@ -313,11 +315,14 @@ export async function updatePersonService(session, id, body) {
     throw new HttpError(404, 'Pessoa nao encontrada')
   }
 
-  if (price !== undefined && Number(price) < 0) {
+  const normalizedPrice = price !== undefined ? normalizePersonPricingInput({ price }).price : undefined
+  const normalizedMonthlyPrice = monthlyPrice !== undefined ? normalizePersonPricingInput({ monthlyPrice }).monthlyPrice : undefined
+
+  if (normalizedPrice !== undefined && normalizedPrice < 0) {
     throw new HttpError(400, 'Preco nao pode ser negativo')
   }
 
-  if (monthlyPrice !== undefined && Number(monthlyPrice) < 0) {
+  if (normalizedMonthlyPrice !== undefined && normalizedMonthlyPrice < 0) {
     throw new HttpError(400, 'monthlyPrice nao pode ser negativo')
   }
 
@@ -327,8 +332,8 @@ export async function updatePersonService(session, id, body) {
     const nextChefCategory = normalizeChefCategoryForRole(nextRole, nextChefCategoryInput)
     const updatedPerson = await updatePersonData(id, {
       name,
-      price,
-      monthlyPrice,
+      price: normalizedPrice,
+      monthlyPrice: normalizedMonthlyPrice,
       role: nextRole,
       chefCategory: nextChefCategory,
     })

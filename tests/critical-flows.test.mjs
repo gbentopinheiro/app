@@ -158,10 +158,12 @@ const { canApproveHours, createSessionToken, getDefaultPathForRole, readSessionT
 const { getAllClients } = await import('../lib/clients.js')
 const { decryptProtectedPayload, getLoginTransportPublicKey } = await import('../lib/login-transport.js')
 const { verifyPassword } = await import('../lib/passwords.js')
+const { normalizePersonPricingInput } = await import('../lib/person-pricing.js')
 const { getEntityRoleLabel, getRoleDisplayLabel } = await import('../lib/roles.js')
 const { buildOperationalWorkStatuses } = await import('../lib/work-operation-status.js')
 const { getNextWorkNumber } = await import('../lib/work-numbering.js')
 const { deleteClientService } = await import('../server/services/clients-service.js')
+const { createPersonService } = await import('../server/services/people-service.js')
 const { deleteWorkService } = await import('../server/services/works-service.js')
 const {
   createWorkAssignment,
@@ -241,6 +243,43 @@ test('especializacao do chefe de segunda usa labels de exibicao sem criar novos 
   assert.equal(getRoleDisplayLabel('chef_segunda', ''), 'Chefe de segunda')
   assert.equal(getEntityRoleLabel({ role: 'chef_segunda', chefCategory: 'carpinteiro' }), 'Chefe de Carpinteiros')
   assert.equal(getEntityRoleLabel({ role: 'chef_primeira' }), 'Chefe')
+})
+
+test('normaliza precos vazios para zero sem bloquear o outro tipo de preco', () => {
+  assert.deepEqual(normalizePersonPricingInput({ price: '15', monthlyPrice: '' }), {
+    price: 15,
+    monthlyPrice: 0,
+  })
+  assert.deepEqual(normalizePersonPricingInput({ price: '', monthlyPrice: '1200' }), {
+    price: 0,
+    monthlyPrice: 1200,
+  })
+})
+
+test('criar pessoa aceita apenas preco hora ou apenas preco mensal', async () => {
+  const session = {
+    role: 'admin',
+    accountType: 'admin',
+    accessProfile: 'admin',
+  }
+
+  const hourlyPerson = await createPersonService(session, {
+    name: 'Pessoa Horaria',
+    price: 15,
+    role: 'carpinteiro',
+  })
+  const monthlyPerson = await createPersonService(session, {
+    name: 'Pessoa Mensal',
+    monthlyPrice: 1200,
+    role: 'carpinteiro',
+  })
+
+  assert.equal(hourlyPerson.price, 15)
+  assert.equal(hourlyPerson.monthlyPrice, 0)
+  assert.equal(hourlyPerson.isMonthlyBilling, false)
+  assert.equal(monthlyPerson.price, 0)
+  assert.equal(monthlyPerson.monthlyPrice, 1200)
+  assert.equal(monthlyPerson.isMonthlyBilling, true)
 })
 
 test('propoe automaticamente o proximo numero de obra', () => {
