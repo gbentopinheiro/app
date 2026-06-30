@@ -159,6 +159,7 @@ const { getAllClients } = await import('../lib/clients.js')
 const { decryptProtectedPayload, getLoginTransportPublicKey } = await import('../lib/login-transport.js')
 const { verifyPassword } = await import('../lib/passwords.js')
 const { getEntityRoleLabel, getRoleDisplayLabel } = await import('../lib/roles.js')
+const { getNextWorkNumber } = await import('../lib/work-numbering.js')
 const { deleteClientService } = await import('../server/services/clients-service.js')
 const { deleteWorkService } = await import('../server/services/works-service.js')
 const {
@@ -239,6 +240,15 @@ test('especializacao do chefe de segunda usa labels de exibicao sem criar novos 
   assert.equal(getRoleDisplayLabel('chef_segunda', ''), 'Chefe de segunda')
   assert.equal(getEntityRoleLabel({ role: 'chef_segunda', chefCategory: 'carpinteiro' }), 'Chefe de Carpinteiros')
   assert.equal(getEntityRoleLabel({ role: 'chef_primeira' }), 'Chefe')
+})
+
+test('propoe automaticamente o proximo numero de obra', () => {
+  assert.equal(getNextWorkNumber(getAllWorks()), 102)
+  assert.equal(getNextWorkNumber([]), 1)
+  assert.equal(
+    getNextWorkNumber([{ number: 8 }, { number: '15' }, { number: '' }, { number: null }]),
+    16,
+  )
 })
 
 test('criar afetação cria o work plan pela empresa da obra', () => {

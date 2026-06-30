@@ -16,6 +16,7 @@ import {
   saveWork as saveWorkRequest,
 } from '../../frontend/controllers/works-controller.js'
 import { listWorkAssignments } from '../../frontend/controllers/work-assignments-controller.js'
+import { getNextWorkNumber } from '../../lib/work-numbering.js'
 import { buildWorkPricingSnapshot, hasWorkPricingChanges } from '../../lib/work-pricing.js'
 
 const pageStyle = {
@@ -923,6 +924,7 @@ export function WorksPageView({ forcedClientId = '', dedicatedClientView = false
   const [showPricingChangeModal, setShowPricingChangeModal] = useState(false)
   const [pendingWorkPayload, setPendingWorkPayload] = useState(null)
   const [handledEditId, setHandledEditId] = useState('')
+  const [shouldSyncCreateWorkNumber, setShouldSyncCreateWorkNumber] = useState(false)
   const notesTextareaRef = useRef(null)
 
   useEffect(() => {
@@ -972,6 +974,25 @@ export function WorksPageView({ forcedClientId = '', dedicatedClientView = false
   useEffect(() => {
     autoResizeTextarea(notesTextareaRef.current)
   }, [form.notes, showCreateForm])
+
+  const nextWorkNumber = useMemo(() => String(getNextWorkNumber(works)), [works])
+
+  useEffect(() => {
+    if (!showCreateForm || form.id || !shouldSyncCreateWorkNumber) {
+      return
+    }
+
+    setForm(current => {
+      if (current.id || String(current.number || '') === nextWorkNumber) {
+        return current
+      }
+
+      return {
+        ...current,
+        number: nextWorkNumber,
+      }
+    })
+  }, [form.id, nextWorkNumber, shouldSyncCreateWorkNumber, showCreateForm])
 
   const selectedClient = useMemo(
     () => clients.find(client => String(client.id) === String(selectedClientId)) || null,
@@ -1227,6 +1248,9 @@ export function WorksPageView({ forcedClientId = '', dedicatedClientView = false
 
   function handleChange(event) {
     const { name, value } = event.target
+    if (name === 'number') {
+      setShouldSyncCreateWorkNumber(false)
+    }
     setForm(current => ({ ...current, [name]: value }))
     setFormErrors(current => ({ ...current, [name]: '' }))
   }
@@ -1295,8 +1319,10 @@ export function WorksPageView({ forcedClientId = '', dedicatedClientView = false
   function startCreate() {
     setForm({
       ...emptyWorkForm,
+      number: nextWorkNumber,
       clientId: selectedClientId ? String(selectedClientId) : '',
     })
+    setShouldSyncCreateWorkNumber(true)
     setOriginalPricingSnapshot(emptyWorkPricingSnapshot)
     setShowCreateForm(true)
     setSuccess('')
@@ -1355,6 +1381,7 @@ export function WorksPageView({ forcedClientId = '', dedicatedClientView = false
   function cancelCreate() {
     setShowCreateForm(false)
     setForm(emptyWorkForm)
+    setShouldSyncCreateWorkNumber(false)
     setOriginalPricingSnapshot(emptyWorkPricingSnapshot)
     setShowPricingChangeModal(false)
     setPendingWorkPayload(null)
@@ -1379,6 +1406,7 @@ export function WorksPageView({ forcedClientId = '', dedicatedClientView = false
       workingDays: Array.isArray(work.workingDays) ? work.workingDays : defaultWorkingDays,
       notes: work.notes ?? '',
     })
+    setShouldSyncCreateWorkNumber(false)
     setOriginalPricingSnapshot(buildWorkPricingSnapshot(work))
     setShowCreateForm(true)
     setSuccess('')
@@ -1439,6 +1467,7 @@ export function WorksPageView({ forcedClientId = '', dedicatedClientView = false
     setShowPricingChangeModal(false)
     setPendingWorkPayload(null)
     setForm(emptyWorkForm)
+    setShouldSyncCreateWorkNumber(false)
     setOriginalPricingSnapshot(emptyWorkPricingSnapshot)
 
     if (pricingChangeApplication?.startDate) {
