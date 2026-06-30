@@ -203,6 +203,37 @@ const labelStyle = {
   fontWeight: 700,
 }
 
+const infoBadgeStyle = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  width: '18px',
+  height: '18px',
+  borderRadius: '999px',
+  background: '#1d4ed8',
+  color: '#ffffff',
+  fontSize: '12px',
+  fontWeight: 800,
+  lineHeight: 1,
+  flexShrink: 0,
+}
+
+const inlineInfoLabelStyle = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: '8px',
+  flexWrap: 'wrap',
+}
+
+const infoNoteRowStyle = {
+  display: 'flex',
+  alignItems: 'flex-start',
+  gap: '8px',
+  margin: '12px 0 0',
+  fontSize: '13px',
+  color: 'var(--vp-text-muted)',
+}
+
 const primaryButtonStyle = {
   border: 'none',
   borderRadius: '999px',
@@ -2103,7 +2134,20 @@ export function WorksPageView({ forcedClientId = '', dedicatedClientView = false
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '12px', marginTop: '8px' }}>
                   {rolePriceOptions.map(option => (
                     <label key={option.value} style={labelStyle}>
-                      {option.label}
+                      {option.value === 'chef_segunda' ? (
+                        <span style={inlineInfoLabelStyle}>
+                          <span>{option.label}</span>
+                          <span
+                            aria-hidden="true"
+                            title="Chefe de segunda inclui chefe de carpinteiro, ferrajeiro e trolha."
+                            style={infoBadgeStyle}
+                          >
+                            i
+                          </span>
+                        </span>
+                      ) : (
+                        option.label
+                      )}
                       <input
                         type="number"
                         min="0"
@@ -2116,6 +2160,12 @@ export function WorksPageView({ forcedClientId = '', dedicatedClientView = false
                       />
                     </label>
                   ))}
+                </div>
+                <div style={infoNoteRowStyle}>
+                  <span aria-hidden="true" style={infoBadgeStyle}>
+                    i
+                  </span>
+                  <span>Chefe de segunda inclui chefe de carpinteiro, ferrajeiro e trolha.</span>
                 </div>
               </fieldset>
 
