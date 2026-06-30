@@ -2503,190 +2503,11 @@ export default function PeoplePage() {
         {!showForm && error && <p style={{ margin: 0, color: '#b42318' }}>{error}</p>}
         {!showForm && success && <p style={{ margin: 0, color: '#1f7a45' }}>{success}</p>}
 
-        {canManagePeople && showForm && (
-          <section style={panelStyle}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center' }}>
-              <div>
-                <h2 style={{ margin: 0 }}>{form.id ? 'Editar pessoa' : 'Adicionar nova pessoa'}</h2>
-              </div>
-              <button type="button" onClick={cancelForm} style={closeButtonStyle} aria-label="Fechar">
-                ×
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmit} style={{ display: 'grid', gap: '14px', marginTop: '18px' }}>
-              <div style={{ display: 'grid', gap: '12px' }}>
-                <p style={formSectionTitleStyle}>Dados da pessoa</p>
-                <div
-                  style={{
-                    ...primaryFieldsRowStyle,
-                    gridTemplateColumns: '420px 220px 220px 220px',
-                  }}
-                >
-                <label style={{ ...mediumFieldStyle, maxWidth: '420px' }}>
-                  Nome
-                  <input type="text" name="name" value={form.name} onChange={handleChange} style={inputStyle} />
-                  {formErrors.name && <span style={{ color: '#b42318', fontSize: '13px' }}>{formErrors.name}</span>}
-                </label>
-
-                <label style={compactFieldStyle}>
-                  Preço mensal
-                  <input
-                    type="number"
-                    name="monthlyPrice"
-                    min="0"
-                    step="0.01"
-                    value={form.monthlyPrice}
-                    onChange={handleChange}
-                    style={inputStyle}
-                  />
-                  {formErrors.monthlyPrice && <span style={{ color: '#b42318', fontSize: '13px' }}>{formErrors.monthlyPrice}</span>}
-                </label>
-
-                <label style={compactFieldStyle}>
-                  Função
-                  <select name="role" value={form.role} onChange={handleChange} style={inputStyle}>
-                    <option value={ROLE_ADMIN}>Administrador</option>
-                    <option value={ROLE_RESPONSAVEL}>Responsável</option>
-                    <option value={ROLE_CHEF_PRIMEIRA}>Chefe</option>
-                    <option value={ROLE_CHEF_SEGUNDA}>Chefe de segunda</option>
-                    <option value={ROLE_CARPINTEIRO}>Carpinteiro</option>
-                    <option value={ROLE_FERRAJEIRO}>Ferrajeiro</option>
-                    <option value={ROLE_TROLHA}>Trolha</option>
-                    <option value={ROLE_GRUISTA}>Gruista</option>
-                  </select>
-                  {formErrors.role && <span style={{ color: '#b42318', fontSize: '13px' }}>{formErrors.role}</span>}
-                </label>
-
-                {formUsesChefCategory && (
-                  <label style={compactFieldStyle}>
-                    Especialização do chefe
-                    <select name="chefCategory" value={form.chefCategory} onChange={handleChange} style={inputStyle}>
-                      <option value="">Seleciona a especialização</option>
-                      <option value={CHEF_CATEGORY_TROLHA}>Chefe de Trolhas</option>
-                      <option value={CHEF_CATEGORY_FERRAJEIRO}>Chefe de Ferrajeiros</option>
-                      <option value={CHEF_CATEGORY_CARPINTEIRO}>Chefe de Carpinteiros</option>
-                    </select>
-                    {formErrors.chefCategory && (
-                      <span style={{ color: '#b42318', fontSize: '13px' }}>{formErrors.chefCategory}</span>
-                    )}
-                  </label>
-                )}
-
-                  <label style={compactFieldStyle}>
-                    Preço hora
-                    <input
-                      type="number"
-                      name="price"
-                      min="0"
-                      step="0.01"
-                      value={form.price}
-                      onChange={handleChange}
-                      style={inputStyle}
-                    />
-                    {formErrors.price && <span style={{ color: '#b42318', fontSize: '13px' }}>{formErrors.price}</span>}
-                  </label>
-                </div>
-              </div>
-
-              {roleNeedsAccess && (
-                <div style={{ display: 'grid', gap: '12px' }}>
-                  <p style={formSectionTitleStyle}>Acesso à aplicação</p>
-                  <div style={{ ...personFormGridStyle, columnGap: '32px' }}>
-                    <label style={mediumFieldStyle}>
-                      Nome de utilizador
-                      <input type="text" name="accessUsername" value={form.accessUsername} onChange={handleChange} style={inputStyle} />
-                      {formErrors.accessUsername && <span style={{ color: '#b42318', fontSize: '13px' }}>{formErrors.accessUsername}</span>}
-                    </label>
-
-                    <label style={mediumFieldStyle}>
-                      Palavra-passe
-                      <input type="text" name="accessPassword" value={form.accessPassword} onChange={handleChange} style={inputStyle} />
-                      {(form.accessIdentityId || reusableAccessIdentity) && (
-                        <span style={{ display: 'block', marginTop: '6px', color: 'var(--vp-text-muted)', fontSize: '13px' }}>
-                          Deixa em branco para manter a password atual.
-                        </span>
-                      )}
-                      {formErrors.accessPassword && <span style={{ color: '#b42318', fontSize: '13px' }}>{formErrors.accessPassword}</span>}
-                    </label>
-
-                    {formUsesWorkScope && (
-                      <label style={{ ...labelStyle, ...wideFieldStyle }}>
-                        Obras permitidas
-                        <select
-                          multiple
-                          name="accessWorkIds"
-                          value={form.accessWorkIds}
-                          onChange={handleChange}
-                          style={{ ...inputStyle, minHeight: '180px' }}
-                        >
-                          {accessWorks.map(work => (
-                            <option key={work.id} value={work.id}>
-                              #{work.number} - {work.name}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {error && <p style={{ margin: 0, color: '#b42318' }}>{error}</p>}
-              {success && <p style={{ margin: 0, color: '#1f7a45' }}>{success}</p>}
-
-              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                <button type="submit" disabled={submitting} style={primaryButtonStyle}>
-                  {submitting ? 'A gravar...' : form.id ? 'Guardar alterações' : 'Criar pessoa'}
-                </button>
-                {form.id && (
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(form.id)}
-                    disabled={submitting}
-                    style={dangerButtonStyle}
-                  >
-                    Eliminar
-                  </button>
-                )}
-              </div>
-            </form>
-          </section>
-        )}
-
         <div className={canManagePeople ? 'vp-responsive-split-grid' : ''} style={canManagePeople ? layoutStyle : { display: 'grid' }}>
           <section style={panelStyle}>
             <div style={isResponsavelView ? responsavelListHeaderStyle : {}}>
               <h2 style={{ marginTop: 0, marginBottom: isResponsavelView ? 0 : undefined }}>Lista de pessoas</h2>
             </div>
-
-            {isResponsavelView && showForm && (
-              <form onSubmit={handleSubmit} style={responsavelCreateFormStyle}>
-                <label style={labelStyle}>
-                  Nome
-                  <input
-                    type="text"
-                    name="name"
-                    value={form.name}
-                    onChange={handleChange}
-                    placeholder="Nome da pessoa"
-                    style={inputStyle}
-                  />
-                  {formErrors.name && <span style={{ color: '#b42318', fontSize: '13px' }}>{formErrors.name}</span>}
-                </label>
-
-                {error && <p style={{ margin: 0, color: '#b42318' }}>{error}</p>}
-
-                <div style={responsavelCreateActionsStyle}>
-                  <button type="button" onClick={cancelForm} style={secondaryButtonStyle}>
-                    Cancelar
-                  </button>
-                  <button type="submit" disabled={submitting} style={primaryButtonStyle}>
-                    {submitting ? 'A gravar...' : 'Guardar'}
-                  </button>
-                </div>
-              </form>
-            )}
 
             {loading && <p>A carregar pessoas...</p>}
             {!loading && error && !(isResponsavelView && showForm) && <p style={{ color: '#b42318' }}>{error}</p>}
@@ -2879,6 +2700,200 @@ export default function PeoplePage() {
         </div>
         </ViewportScrollArea>
       </ViewportShell>
+
+      {showForm && (
+        <div style={modalBackdropStyle} onClick={cancelForm}>
+          <section className="vp-modal-card" style={modalCardStyle} onClick={(event) => event.stopPropagation()}>
+            {canManagePeople ? (
+              <>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center' }}>
+                  <div>
+                    <h2 style={{ margin: 0 }}>{form.id ? 'Editar pessoa' : 'Adicionar nova pessoa'}</h2>
+                  </div>
+                  <button type="button" onClick={cancelForm} style={closeButtonStyle} aria-label="Fechar">
+                    ×
+                  </button>
+                </div>
+
+                <form onSubmit={handleSubmit} style={{ display: 'grid', gap: '14px', marginTop: '18px' }}>
+                  <div style={{ display: 'grid', gap: '12px' }}>
+                    <p style={formSectionTitleStyle}>Dados da pessoa</p>
+                    <div
+                      style={{
+                        ...primaryFieldsRowStyle,
+                        gridTemplateColumns: '420px 220px 220px 220px',
+                      }}
+                    >
+                    <label style={{ ...mediumFieldStyle, maxWidth: '420px' }}>
+                      Nome
+                      <input type="text" name="name" value={form.name} onChange={handleChange} style={inputStyle} />
+                      {formErrors.name && <span style={{ color: '#b42318', fontSize: '13px' }}>{formErrors.name}</span>}
+                    </label>
+
+                    <label style={compactFieldStyle}>
+                      Preço mensal
+                      <input
+                        type="number"
+                        name="monthlyPrice"
+                        min="0"
+                        step="0.01"
+                        value={form.monthlyPrice}
+                        onChange={handleChange}
+                        style={inputStyle}
+                      />
+                      {formErrors.monthlyPrice && <span style={{ color: '#b42318', fontSize: '13px' }}>{formErrors.monthlyPrice}</span>}
+                    </label>
+
+                    <label style={compactFieldStyle}>
+                      Função
+                      <select name="role" value={form.role} onChange={handleChange} style={inputStyle}>
+                        <option value={ROLE_ADMIN}>Administrador</option>
+                        <option value={ROLE_RESPONSAVEL}>Responsável</option>
+                        <option value={ROLE_CHEF_PRIMEIRA}>Chefe</option>
+                        <option value={ROLE_CHEF_SEGUNDA}>Chefe de segunda</option>
+                        <option value={ROLE_CARPINTEIRO}>Carpinteiro</option>
+                        <option value={ROLE_FERRAJEIRO}>Ferrajeiro</option>
+                        <option value={ROLE_TROLHA}>Trolha</option>
+                        <option value={ROLE_GRUISTA}>Gruista</option>
+                      </select>
+                      {formErrors.role && <span style={{ color: '#b42318', fontSize: '13px' }}>{formErrors.role}</span>}
+                    </label>
+
+                    {formUsesChefCategory && (
+                      <label style={compactFieldStyle}>
+                        Especialização do chefe
+                        <select name="chefCategory" value={form.chefCategory} onChange={handleChange} style={inputStyle}>
+                          <option value="">Seleciona a especialização</option>
+                          <option value={CHEF_CATEGORY_TROLHA}>Chefe de Trolhas</option>
+                          <option value={CHEF_CATEGORY_FERRAJEIRO}>Chefe de Ferrajeiros</option>
+                          <option value={CHEF_CATEGORY_CARPINTEIRO}>Chefe de Carpinteiros</option>
+                        </select>
+                        {formErrors.chefCategory && (
+                          <span style={{ color: '#b42318', fontSize: '13px' }}>{formErrors.chefCategory}</span>
+                        )}
+                      </label>
+                    )}
+
+                      <label style={compactFieldStyle}>
+                        Preço hora
+                        <input
+                          type="number"
+                          name="price"
+                          min="0"
+                          step="0.01"
+                          value={form.price}
+                          onChange={handleChange}
+                          style={inputStyle}
+                        />
+                        {formErrors.price && <span style={{ color: '#b42318', fontSize: '13px' }}>{formErrors.price}</span>}
+                      </label>
+                    </div>
+                  </div>
+
+                  {roleNeedsAccess && (
+                    <div style={{ display: 'grid', gap: '12px' }}>
+                      <p style={formSectionTitleStyle}>Acesso à aplicação</p>
+                      <div style={{ ...personFormGridStyle, columnGap: '32px' }}>
+                        <label style={mediumFieldStyle}>
+                          Nome de utilizador
+                          <input type="text" name="accessUsername" value={form.accessUsername} onChange={handleChange} style={inputStyle} />
+                          {formErrors.accessUsername && <span style={{ color: '#b42318', fontSize: '13px' }}>{formErrors.accessUsername}</span>}
+                        </label>
+
+                        <label style={mediumFieldStyle}>
+                          Palavra-passe
+                          <input type="text" name="accessPassword" value={form.accessPassword} onChange={handleChange} style={inputStyle} />
+                          {(form.accessIdentityId || reusableAccessIdentity) && (
+                            <span style={{ display: 'block', marginTop: '6px', color: 'var(--vp-text-muted)', fontSize: '13px' }}>
+                              Deixa em branco para manter a password atual.
+                            </span>
+                          )}
+                          {formErrors.accessPassword && <span style={{ color: '#b42318', fontSize: '13px' }}>{formErrors.accessPassword}</span>}
+                        </label>
+
+                        {formUsesWorkScope && (
+                          <label style={{ ...labelStyle, ...wideFieldStyle }}>
+                            Obras permitidas
+                            <select
+                              multiple
+                              name="accessWorkIds"
+                              value={form.accessWorkIds}
+                              onChange={handleChange}
+                              style={{ ...inputStyle, minHeight: '180px' }}
+                            >
+                              {accessWorks.map(work => (
+                                <option key={work.id} value={work.id}>
+                                  #{work.number} - {work.name}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {error && <p style={{ margin: 0, color: '#b42318' }}>{error}</p>}
+                  {success && <p style={{ margin: 0, color: '#1f7a45' }}>{success}</p>}
+
+                  <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                    <button type="submit" disabled={submitting} style={primaryButtonStyle}>
+                      {submitting ? 'A gravar...' : form.id ? 'Guardar alterações' : 'Criar pessoa'}
+                    </button>
+                    {form.id && (
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(form.id)}
+                        disabled={submitting}
+                        style={dangerButtonStyle}
+                      >
+                        Eliminar
+                      </button>
+                    )}
+                  </div>
+                </form>
+              </>
+            ) : isResponsavelView ? (
+              <>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center' }}>
+                  <div>
+                    <h2 style={{ margin: 0 }}>{form.id ? 'Editar pessoa' : 'Adicionar nova pessoa'}</h2>
+                  </div>
+                  <button type="button" onClick={cancelForm} style={closeButtonStyle} aria-label="Fechar">
+                    ×
+                  </button>
+                </div>
+
+                <form onSubmit={handleSubmit} style={{ ...responsavelCreateFormStyle, marginBottom: 0, marginTop: '18px' }}>
+                  <label style={labelStyle}>
+                    Nome
+                    <input
+                      type="text"
+                      name="name"
+                      value={form.name}
+                      onChange={handleChange}
+                      placeholder="Nome da pessoa"
+                      style={inputStyle}
+                    />
+                    {formErrors.name && <span style={{ color: '#b42318', fontSize: '13px' }}>{formErrors.name}</span>}
+                  </label>
+
+                  {error && <p style={{ margin: 0, color: '#b42318' }}>{error}</p>}
+
+                  <div style={responsavelCreateActionsStyle}>
+                    <button type="button" onClick={cancelForm} style={secondaryButtonStyle}>
+                      Cancelar
+                    </button>
+                    <button type="submit" disabled={submitting} style={primaryButtonStyle}>
+                      {submitting ? 'A gravar...' : 'Guardar'}
+                    </button>
+                  </div>
+                </form>
+              </>
+            ) : null}
+          </section>
+        </div>
+      )}
 
       {canManagePeople && showExportModal && (
         <div style={modalBackdropStyle} onClick={closeExportModal}>
