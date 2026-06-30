@@ -1,6 +1,6 @@
 import { resolveCompanyId } from '../../lib/companies.js'
 import { getDefaultHoursForDate } from '../../lib/default-hours.js'
-import { isDailyPlanLocked } from '../../lib/daily-plan-lock.js'
+import { canBypassDailyPlanCreationLock, isDailyPlanLocked } from '../../lib/daily-plan-lock.js'
 import { hasPermission } from '../../lib/permissions.js'
 import {
   createWorkAssignmentData,
@@ -83,7 +83,7 @@ export async function createWorkPlanService(session, body) {
     throw new HttpError(400, 'date e obrigatorio')
   }
 
-  if (isDailyPlanLocked(date)) {
+  if (isDailyPlanLocked(date) && !canBypassDailyPlanCreationLock()) {
     throw new HttpError(
       403,
       'Depois das 08:00 ja nao e possivel alterar o plano diario deste dia.',

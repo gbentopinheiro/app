@@ -3,6 +3,7 @@ import { isDailyPlanLocked } from '../../lib/daily-plan-lock.js'
 import { isFeatureEnabled } from '../../lib/feature-flags.js'
 import { hasPermission } from '../../lib/permissions.js'
 import { isChefRole } from '../../lib/roles.js'
+import { getWorkByIdData } from '../../lib/works.js'
 import {
   canAccessAssignment,
   canAccessWork,
@@ -35,6 +36,33 @@ function toAssignmentMutationError(error, fallbackMessage) {
   const message = String(error?.message || fallbackMessage).trim() || fallbackMessage
   const status = message.includes('nao encontrado') ? 404 : 500
   return new HttpError(status, message)
+}
+
+async function isDailyPlanLockedForWorkIds(dateString, workIds = []) {
+  const normalizedWorkIds = Array.from(
+    new Set(
+      (Array.isArray(workIds) ? workIds : [workIds])
+        .map(workId => Number.parseInt(workId, 10))
+        .filter(workId => Number.isInteger(workId) && workId > 0),
+    ),
+  )
+
+  if (normalizedWorkIds.length === 0) {
+    return isDailyPlanLocked(dateString)
+  }
+
+  const works = await Promise.all(normalizedWorkIds.map(workId => getWorkByIdData(workId)))
+
+  return works.some(work => isDailyPlanLocked(dateString, { clientId: work?.clientId }))
+}
+
+async function ensureDailyPlanUnlockedForWorkIds(dateString, workIds = []) {
+  if (await isDailyPlanLockedForWorkIds(dateString, workIds)) {
+    throw new HttpError(
+      403,
+      'Depois das 08:00 ja nao e possivel alterar o plano diario deste dia.',
+    )
+  }
 }
 
 export async function getWorkAssignmentsListService(session, searchParams) {
@@ -97,12 +125,7 @@ export async function createWorkAssignmentService(session, body) {
     throw new HttpError(400, 'workPlanId, workId e personId sao obrigatorios')
   }
 
-  if (isDailyPlanLocked(targetDate)) {
-    throw new HttpError(
-      403,
-      'Depois das 08:00 ja nao e possivel alterar o plano diario deste dia.',
-    )
-  }
+  await ensureDailyPlanUnlockedForWorkIds(targetDate, [workId])
 
   if (!canAccessWork(session, workId)) {
     throw new HttpError(403, 'Sem permissao para registar horas nesta obra.')
@@ -189,18 +212,18 @@ export async function updateWorkAssignmentService(session, id, body) {
     hasWorkAccess,
     submitted,
   } = body || {}
-
-  if (isDailyPlanLocked(currentAssignment.date) && isDailyPlanStructureUpdate(body || {})) {
-    throw new HttpError(
-      403,
-      'Depois das 08:00 ja nao e possivel alterar o plano diario deste dia.',
-    )
-  }
-
   const targetWorkId = workId !== undefined ? Number(workId) : Number(currentAssignment.workId)
   const targetPersonId = personId !== undefined ? Number(personId) : Number(currentAssignment.personId)
   const targetWorkPlanId = workPlanId !== undefined ? workPlanId : currentAssignment.workPlan?.id
   const targetDate = date !== undefined ? date : currentAssignment.date
+
+  if (isDailyPlanStructureUpdate(body || {})) {
+    await ensureDailyPlanUnlockedForWorkIds(currentAssignment.date, [currentAssignment.workId, targetWorkId])
+
+    if (targetDate !== currentAssignment.date) {
+      await ensureDailyPlanUnlockedForWorkIds(targetDate, [targetWorkId])
+    }
+  }
 
   if (workId !== undefined && !canAccessWork(session, workId)) {
     throw new HttpError(403, 'Sem permissao para mover a afetacao para essa obra.')
@@ -295,12 +318,7 @@ export async function deleteWorkAssignmentService(session, id) {
     throw new HttpError(403, 'Sem permissao para esta afetacao.')
   }
 
-  if (isDailyPlanLocked(assignment.date)) {
-    throw new HttpError(
-      403,
-      'Depois das 08:00 ja nao e possivel alterar o plano diario deste dia.',
-    )
-  }
+  await ensureDailyPlanUnlockedForWorkIds(assignment.date, [assignment.workId])
 
   const deleted = await deleteWorkAssignmentData(id)
 

@@ -178,6 +178,14 @@ Valores por ambiente:
 - `dev` -> `https://api-dev.bentixapp.com`
 - `prod` -> `https://api.bentixapp.com`
 
+## Excecoes temporarias ao cutoff do plano diario
+
+Variaveis runtime disponiveis:
+
+- `PLANNING_CUTOFF_BYPASS_CLIENT_IDS` e `PLANNING_CUTOFF_BYPASS_UNTIL`: permitem ignorar o cutoff das 08:00 apenas para obras de clientes especificos
+- `PLANNING_CUTOFF_BYPASS_WORK_PLAN_CREATE_UNTIL`: permite `Criar novo` e `Copiar anterior` depois das 08:00 ate ao instante configurado
+- quando a data/hora configurada expira ou a variavel fica vazia, o comportamento normal volta automaticamente
+
 ## Dockerfile
 
 O Dockerfile:

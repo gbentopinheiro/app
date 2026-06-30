@@ -664,12 +664,6 @@ export default function DailyPlanPage() {
   }
 
   async function handleCreateWorkPlan(clonePreviousDay = false) {
-    if (isDailyPlanLockedForDate) {
-      setError('Depois das 08:00 já não é possível alterar o plano diário deste dia.')
-      setSuccess('')
-      return
-    }
-
     setCreating(true)
     setCreatingMode(clonePreviousDay ? 'clone' : 'new')
     setError('')
@@ -705,11 +699,6 @@ export default function DailyPlanPage() {
 
   function openAddModal() {
     if (!selectedWorkPlan) return
-    if (isDailyPlanLockedForDate) {
-      setError('Depois das 08:00 já não é possível alterar o plano diário deste dia.')
-      setSuccess('')
-      return
-    }
     setAssignmentForm(emptyAssignmentForm)
     setFormErrors({})
     setError('')
@@ -718,12 +707,6 @@ export default function DailyPlanPage() {
   }
 
   function openEditModal(assignment) {
-    if (isDailyPlanLockedForDate) {
-      setError('Depois das 08:00 já não é possível alterar o plano diário deste dia.')
-      setSuccess('')
-      return
-    }
-
     setAssignmentForm({
       id: assignment.id,
       personId: String(assignment.personId),
@@ -912,12 +895,6 @@ export default function DailyPlanPage() {
   async function handleCreateAssignment(event) {
     event.preventDefault()
 
-    if (isDailyPlanLockedForDate) {
-      setError('Depois das 08:00 já não é possível alterar o plano diário deste dia.')
-      setSuccess('')
-      return
-    }
-
     if (!selectedWorkPlan || !validateAssignmentForm()) {
       return
     }
@@ -969,12 +946,6 @@ export default function DailyPlanPage() {
   }
 
   async function handleDeleteAssignment(assignment) {
-    if (isDailyPlanLockedForDate) {
-      setError('Depois das 08:00 já não é possível alterar o plano diário deste dia.')
-      setSuccess('')
-      return
-    }
-
     const confirmed = window.confirm(
       `Pretendes realmente eliminar a afetação de ${assignment.person?.name || 'esta pessoa'} do plano ativo?`
     )
@@ -995,12 +966,6 @@ export default function DailyPlanPage() {
   }
 
   function handleAssignmentDragStart(assignment) {
-    if (isDailyPlanLockedForDate) {
-      setError('Depois das 08:00 já não é possível alterar o plano diário deste dia.')
-      setSuccess('')
-      return
-    }
-
     setDraggedAssignmentId(String(assignment.id))
     setDraggedSourceWorkId(String(assignment.workId))
     setDropTargetWorkId(null)
@@ -1016,7 +981,7 @@ export default function DailyPlanPage() {
 
   function handleWorkDragOver(event, workId) {
     event.preventDefault()
-    if (!draggedAssignmentId || isDailyPlanLockedForDate) return
+    if (!draggedAssignmentId) return
     if (String(workId) === String(draggedSourceWorkId)) {
       setDropTargetWorkId(null)
       return
@@ -1030,12 +995,6 @@ export default function DailyPlanPage() {
 
   async function handleWorkDrop(event, targetWorkId) {
     event.preventDefault()
-
-    if (isDailyPlanLockedForDate) {
-      setError('Depois das 08:00 já não é possível alterar o plano diário deste dia.')
-      setSuccess('')
-      return
-    }
 
     const assignment = assignments.find(item => String(item.id) === String(draggedAssignmentId || ''))
     const targetWork = activeWorksById.get(String(targetWorkId))
@@ -1123,9 +1082,9 @@ export default function DailyPlanPage() {
               <button
                 type="button"
                 onClick={() => handleCreateWorkPlan(false)}
-                disabled={creating || isDailyPlanLockedForDate}
+                disabled={creating}
                 style={
-                  creating || isDailyPlanLockedForDate
+                  creating
                     ? { ...disabledButtonStyle, ...compactActionButtonStyle }
                     : { ...primaryButtonStyle, ...compactActionButtonStyle }
                 }
@@ -1135,9 +1094,9 @@ export default function DailyPlanPage() {
               <button
                 type="button"
                 onClick={() => handleCreateWorkPlan(true)}
-                disabled={creating || isDailyPlanLockedForDate}
+                disabled={creating}
                 style={
-                  creating || isDailyPlanLockedForDate
+                  creating
                     ? { ...disabledButtonStyle, ...compactActionButtonStyle }
                     : { ...secondaryButtonStyle, ...compactActionButtonStyle }
                 }
@@ -1203,7 +1162,9 @@ export default function DailyPlanPage() {
             {loading && <p style={{ margin: 0 }}>A carregar plano diário...</p>}
             {!loading && isDailyPlanLockedForDate && (
               <p style={{ margin: error || success ? '12px 0 0' : 0, color: '#b45309' }}>
-                Depois das 08:00 já não é possível alterar o plano diário deste dia.
+                Depois das 08:00, por regra, já não é possível alterar o plano diário deste dia.
+                Se existir uma exceção temporária configurada no servidor, Criar novo e Copiar anterior
+                continuam disponíveis até ao prazo definido.
               </p>
             )}
             {!selectedWorkPlan && !error && !loading && (
@@ -1222,12 +1183,7 @@ export default function DailyPlanPage() {
                 <button
                   type="button"
                   onClick={openAddModal}
-                  disabled={isDailyPlanLockedForDate}
-                  style={
-                    isDailyPlanLockedForDate
-                      ? { ...disabledButtonStyle, ...compactActionButtonStyle }
-                      : { ...primaryButtonStyle, ...compactActionButtonStyle }
-                  }
+                  style={{ ...primaryButtonStyle, ...compactActionButtonStyle }}
                 >
                   Adicionar
                 </button>
@@ -1302,7 +1258,7 @@ export default function DailyPlanPage() {
                         return (
                         <div
                           key={assignment.id}
-                          draggable={!savingAssignment && !isDailyPlanLockedForDate}
+                          draggable={!savingAssignment}
                           onDragStart={() => handleAssignmentDragStart(assignment)}
                           onDragEnd={handleAssignmentDragEnd}
                           style={{
@@ -1310,7 +1266,7 @@ export default function DailyPlanPage() {
                             borderRadius: '14px',
                             padding: '14px',
                             background: 'var(--vp-surface-muted)',
-                            cursor: savingAssignment || isDailyPlanLockedForDate ? 'default' : 'grab',
+                            cursor: savingAssignment ? 'default' : 'grab',
                             opacity: draggedAssignmentId === String(assignment.id) ? 0.55 : 1,
                           }}
                         >
@@ -1341,12 +1297,7 @@ export default function DailyPlanPage() {
                               <button
                                 type="button"
                                 onClick={() => openEditModal(assignment)}
-                                disabled={isDailyPlanLockedForDate}
-                                style={
-                                  isDailyPlanLockedForDate
-                                    ? { ...editPencilButtonStyle, opacity: 0.45, cursor: 'not-allowed' }
-                                    : editPencilButtonStyle
-                                }
+                                style={editPencilButtonStyle}
                                 title="Editar afetação"
                                 aria-label="Editar afetação"
                               >
@@ -1355,12 +1306,7 @@ export default function DailyPlanPage() {
                               <button
                                 type="button"
                                 onClick={() => handleDeleteAssignment(assignment)}
-                                disabled={isDailyPlanLockedForDate}
-                                style={
-                                  isDailyPlanLockedForDate
-                                    ? { ...trashBinButtonStyle, opacity: 0.45, cursor: 'not-allowed' }
-                                    : trashBinButtonStyle
-                                }
+                                style={trashBinButtonStyle}
                                 title="Eliminar afetação"
                                 aria-label="Eliminar afetação"
                               >

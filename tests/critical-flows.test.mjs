@@ -154,6 +154,7 @@ function seedFixtureData() {
 seedFixtureData()
 
 const { getAccessIdentityByPersonId, getAccessIdentityByUsername } = await import('../lib/access-identities.js')
+const { createClientData } = await import('../lib/clients.js')
 const { canApproveHours, createSessionToken, getDefaultPathForRole, readSessionToken } = await import('../lib/auth.js')
 const { getAllClients } = await import('../lib/clients.js')
 const { decryptProtectedPayload, getLoginTransportPublicKey } = await import('../lib/login-transport.js')
@@ -172,11 +173,81 @@ const {
   updateWorkAssignment,
 } = await import('../lib/work-assignments.js')
 const { getAllWorkPlans, getWorkPlanByDate } = await import('../lib/work-plans.js')
+const { createWorkAssignmentService } = await import('../server/services/work-assignments-service.js')
+const { createWorkPlanService } = await import('../server/services/work-plans-service.js')
 const { getAllWorks } = await import('../lib/works.js')
+const { createWorkData } = await import('../lib/works.js')
+
+const PLANNING_CUTOFF_BYPASS_ENV_KEYS = [
+  'PLANNING_CUTOFF_BYPASS_CLIENT_IDS',
+  'PLANNING_CUTOFF_BYPASS_UNTIL',
+  'PLANNING_CUTOFF_BYPASS_WORK_PLAN_CREATE_UNTIL',
+]
+const ADMIN_SESSION = {
+  role: 'admin',
+  accountType: 'admin',
+  accessProfile: 'admin',
+}
+const LOCKED_DAILY_PLAN_DATE = '2000-01-01'
+const FUTURE_BYPASS_UNTIL = '2999-12-31T23:59:59+00:00'
+const EXPIRED_BYPASS_UNTIL = '2000-01-01T00:00:00+00:00'
 
 beforeEach(() => {
   seedFixtureData()
 })
+
+async function withPlanningCutoffBypassEnv(overrides, callback) {
+  const snapshot = Object.fromEntries(
+    PLANNING_CUTOFF_BYPASS_ENV_KEYS.map(key => [key, process.env[key]]),
+  )
+
+  try {
+    PLANNING_CUTOFF_BYPASS_ENV_KEYS.forEach(key => {
+      if (Object.prototype.hasOwnProperty.call(overrides, key)) {
+        const value = overrides[key]
+
+        if (value === undefined) {
+          delete process.env[key]
+          return
+        }
+
+        process.env[key] = String(value)
+        return
+      }
+
+      delete process.env[key]
+    })
+
+    return await callback()
+  } finally {
+    PLANNING_CUTOFF_BYPASS_ENV_KEYS.forEach(key => {
+      if (snapshot[key] === undefined) {
+        delete process.env[key]
+        return
+      }
+
+      process.env[key] = snapshot[key]
+    })
+  }
+}
+
+async function createWorkForClient(clientName, workName) {
+  const client = await createClientData({
+    companyId: 1,
+    name: clientName,
+  })
+
+  const work = await createWorkData({
+    companyId: 1,
+    name: workName,
+    clientId: client.id,
+    location: '',
+    status: 'planned',
+    defaultHourlyCost: 12,
+  })
+
+  return { client, work }
+}
 
 function createProtectedPayload(payload) {
   const contentKey = randomBytes(32)
@@ -306,6 +377,178 @@ test('chefes podem ser guardados sem acesso a app e editar pode remover o acesso
   })
 
   assert.equal(getAccessIdentityByPersonId(2), null)
+})
+
+test('cliente normal continua bloqueado mesmo com bypass ativo para outro cliente', async () => {
+  const { client: bypassClient } = await createWorkForClient('Cliente bypass', 'Obra bypass')
+
+  await withPlanningCutoffBypassEnv(
+    {
+      PLANNING_CUTOFF_BYPASS_CLIENT_IDS: String(bypassClient.id),
+      PLANNING_CUTOFF_BYPASS_UNTIL: FUTURE_BYPASS_UNTIL,
+    },
+    async () => {
+      await assert.rejects(
+        createWorkAssignmentService(ADMIN_SESSION, {
+          workId: 1,
+          personId: 3,
+          date: LOCKED_DAILY_PLAN_DATE,
+          hours: 8,
+        }),
+        error => {
+          assert.equal(error?.status, 403)
+          assert.match(String(error?.message || ''), /Depois das 08:00/)
+          return true
+        },
+      )
+    },
+  )
+})
+
+test('cliente na lista passa antes do prazo configurado', async () => {
+  const { client, work } = await createWorkForClient('Cliente liberado', 'Obra liberada')
+
+  await withPlanningCutoffBypassEnv(
+    {
+      PLANNING_CUTOFF_BYPASS_CLIENT_IDS: String(client.id),
+      PLANNING_CUTOFF_BYPASS_UNTIL: FUTURE_BYPASS_UNTIL,
+    },
+    async () => {
+      const assignment = await createWorkAssignmentService(ADMIN_SESSION, {
+        workId: work.id,
+        personId: 3,
+        date: LOCKED_DAILY_PLAN_DATE,
+        hours: 8,
+      })
+
+      assert.equal(assignment.workId, work.id)
+      assert.equal(assignment.personId, 3)
+    },
+  )
+})
+
+test('cliente na lista volta a bloquear depois do prazo', async () => {
+  const { client, work } = await createWorkForClient('Cliente expirado', 'Obra expirada')
+
+  await withPlanningCutoffBypassEnv(
+    {
+      PLANNING_CUTOFF_BYPASS_CLIENT_IDS: String(client.id),
+      PLANNING_CUTOFF_BYPASS_UNTIL: EXPIRED_BYPASS_UNTIL,
+    },
+    async () => {
+      await assert.rejects(
+        createWorkAssignmentService(ADMIN_SESSION, {
+          workId: work.id,
+          personId: 3,
+          date: LOCKED_DAILY_PLAN_DATE,
+          hours: 8,
+        }),
+        error => {
+          assert.equal(error?.status, 403)
+          assert.match(String(error?.message || ''), /Depois das 08:00/)
+          return true
+        },
+      )
+    },
+  )
+})
+
+test('variavel vazia mantem comportamento atual', async () => {
+  const { work } = await createWorkForClient('Cliente sem lista', 'Obra sem lista')
+
+  await withPlanningCutoffBypassEnv(
+    {
+      PLANNING_CUTOFF_BYPASS_CLIENT_IDS: '',
+      PLANNING_CUTOFF_BYPASS_UNTIL: FUTURE_BYPASS_UNTIL,
+    },
+    async () => {
+      await assert.rejects(
+        createWorkAssignmentService(ADMIN_SESSION, {
+          workId: work.id,
+          personId: 3,
+          date: LOCKED_DAILY_PLAN_DATE,
+          hours: 8,
+        }),
+        error => {
+          assert.equal(error?.status, 403)
+          assert.match(String(error?.message || ''), /Depois das 08:00/)
+          return true
+        },
+      )
+    },
+  )
+})
+
+test('criar novo plano diario continua bloqueado por defeito depois das 08:00', async () => {
+  await withPlanningCutoffBypassEnv({}, async () => {
+    await assert.rejects(
+      createWorkPlanService(ADMIN_SESSION, {
+        date: LOCKED_DAILY_PLAN_DATE,
+      }),
+      error => {
+        assert.equal(error?.status, 403)
+        assert.match(String(error?.message || ''), /Depois das 08:00/)
+        return true
+      },
+    )
+  })
+})
+
+test('criar novo plano diario passa antes do prazo configurado', async () => {
+  await withPlanningCutoffBypassEnv(
+    {
+      PLANNING_CUTOFF_BYPASS_WORK_PLAN_CREATE_UNTIL: FUTURE_BYPASS_UNTIL,
+    },
+    async () => {
+      const workPlan = await createWorkPlanService(ADMIN_SESSION, {
+        date: LOCKED_DAILY_PLAN_DATE,
+      })
+
+      assert.equal(workPlan.date, LOCKED_DAILY_PLAN_DATE)
+      assert.equal(workPlan.companyId, 1)
+      assert.equal(getWorkPlanByDate(LOCKED_DAILY_PLAN_DATE, 1)?.id, workPlan.id)
+    },
+  )
+})
+
+test('criar novo plano diario volta a bloquear depois do prazo', async () => {
+  await withPlanningCutoffBypassEnv(
+    {
+      PLANNING_CUTOFF_BYPASS_WORK_PLAN_CREATE_UNTIL: EXPIRED_BYPASS_UNTIL,
+    },
+    async () => {
+      await assert.rejects(
+        createWorkPlanService(ADMIN_SESSION, {
+          date: LOCKED_DAILY_PLAN_DATE,
+        }),
+        error => {
+          assert.equal(error?.status, 403)
+          assert.match(String(error?.message || ''), /Depois das 08:00/)
+          return true
+        },
+      )
+    },
+  )
+})
+
+test('variavel vazia para criar plano diario mantem o bloqueio atual', async () => {
+  await withPlanningCutoffBypassEnv(
+    {
+      PLANNING_CUTOFF_BYPASS_WORK_PLAN_CREATE_UNTIL: '',
+    },
+    async () => {
+      await assert.rejects(
+        createWorkPlanService(ADMIN_SESSION, {
+          date: LOCKED_DAILY_PLAN_DATE,
+        }),
+        error => {
+          assert.equal(error?.status, 403)
+          assert.match(String(error?.message || ''), /Depois das 08:00/)
+          return true
+        },
+      )
+    },
+  )
 })
 
 test('propoe automaticamente o proximo numero de obra', () => {

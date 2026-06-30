@@ -429,6 +429,9 @@ MariaDB
 | `SESSION_COOKIE_DOMAIN` | define partilha do cookie entre subdomínios | `lib/auth.js` | runtime |
 | `DATABASE_URL` | ligação Prisma/MariaDB | `lib/prisma.js`, `lib/prisma-adapter.js` | runtime |
 | `AUTH_SECRET` | assinatura HMAC da sessão | `lib/auth.js` | runtime |
+| `PLANNING_CUTOFF_BYPASS_CLIENT_IDS` | lista temporária de clientes com bypass ao cutoff das 08:00 | `lib/daily-plan-lock.js`, `server/services/work-assignments-service.js` | runtime |
+| `PLANNING_CUTOFF_BYPASS_UNTIL` | prazo da exceção temporária por cliente | `lib/daily-plan-lock.js`, `server/services/work-assignments-service.js` | runtime |
+| `PLANNING_CUTOFF_BYPASS_WORK_PLAN_CREATE_UNTIL` | prazo temporário para permitir `Criar novo` / `Copiar anterior` depois das 08:00 | `lib/daily-plan-lock.js`, `server/services/work-plans-service.js` | runtime |
 
 ### `NEXT_PUBLIC_APP_ENV`
 
@@ -459,6 +462,13 @@ MariaDB
 - obrigatório em produção
 - sem este valor, a aplicação não consegue validar cookies de sessão de forma segura
 
+### Variáveis temporárias do cutoff do plano diário
+
+- `PLANNING_CUTOFF_BYPASS_CLIENT_IDS` contém os `client_id` permitidos, separados por vírgula
+- `PLANNING_CUTOFF_BYPASS_UNTIL` define até quando esses clientes podem ignorar o cutoff das 08:00
+- `PLANNING_CUTOFF_BYPASS_WORK_PLAN_CREATE_UNTIL` define até quando `Criar novo` e `Copiar anterior` podem continuar disponíveis depois das 08:00
+- todas são lidas em runtime e, quando vazias ou expiradas, o comportamento normal regressa automaticamente
+
 ### Build time vs runtime
 
 ```text
@@ -472,6 +482,9 @@ Runtime
   - SESSION_COOKIE_DOMAIN
   - LOGIN_PUBLIC_KEY_PEM
   - LOGIN_PRIVATE_KEY_PEM
+  - PLANNING_CUTOFF_BYPASS_CLIENT_IDS
+  - PLANNING_CUTOFF_BYPASS_UNTIL
+  - PLANNING_CUTOFF_BYPASS_WORK_PLAN_CREATE_UNTIL
 ```
 
 Nota importante:

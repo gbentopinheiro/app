@@ -113,6 +113,14 @@ npm run db:setup:mysql -- --confirm-existing-data
 
 Em alternativa, podes usar `BENTIX_CONFIRM_MYSQL_IMPORT=1` apenas nessa execucao.
 
+## Excecao temporaria ao cutoff das 08:00
+
+Para permitir `Criar novo` ou `Copiar anterior` no plano diario depois das 08:00 sem remover a regra global:
+
+- define `PLANNING_CUTOFF_BYPASS_WORK_PLAN_CREATE_UNTIL=2026-06-30T23:59:59+01:00`
+- enquanto a hora atual for anterior a esse valor, o servidor aceita criar/copiar o plano diario
+- quando o prazo expira, o bloqueio normal volta automaticamente sem precisares de repor codigo
+
 ## API REST para Pessoas
 
 ### Endpoints
