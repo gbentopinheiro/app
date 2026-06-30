@@ -1185,7 +1185,7 @@ export default function ChefMobileDailyHoursClient({ initialSession, previewMode
                 disabled={savingNote || previewMode}
                 style={secondaryButtonStyle(savingNote || previewMode)}
               >
-                {previewMode ? 'Pré-visualização' : savingNote ? 'A guardar nota...' : 'Guardar nota'}
+                {savingNote ? 'A guardar nota...' : 'Guardar nota'}
               </button>
             </div>
           </section>
@@ -1284,13 +1284,7 @@ export default function ChefMobileDailyHoursClient({ initialSession, previewMode
           disabled={savingEntries || previewMode || !selectedWork || pendingEntries.length === 0}
           style={primaryButtonStyle(savingEntries || previewMode || !selectedWork || pendingEntries.length === 0)}
         >
-          {previewMode
-            ? 'Pré-visualização móvel do chefe'
-            : savingEntries
-              ? 'A submeter...'
-              : pendingEntries.length > 0
-                ? 'Submeter'
-                : 'Sem registos pendentes'}
+          {savingEntries ? 'A submeter...' : pendingEntries.length > 0 ? 'Submeter' : 'Sem registos pendentes'}
         </button>
       </div>
     </ViewportPage>
