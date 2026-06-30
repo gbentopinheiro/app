@@ -364,7 +364,6 @@ const emptyPersonForm = {
   accessIdentityId: null,
   accessUsername: '',
   accessPassword: '',
-  accessWorkIds: [],
 }
 
 function getPersonRoleLabel(person) {
@@ -1801,7 +1800,6 @@ export default function PeoplePage() {
   const [people, setPeople] = useState([])
   const [assignments, setAssignments] = useState([])
   const [accessIdentities, setAccessIdentities] = useState([])
-  const [accessWorks, setAccessWorks] = useState([])
   const [viewerRole, setViewerRole] = useState(null)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
@@ -1824,7 +1822,6 @@ export default function PeoplePage() {
   const isMonthlyForm = Number(form.monthlyPrice) > 0
   const roleNeedsAccess = roleRequiresAppAccess(form.role)
   const formUsesChefCategory = roleSupportsChefCategory(form.role)
-  const formUsesWorkScope = roleUsesWorkScope(form.role)
 
   useEffect(() => {
     loadPeople()
@@ -1994,7 +1991,6 @@ export default function PeoplePage() {
       if (responsavelView) {
         setAssignments([])
         setAccessIdentities([])
-        setAccessWorks([])
         setShowForm(false)
         setShowExportModal(false)
         return
@@ -2002,12 +1998,11 @@ export default function PeoplePage() {
 
       const [assignmentsData, accessIdentitiesData] = await Promise.all([
         listWorkAssignments({}, 'Erro ao carregar afetações'),
-        listAccessIdentities({ includeWorks: true }, 'Erro ao carregar acessos'),
+        listAccessIdentities({}, 'Erro ao carregar acessos'),
       ])
 
       setAssignments(assignmentsData)
-      setAccessIdentities(accessIdentitiesData.items || [])
-      setAccessWorks(accessIdentitiesData.works || [])
+      setAccessIdentities(Array.isArray(accessIdentitiesData) ? accessIdentitiesData : accessIdentitiesData.items || [])
     } catch (err) {
       setError(err.message)
     } finally {
@@ -2016,16 +2011,12 @@ export default function PeoplePage() {
   }
 
   function handleChange(event) {
-    const { name, value, selectedOptions } = event.target
-    const nextValue =
-      name === 'accessWorkIds'
-        ? Array.from(selectedOptions, option => option.value)
-        : value
+    const { name, value } = event.target
 
     setForm(current => ({
       ...current,
-      [name]: nextValue,
-      ...(name === 'role' && !roleSupportsChefCategory(nextValue) ? { chefCategory: '' } : {}),
+      [name]: value,
+      ...(name === 'role' && !roleSupportsChefCategory(value) ? { chefCategory: '' } : {}),
     }))
     setFormErrors(current => ({ ...current, [name]: '' }))
   }
@@ -2082,18 +2073,17 @@ export default function PeoplePage() {
   function startEdit(person) {
     const accessIdentity = accessIdentities.find(identity => Number(identity.personId) === Number(person.id)) || null
 
-    setForm({
-      id: person.id,
-      name: person.name ?? '',
-      price: person.price ?? 0,
-      monthlyPrice: person.monthlyPrice ?? 0,
-      role: person.role || ROLE_CARPINTEIRO,
-      chefCategory: person.chefCategory || '',
-      accessIdentityId: accessIdentity?.id || null,
-      accessUsername: accessIdentity?.username || '',
-      accessPassword: '',
-      accessWorkIds: Array.isArray(accessIdentity?.works) ? accessIdentity.works.map(work => String(work.id)) : [],
-    })
+      setForm({
+        id: person.id,
+        name: person.name ?? '',
+        price: person.price ?? 0,
+        monthlyPrice: person.monthlyPrice ?? 0,
+        role: person.role || ROLE_CARPINTEIRO,
+        chefCategory: person.chefCategory || '',
+        accessIdentityId: accessIdentity?.id || null,
+        accessUsername: accessIdentity?.username || '',
+        accessPassword: '',
+      })
     setShowForm(true)
     setError('')
     setSuccess('')
@@ -2171,7 +2161,6 @@ export default function PeoplePage() {
               id: form.accessIdentityId,
               username: form.accessUsername,
               password: form.accessPassword,
-              works: form.accessWorkIds.map(workId => Number(workId)),
             }
           : null,
       }
@@ -2810,25 +2799,6 @@ export default function PeoplePage() {
                           )}
                           {formErrors.accessPassword && <span style={{ color: '#b42318', fontSize: '13px' }}>{formErrors.accessPassword}</span>}
                         </label>
-
-                        {formUsesWorkScope && (
-                          <label style={{ ...labelStyle, ...wideFieldStyle }}>
-                            Obras permitidas
-                            <select
-                              multiple
-                              name="accessWorkIds"
-                              value={form.accessWorkIds}
-                              onChange={handleChange}
-                              style={{ ...inputStyle, minHeight: '180px' }}
-                            >
-                              {accessWorks.map(work => (
-                                <option key={work.id} value={work.id}>
-                                  #{work.number} - {work.name}
-                                </option>
-                              ))}
-                            </select>
-                          </label>
-                        )}
                       </div>
                     </div>
                   )}
