@@ -1,5 +1,5 @@
 import { canManageEntireApp } from '../../lib/auth.js'
-import { isDailyPlanLocked } from '../../lib/daily-plan-lock.js'
+import { canBypassTemporaryDailyPlanMutationLock, isDailyPlanLocked } from '../../lib/daily-plan-lock.js'
 import { isFeatureEnabled } from '../../lib/feature-flags.js'
 import { hasPermission } from '../../lib/permissions.js'
 import { isChefRole } from '../../lib/roles.js'
@@ -38,7 +38,11 @@ function toAssignmentMutationError(error, fallbackMessage) {
   return new HttpError(status, message)
 }
 
-async function isDailyPlanLockedForWorkIds(dateString, workIds = []) {
+async function isDailyPlanLockedForWorkIds(dateString, workIds = [], options = {}) {
+  if (canBypassTemporaryDailyPlanMutationLock(options)) {
+    return false
+  }
+
   const normalizedWorkIds = Array.from(
     new Set(
       (Array.isArray(workIds) ? workIds : [workIds])
@@ -48,16 +52,16 @@ async function isDailyPlanLockedForWorkIds(dateString, workIds = []) {
   )
 
   if (normalizedWorkIds.length === 0) {
-    return isDailyPlanLocked(dateString)
+    return isDailyPlanLocked(dateString, options)
   }
 
   const works = await Promise.all(normalizedWorkIds.map(workId => getWorkByIdData(workId)))
 
-  return works.some(work => isDailyPlanLocked(dateString, { clientId: work?.clientId }))
+  return works.some(work => isDailyPlanLocked(dateString, { ...options, clientId: work?.clientId }))
 }
 
-async function ensureDailyPlanUnlockedForWorkIds(dateString, workIds = []) {
-  if (await isDailyPlanLockedForWorkIds(dateString, workIds)) {
+async function ensureDailyPlanUnlockedForWorkIds(dateString, workIds = [], options = {}) {
+  if (await isDailyPlanLockedForWorkIds(dateString, workIds, options)) {
     throw new HttpError(
       403,
       'Depois das 08:00 ja nao e possivel alterar o plano diario deste dia.',

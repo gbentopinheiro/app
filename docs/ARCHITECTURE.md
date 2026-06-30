@@ -431,7 +431,7 @@ MariaDB
 | `AUTH_SECRET` | assinatura HMAC da sessão | `lib/auth.js` | runtime |
 | `PLANNING_CUTOFF_BYPASS_CLIENT_IDS` | lista temporária de clientes com bypass ao cutoff das 08:00 | `lib/daily-plan-lock.js`, `server/services/work-assignments-service.js` | runtime |
 | `PLANNING_CUTOFF_BYPASS_UNTIL` | prazo da exceção temporária por cliente | `lib/daily-plan-lock.js`, `server/services/work-assignments-service.js` | runtime |
-| `PLANNING_CUTOFF_BYPASS_WORK_PLAN_CREATE_UNTIL` | prazo temporário para permitir `Criar novo` / `Copiar anterior` depois das 08:00 | `lib/daily-plan-lock.js`, `server/services/work-plans-service.js` | runtime |
+| `PLANNING_CUTOFF_BYPASS_WORK_PLAN_CREATE_UNTIL` | prazo temporário para permitir `Criar novo` / `Copiar anterior` e gerir afetações depois das 08:00 | `lib/daily-plan-lock.js`, `server/services/work-plans-service.js`, `server/services/work-assignments-service.js` | runtime |
 
 ### `NEXT_PUBLIC_APP_ENV`
 
@@ -466,7 +466,7 @@ MariaDB
 
 - `PLANNING_CUTOFF_BYPASS_CLIENT_IDS` contém os `client_id` permitidos, separados por vírgula
 - `PLANNING_CUTOFF_BYPASS_UNTIL` define até quando esses clientes podem ignorar o cutoff das 08:00
-- `PLANNING_CUTOFF_BYPASS_WORK_PLAN_CREATE_UNTIL` define até quando `Criar novo` e `Copiar anterior` podem continuar disponíveis depois das 08:00
+- `PLANNING_CUTOFF_BYPASS_WORK_PLAN_CREATE_UNTIL` define até quando `Criar novo`, `Copiar anterior` e as operações sobre afetações podem continuar disponíveis depois das 08:00
 - todas são lidas em runtime e, quando vazias ou expiradas, o comportamento normal regressa automaticamente
 
 ### Build time vs runtime

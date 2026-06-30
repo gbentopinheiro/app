@@ -174,6 +174,10 @@ const {
 } = await import('../lib/work-assignments.js')
 const { getAllWorkPlans, getWorkPlanByDate } = await import('../lib/work-plans.js')
 const { createWorkAssignmentService } = await import('../server/services/work-assignments-service.js')
+const {
+  updateWorkAssignmentService,
+  deleteWorkAssignmentService,
+} = await import('../server/services/work-assignments-service.js')
 const { createWorkPlanService } = await import('../server/services/work-plans-service.js')
 const { getAllWorks } = await import('../lib/works.js')
 const { createWorkData } = await import('../lib/works.js')
@@ -511,6 +515,38 @@ test('criar novo plano diario passa antes do prazo configurado', async () => {
   )
 })
 
+test('criar editar e remover afetacoes passa com bypass temporario ativo', async () => {
+  await withPlanningCutoffBypassEnv(
+    {
+      PLANNING_CUTOFF_BYPASS_WORK_PLAN_CREATE_UNTIL: FUTURE_BYPASS_UNTIL,
+    },
+    async () => {
+      const assignment = await createWorkAssignmentService(ADMIN_SESSION, {
+        workId: 1,
+        personId: 3,
+        date: LOCKED_DAILY_PLAN_DATE,
+        hours: 8,
+        notes: 'Criado com bypass',
+      })
+
+      assert.equal(assignment.workId, 1)
+      assert.equal(assignment.personId, 3)
+
+      const updatedAssignment = await updateWorkAssignmentService(ADMIN_SESSION, assignment.id, {
+        notes: 'Atualizado com bypass',
+      })
+
+      assert.equal(updatedAssignment.id, assignment.id)
+      assert.equal(updatedAssignment.notes, 'Atualizado com bypass')
+
+      const deleteResult = await deleteWorkAssignmentService(ADMIN_SESSION, assignment.id)
+
+      assert.equal(deleteResult.message, 'Afetacao removida com sucesso')
+      assert.equal(getAllWorkAssignments({ date: LOCKED_DAILY_PLAN_DATE }).length, 0)
+    },
+  )
+})
+
 test('criar novo plano diario volta a bloquear depois do prazo', async () => {
   await withPlanningCutoffBypassEnv(
     {
@@ -541,6 +577,103 @@ test('variavel vazia para criar plano diario mantem o bloqueio atual', async () 
         createWorkPlanService(ADMIN_SESSION, {
           date: LOCKED_DAILY_PLAN_DATE,
         }),
+        error => {
+          assert.equal(error?.status, 403)
+          assert.match(String(error?.message || ''), /Depois das 08:00/)
+          return true
+        },
+      )
+    },
+  )
+})
+
+test('afetacoes continuam bloqueadas quando o bypass esta ausente', async () => {
+  const lockedAssignment = createWorkAssignment({
+    date: LOCKED_DAILY_PLAN_DATE,
+    workId: 1,
+    personId: 3,
+    hours: 8,
+    notes: 'Afetacao bloqueada sem bypass',
+  })
+
+  await withPlanningCutoffBypassEnv({}, async () => {
+    await assert.rejects(
+      createWorkAssignmentService(ADMIN_SESSION, {
+        workId: 1,
+        personId: 3,
+        date: LOCKED_DAILY_PLAN_DATE,
+        hours: 8,
+      }),
+      error => {
+        assert.equal(error?.status, 403)
+        assert.match(String(error?.message || ''), /Depois das 08:00/)
+        return true
+      },
+    )
+
+    await assert.rejects(
+      updateWorkAssignmentService(ADMIN_SESSION, lockedAssignment.id, {
+        notes: 'Nao devia atualizar',
+      }),
+      error => {
+        assert.equal(error?.status, 403)
+        assert.match(String(error?.message || ''), /Depois das 08:00/)
+        return true
+      },
+    )
+
+    await assert.rejects(
+      deleteWorkAssignmentService(ADMIN_SESSION, lockedAssignment.id),
+      error => {
+        assert.equal(error?.status, 403)
+        assert.match(String(error?.message || ''), /Depois das 08:00/)
+        return true
+      },
+    )
+  })
+})
+
+test('afetacoes voltam a bloquear quando o bypass expira', async () => {
+  const lockedAssignment = createWorkAssignment({
+    date: LOCKED_DAILY_PLAN_DATE,
+    workId: 1,
+    personId: 3,
+    hours: 8,
+    notes: 'Afetacao bloqueada com bypass expirado',
+  })
+
+  await withPlanningCutoffBypassEnv(
+    {
+      PLANNING_CUTOFF_BYPASS_WORK_PLAN_CREATE_UNTIL: EXPIRED_BYPASS_UNTIL,
+    },
+    async () => {
+      await assert.rejects(
+        createWorkAssignmentService(ADMIN_SESSION, {
+          workId: 1,
+          personId: 3,
+          date: LOCKED_DAILY_PLAN_DATE,
+          hours: 8,
+        }),
+        error => {
+          assert.equal(error?.status, 403)
+          assert.match(String(error?.message || ''), /Depois das 08:00/)
+          return true
+        },
+      )
+
+      await assert.rejects(
+        updateWorkAssignmentService(ADMIN_SESSION, lockedAssignment.id, {
+          notes: 'Nao devia atualizar com bypass expirado',
+        }),
+        error => {
+          assert.equal(error?.status, 403)
+          assert.match(String(error?.message || ''), /Depois das 08:00/)
+          return true
+        },
+      )
+
+      await assert.rejects(
+        deleteWorkAssignmentService(ADMIN_SESSION, lockedAssignment.id),
         error => {
           assert.equal(error?.status, 403)
           assert.match(String(error?.message || ''), /Depois das 08:00/)

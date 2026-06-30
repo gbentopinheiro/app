@@ -1163,8 +1163,8 @@ export default function DailyPlanPage() {
             {!loading && isDailyPlanLockedForDate && (
               <p style={{ margin: error || success ? '12px 0 0' : 0, color: '#b45309' }}>
                 Depois das 08:00, por regra, já não é possível alterar o plano diário deste dia.
-                Se existir uma exceção temporária configurada no servidor, Criar novo e Copiar anterior
-                continuam disponíveis até ao prazo definido.
+                Se existir uma exceção temporária configurada no servidor, Criar novo, Copiar anterior
+                e as operações sobre afetações continuam disponíveis até ao prazo definido.
               </p>
             )}
             {!selectedWorkPlan && !error && !loading && (
