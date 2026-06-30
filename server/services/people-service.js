@@ -20,6 +20,7 @@ import {
   normalizeChefCategory,
   normalizeRole,
   isResponsavelRole,
+  roleCanHaveAppAccess,
   roleRequiresAppAccess,
   roleSupportsChefCategory,
   roleUsesWorkScope,
@@ -72,7 +73,7 @@ function getAccessPayload(personId, role, accessIdentity, existingAccessIdentity
 }
 
 async function syncAccessIdentityForPerson(personId, role, accessIdentity, { removeWhenNotRequired = false } = {}) {
-  if (!roleRequiresAppAccess(role)) {
+  if (!roleCanHaveAppAccess(role)) {
     if (removeWhenNotRequired) {
       await deleteAccessIdentityByPersonIdData(personId)
     }
@@ -86,8 +87,17 @@ async function syncAccessIdentityForPerson(personId, role, accessIdentity, { rem
   const reusableAccessIdentity =
     currentAccessIdentity ||
     (unlinkedIdentityWithUsername && !unlinkedIdentityWithUsername.personId ? unlinkedIdentityWithUsername : null)
+  const hasRequestedAccessConfiguration = hasAccessConfiguration(accessIdentity)
+
+  if (!roleRequiresAppAccess(role) && !hasRequestedAccessConfiguration) {
+    if (removeWhenNotRequired && currentAccessIdentity) {
+      await deleteAccessIdentityByPersonIdData(personId)
+    }
+    return null
+  }
+
   const shouldPersistAccessIdentity =
-    Boolean(reusableAccessIdentity) || hasAccessConfiguration(accessIdentity)
+    roleRequiresAppAccess(role) || Boolean(reusableAccessIdentity) || hasRequestedAccessConfiguration
 
   if (!shouldPersistAccessIdentity) {
     return null

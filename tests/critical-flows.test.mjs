@@ -153,7 +153,7 @@ function seedFixtureData() {
 
 seedFixtureData()
 
-const { getAccessIdentityByUsername } = await import('../lib/access-identities.js')
+const { getAccessIdentityByPersonId, getAccessIdentityByUsername } = await import('../lib/access-identities.js')
 const { canApproveHours, createSessionToken, getDefaultPathForRole, readSessionToken } = await import('../lib/auth.js')
 const { getAllClients } = await import('../lib/clients.js')
 const { decryptProtectedPayload, getLoginTransportPublicKey } = await import('../lib/login-transport.js')
@@ -163,7 +163,7 @@ const { getEntityRoleLabel, getRoleDisplayLabel } = await import('../lib/roles.j
 const { buildOperationalWorkStatuses } = await import('../lib/work-operation-status.js')
 const { getNextWorkNumber } = await import('../lib/work-numbering.js')
 const { deleteClientService } = await import('../server/services/clients-service.js')
-const { createPersonService } = await import('../server/services/people-service.js')
+const { createPersonService, updatePersonService } = await import('../server/services/people-service.js')
 const { deleteWorkService } = await import('../server/services/works-service.js')
 const {
   createWorkAssignment,
@@ -280,6 +280,32 @@ test('criar pessoa aceita apenas preco hora ou apenas preco mensal', async () =>
   assert.equal(monthlyPerson.price, 0)
   assert.equal(monthlyPerson.monthlyPrice, 1200)
   assert.equal(monthlyPerson.isMonthlyBilling, true)
+})
+
+test('chefes podem ser guardados sem acesso a app e editar pode remover o acesso', async () => {
+  const session = {
+    role: 'admin',
+    accountType: 'admin',
+    accessProfile: 'admin',
+  }
+
+  const chefWithoutAccess = await createPersonService(session, {
+    name: 'Chefe sem acesso',
+    role: 'chef_primeira',
+  })
+
+  assert.equal(getAccessIdentityByPersonId(chefWithoutAccess.id), null)
+
+  await updatePersonService(session, 2, {
+    role: 'chef_primeira',
+    accessIdentity: {
+      id: 1,
+      username: '',
+      password: '',
+    },
+  })
+
+  assert.equal(getAccessIdentityByPersonId(2), null)
 })
 
 test('propoe automaticamente o proximo numero de obra', () => {

@@ -31,6 +31,7 @@ import {
   ROLE_TROLHA,
   getRoleDisplayLabel,
   isWorkerRole,
+  roleCanHaveAppAccess,
   roleRequiresAppAccess,
   roleSupportsChefCategory,
   roleUsesWorkScope,
@@ -1821,7 +1822,8 @@ export default function PeoplePage() {
   const canManagePeople = Boolean(viewerRole) && !isResponsavelView
   const canCreatePeople = Boolean(viewerRole) && (canManagePeople || isResponsavelView)
   const isMonthlyForm = Number(form.monthlyPrice) > 0
-  const roleNeedsAccess = roleRequiresAppAccess(form.role)
+  const roleCanConfigureAccess = roleCanHaveAppAccess(form.role)
+  const roleRequiresMandatoryAccess = roleRequiresAppAccess(form.role)
   const formUsesChefCategory = roleSupportsChefCategory(form.role)
 
   useEffect(() => {
@@ -2036,18 +2038,26 @@ export default function PeoplePage() {
 
     const nextErrors = {}
     const normalizedPricing = normalizePersonPricingInput(form)
+    const hasSubmittedAccessConfiguration =
+      roleCanConfigureAccess && Boolean(form.accessUsername.trim() || form.accessPassword.trim())
 
     if (!form.name.trim()) nextErrors.name = 'O nome é obrigatório.'
     if (normalizedPricing.monthlyPrice < 0) nextErrors.monthlyPrice = 'O preço mensal não pode ser negativo.'
     if (normalizedPricing.price < 0) {
       nextErrors.price = 'O preço hora não pode ser negativo.'
     }
-    const wantsAccessConfiguration = roleNeedsAccess
 
     if (!form.role) nextErrors.role = 'Seleciona o role.'
     if (formUsesChefCategory && !form.chefCategory) nextErrors.chefCategory = 'Seleciona a especialização do chefe.'
-    if (wantsAccessConfiguration && !form.accessUsername.trim()) nextErrors.accessUsername = 'O nome de utilizador é obrigatório.'
-    if (wantsAccessConfiguration && !form.accessIdentityId && !reusableAccessIdentity && !form.accessPassword.trim()) {
+    if ((roleRequiresMandatoryAccess || hasSubmittedAccessConfiguration) && !form.accessUsername.trim()) {
+      nextErrors.accessUsername = 'O nome de utilizador é obrigatório.'
+    }
+    if (
+      (roleRequiresMandatoryAccess || hasSubmittedAccessConfiguration) &&
+      !form.accessIdentityId &&
+      !reusableAccessIdentity &&
+      !form.accessPassword.trim()
+    ) {
       nextErrors.accessPassword = 'A palavra-passe é obrigatória.'
     }
 
@@ -2159,7 +2169,7 @@ export default function PeoplePage() {
         monthlyPrice: normalizedPricing.monthlyPrice,
         role: form.role,
         chefCategory: formUsesChefCategory ? form.chefCategory : null,
-        accessIdentity: roleNeedsAccess
+        accessIdentity: roleCanConfigureAccess
           ? {
               id: form.accessIdentityId,
               username: form.accessUsername,
@@ -2601,7 +2611,7 @@ export default function PeoplePage() {
                     </article>
                   </div>
 
-                  {(roleRequiresAppAccess(selectedPerson.role) || selectedAccessIdentity) && (
+                  {(roleCanHaveAppAccess(selectedPerson.role) || selectedAccessIdentity) && (
                     <article style={statCardStyle}>
                       <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>Acesso à aplicação</div>
                       <div style={{ marginTop: '8px', display: 'grid', gap: '8px' }}>
@@ -2716,55 +2726,25 @@ export default function PeoplePage() {
                         gridTemplateColumns: '420px 220px 220px 220px',
                       }}
                     >
-                    <label style={{ ...mediumFieldStyle, maxWidth: '420px' }}>
-                      Nome
-                      <input type="text" name="name" value={form.name} onChange={handleChange} style={inputStyle} />
-                      {formErrors.name && <span style={{ color: '#b42318', fontSize: '13px' }}>{formErrors.name}</span>}
-                    </label>
-
-                    <label style={compactFieldStyle}>
-                      Preço mensal
-                      <input
-                        type="number"
-                        name="monthlyPrice"
-                        min="0"
-                        step="0.01"
-                        value={form.monthlyPrice}
-                        onChange={handleChange}
-                        style={inputStyle}
-                      />
-                      {formErrors.monthlyPrice && <span style={{ color: '#b42318', fontSize: '13px' }}>{formErrors.monthlyPrice}</span>}
-                    </label>
-
-                    <label style={compactFieldStyle}>
-                      Função
-                      <select name="role" value={form.role} onChange={handleChange} style={inputStyle}>
-                        <option value={ROLE_ADMIN}>Administrador</option>
-                        <option value={ROLE_RESPONSAVEL}>Responsável</option>
-                        <option value={ROLE_CHEF_PRIMEIRA}>Chefe</option>
-                        <option value={ROLE_CHEF_SEGUNDA}>Chefe de segunda</option>
-                        <option value={ROLE_CARPINTEIRO}>Carpinteiro</option>
-                        <option value={ROLE_FERRAJEIRO}>Ferrajeiro</option>
-                        <option value={ROLE_TROLHA}>Trolha</option>
-                        <option value={ROLE_GRUISTA}>Gruista</option>
-                      </select>
-                      {formErrors.role && <span style={{ color: '#b42318', fontSize: '13px' }}>{formErrors.role}</span>}
-                    </label>
-
-                    {formUsesChefCategory && (
-                      <label style={compactFieldStyle}>
-                        Especialização do chefe
-                        <select name="chefCategory" value={form.chefCategory} onChange={handleChange} style={inputStyle}>
-                          <option value="">Seleciona a especialização</option>
-                          <option value={CHEF_CATEGORY_TROLHA}>Chefe de Trolhas</option>
-                          <option value={CHEF_CATEGORY_FERRAJEIRO}>Chefe de Ferrajeiros</option>
-                          <option value={CHEF_CATEGORY_CARPINTEIRO}>Chefe de Carpinteiros</option>
-                        </select>
-                        {formErrors.chefCategory && (
-                          <span style={{ color: '#b42318', fontSize: '13px' }}>{formErrors.chefCategory}</span>
-                        )}
+                      <label style={{ ...mediumFieldStyle, maxWidth: '420px' }}>
+                        Nome
+                        <input type="text" name="name" value={form.name} onChange={handleChange} style={inputStyle} />
+                        {formErrors.name && <span style={{ color: '#b42318', fontSize: '13px' }}>{formErrors.name}</span>}
                       </label>
-                    )}
+
+                      <label style={compactFieldStyle}>
+                        Preço mensal
+                        <input
+                          type="number"
+                          name="monthlyPrice"
+                          min="0"
+                          step="0.01"
+                          value={form.monthlyPrice}
+                          onChange={handleChange}
+                          style={inputStyle}
+                        />
+                        {formErrors.monthlyPrice && <span style={{ color: '#b42318', fontSize: '13px' }}>{formErrors.monthlyPrice}</span>}
+                      </label>
 
                       <label style={compactFieldStyle}>
                         Preço hora
@@ -2779,10 +2759,40 @@ export default function PeoplePage() {
                         />
                         {formErrors.price && <span style={{ color: '#b42318', fontSize: '13px' }}>{formErrors.price}</span>}
                       </label>
+
+                      <label style={compactFieldStyle}>
+                        Função
+                        <select name="role" value={form.role} onChange={handleChange} style={inputStyle}>
+                          <option value={ROLE_ADMIN}>Administrador</option>
+                          <option value={ROLE_RESPONSAVEL}>Responsável</option>
+                          <option value={ROLE_CHEF_PRIMEIRA}>Chefe</option>
+                          <option value={ROLE_CHEF_SEGUNDA}>Chefe de segunda</option>
+                          <option value={ROLE_CARPINTEIRO}>Carpinteiro</option>
+                          <option value={ROLE_FERRAJEIRO}>Ferrajeiro</option>
+                          <option value={ROLE_TROLHA}>Trolha</option>
+                          <option value={ROLE_GRUISTA}>Gruista</option>
+                        </select>
+                        {formErrors.role && <span style={{ color: '#b42318', fontSize: '13px' }}>{formErrors.role}</span>}
+                      </label>
+
+                      {formUsesChefCategory && (
+                        <label style={compactFieldStyle}>
+                          Especialização do chefe
+                          <select name="chefCategory" value={form.chefCategory} onChange={handleChange} style={inputStyle}>
+                            <option value="">Seleciona a especialização</option>
+                            <option value={CHEF_CATEGORY_TROLHA}>Chefe de Trolhas</option>
+                            <option value={CHEF_CATEGORY_FERRAJEIRO}>Chefe de Ferrajeiros</option>
+                            <option value={CHEF_CATEGORY_CARPINTEIRO}>Chefe de Carpinteiros</option>
+                          </select>
+                          {formErrors.chefCategory && (
+                            <span style={{ color: '#b42318', fontSize: '13px' }}>{formErrors.chefCategory}</span>
+                          )}
+                        </label>
+                      )}
                     </div>
                   </div>
 
-                  {roleNeedsAccess && (
+                  {roleCanConfigureAccess && (
                     <div style={{ display: 'grid', gap: '12px' }}>
                       <p style={formSectionTitleStyle}>Acesso à aplicação</p>
                       <div style={{ ...personFormGridStyle, columnGap: '32px' }}>

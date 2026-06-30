@@ -6,7 +6,7 @@ import { getAllDailyWorkNotesData } from '../../../lib/daily-work-notes.js'
 import { getPersonDocumentRemindersData } from '../../../lib/person-document-reminders.js'
 import { getPersonByIdData } from '../../../lib/people.js'
 import { getApprovedAssignmentTotalCost, isAssignmentApproved } from '../../../lib/work-assignment-approval.js'
-import { getRoleDisplayLabel, isResponsavelRole, roleRequiresAppAccess, roleUsesWorkScope } from '../../../lib/roles.js'
+import { getRoleDisplayLabel, isResponsavelRole, roleCanHaveAppAccess, roleUsesWorkScope } from '../../../lib/roles.js'
 import { getServerSession } from '../../../lib/server-session.js'
 import { getAllWorkAssignmentsData } from '../../../lib/work-assignments.js'
 import { ViewportPage, ViewportScrollArea, ViewportShell } from '../../components/ViewportLayout.js'
@@ -403,7 +403,7 @@ export default async function PersonDetailPage({ params }) {
               </article>
             </div>
 
-            {(roleRequiresAppAccess(person.role) || accessIdentity) && (
+            {(roleCanHaveAppAccess(person.role) || accessIdentity) && (
               <article style={statCardStyle}>
                 <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>Acesso à aplicação</div>
                 <div style={{ marginTop: '8px', display: 'grid', gap: '8px' }}>
