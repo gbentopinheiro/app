@@ -159,6 +159,7 @@ const { getAllClients } = await import('../lib/clients.js')
 const { decryptProtectedPayload, getLoginTransportPublicKey } = await import('../lib/login-transport.js')
 const { verifyPassword } = await import('../lib/passwords.js')
 const { getEntityRoleLabel, getRoleDisplayLabel } = await import('../lib/roles.js')
+const { buildOperationalWorkStatuses } = await import('../lib/work-operation-status.js')
 const { getNextWorkNumber } = await import('../lib/work-numbering.js')
 const { deleteClientService } = await import('../server/services/clients-service.js')
 const { deleteWorkService } = await import('../server/services/works-service.js')
@@ -249,6 +250,29 @@ test('propoe automaticamente o proximo numero de obra', () => {
     getNextWorkNumber([{ number: 8 }, { number: '15' }, { number: '' }, { number: null }]),
     16,
   )
+})
+
+test('estado operacional mostra apenas obras com pessoal afeto hoje', () => {
+  const statuses = buildOperationalWorkStatuses(
+    [
+      { id: 1, name: 'Obra com equipa', status: 'planned' },
+      { id: 2, name: 'Obra sem equipa hoje', status: 'planned' },
+      { id: 3, name: 'Obra concluida', status: 'completed' },
+    ],
+    [
+      { workId: 1, submitted: false },
+      { workId: 1, submitted: true },
+      { workId: 3, submitted: true },
+    ],
+  )
+
+  assert.deepEqual(statuses, [
+    {
+      id: 1,
+      name: 'Obra com equipa',
+      submitted: true,
+    },
+  ])
 })
 
 test('criar afetação cria o work plan pela empresa da obra', () => {

@@ -9,6 +9,7 @@ import { getAllPeopleData } from '../lib/people.js'
 import { getAllWorkAssignmentsData } from '../lib/work-assignments.js'
 import { isAssignmentApproved } from '../lib/work-assignment-approval.js'
 import { getAllWorksData, WorkStatus } from '../lib/works.js'
+import { buildOperationalWorkStatuses } from '../lib/work-operation-status.js'
 import { getAllDailyWorkNotesData } from '../lib/daily-work-notes.js'
 import { getBelgianHolidays } from '../lib/belgian-holidays.js'
 import { getAllCalendarEvents } from '../lib/calendar-events.js'
@@ -471,6 +472,17 @@ const workStatusDotStyle = submitted => ({
   borderRadius: '999px',
   background: submitted ? '#22c55e' : '#ef4444',
 })
+
+const workStatusEmptyStyle = {
+  margin: '12px 0 0',
+  padding: '14px 16px',
+  borderRadius: '14px',
+  background: 'rgba(37, 99, 235, 0.05)',
+  color: '#49627f',
+  fontSize: '13px',
+  lineHeight: 1.5,
+  fontWeight: 800,
+}
 
 const notificationCenterStyle = {
   display: 'grid',
@@ -1178,19 +1190,7 @@ async function getWorkSubmissionStatus() {
   const works = await getAllWorksData()
   const todayAssignments = await getAllWorkAssignmentsData({ date: getTodayDate() })
 
-  return works
-    .filter(work => work.status !== WorkStatus.COMPLETED)
-    .slice(0, 5)
-    .map(work => {
-      const workAssignments = todayAssignments.filter(assignment => Number(assignment.workId) === Number(work.id))
-      const hasSubmitted = workAssignments.some(assignment => assignment.submitted)
-
-      return {
-        id: work.id,
-        name: work.name,
-        submitted: hasSubmitted,
-      }
-    })
+  return buildOperationalWorkStatuses(works, todayAssignments)
 }
 
 export default async function Home() {
@@ -1297,17 +1297,21 @@ export default async function Home() {
               {!isResponsavel && (
                 <div style={workStatusTableStyle}>
                   <h3 style={workStatusTitleStyle}>Estado operacional</h3>
-                  <div style={workStatusListStyle}>
-                    {workSubmissionStatus.map(work => (
-                      <div key={work.id} style={workStatusRowStyle}>
-                        <span style={workStatusNameStyle}>{work.name}</span>
-                        <span style={workStatusBadgeStyle(work.submitted)}>
-                          <span style={workStatusDotStyle(work.submitted)} />
-                          {work.submitted ? 'Submetido' : 'Não Submetido'}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
+                  {workSubmissionStatus.length > 0 ? (
+                    <div style={workStatusListStyle}>
+                      {workSubmissionStatus.map(work => (
+                        <div key={work.id} style={workStatusRowStyle}>
+                          <span style={workStatusNameStyle}>{work.name}</span>
+                          <span style={workStatusBadgeStyle(work.submitted)}>
+                            <span style={workStatusDotStyle(work.submitted)} />
+                            {work.submitted ? 'Submetido' : 'Não Submetido'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p style={workStatusEmptyStyle}>Sem obras com pessoal afeto no plano diário de hoje.</p>
+                  )}
                 </div>
               )}
 
