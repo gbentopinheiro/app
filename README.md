@@ -91,6 +91,34 @@ Exemplos rapidos:
 - DEV com frontend em `https://dev.bentixapp.com` e API em `https://api-dev.bentixapp.com`: `NEXT_PUBLIC_APP_ENV=dev`
 - PROD com API separada: `NEXT_PUBLIC_APP_ENV=prod`
 
+## Experiencia mobile / PWA
+
+Os chefes devem abrir a rota mobile do ambiente ativo:
+
+- local: `http://localhost:3000/mobile/chef`
+- DEV: `https://dev.bentixapp.com/mobile/chef`
+- PROD: `https://bentixapp.com/mobile/chef`
+
+Android:
+
+- abrir a URL no Chrome
+- tocar no menu do navegador
+- escolher `Install app` ou `Add to Home screen`
+- confirmar a instalacao
+
+iPhone:
+
+- abrir a URL no Safari
+- tocar em `Partilhar`
+- escolher `Adicionar ao Ecra principal`
+- confirmar em `Adicionar`
+
+Notas:
+
+- a instalacao PWA depende de HTTPS fora do ambiente local
+- no iPhone a instalacao e manual; o Safari nao mostra um prompt nativo como no Android
+- as notificacoes continuam dependentes das permissoes do browser/dispositivo
+
 ## Bootstrap MySQL / MariaDB
 
 Para preparar uma base nova com o fluxo suportado:

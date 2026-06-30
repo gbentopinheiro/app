@@ -25,10 +25,14 @@ import {
   normalizeReminderSettings,
 } from '../../../lib/reminder-settings.js'
 
+const mobileSafeTopInset = 'max(20px, env(safe-area-inset-top))'
+const mobileSafeStickyInset = 'max(14px, env(safe-area-inset-top))'
+const mobileSafeBottomInset = 'max(14px, env(safe-area-inset-bottom))'
+
 const pageStyle = {
-  minHeight: '100vh',
+  minHeight: '100dvh',
   background: 'var(--vp-page-background)',
-  padding: '20px 14px 120px',
+  padding: `${mobileSafeTopInset} 14px calc(120px + ${mobileSafeBottomInset})`,
   boxSizing: 'border-box',
   color: 'var(--vp-text)',
   fontFamily: '"Avenir Next", "Segoe UI", "-apple-system", "BlinkMacSystemFont", sans-serif',
@@ -44,7 +48,7 @@ const phoneShellStyle = {
 
 const heroStyle = {
   position: 'sticky',
-  top: '14px',
+  top: mobileSafeStickyInset,
   zIndex: 5,
   padding: '18px',
   borderRadius: '26px',
@@ -388,7 +392,7 @@ const messageStyle = type => ({
 const submitSectionStyle = {
   position: 'fixed',
   left: '50%',
-  bottom: '14px',
+  bottom: mobileSafeBottomInset,
   transform: 'translateX(-50%)',
   width: 'min(430px, calc(100% - 28px))',
   padding: '12px',
