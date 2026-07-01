@@ -1,5 +1,8 @@
 import './globals.css'
 import PwaSetupClient from './components/PwaSetupClient'
+import { appendBuildVersion } from '../lib/pwa-version.js'
+
+const manifestPath = appendBuildVersion('/manifest.webmanifest')
 
 export const metadata = {
   title: {
@@ -7,7 +10,7 @@ export const metadata = {
     template: '%s | Bentix',
   },
   applicationName: 'Bentix',
-  manifest: '/manifest.webmanifest',
+  manifest: manifestPath,
   icons: {
     icon: [
       { url: '/icon.svg', type: 'image/svg+xml' },

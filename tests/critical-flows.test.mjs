@@ -160,10 +160,16 @@ const {
   getUnauthorizedRedirectPath,
   isPublicAppPath,
 } = await import('../lib/auth.js')
+const {
+  getNoCacheHeaders,
+  isPublicAssetPath,
+  shouldApplyNoCache,
+} = await import('../lib/cache-policy.js')
 const { getAllClients } = await import('../lib/clients.js')
 const { decryptProtectedPayload, getLoginTransportPublicKey } = await import('../lib/login-transport.js')
 const { verifyPassword } = await import('../lib/passwords.js')
 const { normalizePersonPricingInput } = await import('../lib/person-pricing.js')
+const { appendBuildVersion } = await import('../lib/pwa-version.js')
 const { getEntityRoleLabel, getRoleDisplayLabel } = await import('../lib/roles.js')
 const { buildLoginRedirectPath, getSafeRedirectPath } = await import('../lib/safe-redirect.js')
 const { buildOperationalWorkStatuses } = await import('../lib/work-operation-status.js')
@@ -352,6 +358,33 @@ test('/mobile/chef sem sessao redireciona para /mobile/login com redirectTo segu
 test('/login web normal continua publico e sem redirectTo forçado', () => {
   assert.equal(isPublicAppPath('/login'), true)
   assert.equal(getUnauthorizedRedirectPath('/works'), '/login')
+})
+
+test('politica de cache desativa cache para login mobile e paginas autenticadas', () => {
+  assert.equal(shouldApplyNoCache('/login'), true)
+  assert.equal(shouldApplyNoCache('/mobile/login'), true)
+  assert.equal(shouldApplyNoCache('/mobile/chef'), true)
+  assert.equal(shouldApplyNoCache('/works'), true)
+  assert.equal(shouldApplyNoCache('/api/auth/login'), false)
+
+  assert.equal(isPublicAssetPath('/manifest.webmanifest'), true)
+  assert.equal(isPublicAssetPath('/sw.js'), true)
+  assert.equal(isPublicAssetPath('/icons/icon-192.png'), true)
+
+  assert.deepEqual(getNoCacheHeaders(), {
+    'Cache-Control': 'private, no-store, no-cache, max-age=0, must-revalidate',
+    Pragma: 'no-cache',
+    Expires: '0',
+  })
+})
+
+test('versionamento PWA acrescenta versao simples ao manifest e aos assets', () => {
+  assert.equal(
+    appendBuildVersion('/manifest.webmanifest', 'build-123'),
+    '/manifest.webmanifest?v=build-123',
+  )
+  assert.equal(appendBuildVersion('/sw.js', 'build-123'), '/sw.js?v=build-123')
+  assert.equal(appendBuildVersion('/mobile/chef', 'build-123'), '/mobile/chef?v=build-123')
 })
 
 test('especializacao do chefe de segunda usa labels de exibicao sem criar novos roles', () => {
