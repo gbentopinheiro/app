@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import LogoutButton from '../../components/LogoutButton'
 import { ViewportPage, ViewportScrollArea, ViewportShell } from '../../components/ViewportLayout.js'
+import { buildLoginRedirectPath } from '../../../lib/safe-redirect.js'
 import {
   fetchChefDailyHoursData,
   fetchChefWorkNotes,
@@ -28,6 +29,7 @@ import {
 const mobileSafeTopInset = 'max(20px, env(safe-area-inset-top))'
 const mobileSafeStickyInset = 'max(14px, env(safe-area-inset-top))'
 const mobileSafeBottomInset = 'max(14px, env(safe-area-inset-bottom))'
+const mobileLogoutRedirectPath = buildLoginRedirectPath('/mobile/chef', '/mobile/login')
 
 const pageStyle = {
   minHeight: '100dvh',
@@ -991,7 +993,7 @@ export default function ChefMobileDailyHoursClient({ initialSession, previewMode
                 Definições
               </Link>
               <LogoutButton
-                redirectTo="/login"
+                redirectTo={mobileLogoutRedirectPath}
                 style={{
                   border: '1px solid rgba(255,255,255,0.16)',
                   background: 'rgba(255,255,255,0.08)',

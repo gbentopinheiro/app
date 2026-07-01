@@ -6,6 +6,7 @@ import NotificationSettingsForm from '../../../account-settings/NotificationSett
 import MobileNotificationPermissionCard from './MobileNotificationPermissionCard'
 import { getServerSession } from '../../../../lib/server-session.js'
 import { getRoleDisplayLabel, isChefRole } from '../../../../lib/roles.js'
+import { buildLoginRedirectPath } from '../../../../lib/safe-redirect.js'
 import { ViewportPage, ViewportScrollArea, ViewportShell } from '../../../components/ViewportLayout.js'
 
 const mobileSafeTopInset = 'max(20px, env(safe-area-inset-top))'
@@ -131,7 +132,7 @@ export default async function ChefMobileSettingsPage() {
   const session = await getServerSession()
 
   if (!session) {
-    redirect('/login')
+    redirect(buildLoginRedirectPath('/mobile/chef/settings', '/mobile/login'))
   }
 
   const isChef = isChefRole(session.role)
@@ -145,7 +146,7 @@ export default async function ChefMobileSettingsPage() {
               Voltar
             </Link>
             <LogoutButton
-              redirectTo="/login"
+              redirectTo={buildLoginRedirectPath('/mobile/chef', '/mobile/login')}
               style={{
                 border: '1px solid rgba(255,255,255,0.16)',
                 background: 'rgba(255,255,255,0.08)',

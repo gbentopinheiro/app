@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { loginWithProtectedPayload } from '../../frontend/controllers/auth-controller.js'
 import { createProtectedPayload } from '../../lib/browser-protected-payload.js'
+import { getSafeRedirectPath } from '../../lib/safe-redirect.js'
 import { BentixLogo } from './components/BentixLogo'
 import { ViewportPage, ViewportScrollArea, ViewportShell } from '../components/ViewportLayout.js'
 
@@ -324,6 +325,11 @@ export default function LoginPage() {
     setSubmitting(true)
     setError('')
 
+    const redirectTo =
+      typeof window === 'undefined'
+        ? null
+        : getSafeRedirectPath(new URLSearchParams(window.location.search).get('redirectTo'))
+
     try {
       const protectedPayload = await createProtectedPayload({
         username,
@@ -335,7 +341,7 @@ export default function LoginPage() {
         'Não foi possível iniciar sessão.',
       )
 
-      router.push(data.redirectTo || '/')
+      router.push(redirectTo || data.redirectTo || '/')
       router.refresh()
     } catch (currentError) {
       setError(currentError.message)

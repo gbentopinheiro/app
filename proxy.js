@@ -4,16 +4,14 @@ import {
   canAccessPathByPermission,
   getDefaultPathForRole,
   getExpiredSessionCookieOptions,
+  getUnauthorizedRedirectPath,
+  isPublicAppPath,
   readSessionToken,
   SESSION_COOKIE_NAME,
   shouldUsePermissionPathGuard,
 } from './lib/auth.js'
 import { applyApiCorsHeaders } from './lib/api-cors.js'
 import { isChefRole, isDeveloperRole } from './lib/roles.js'
-
-function isPublicPath(pathname) {
-  return pathname === '/login' || pathname.startsWith('/api/auth/')
-}
 
 function isApiPath(pathname) {
   return pathname === '/api' || pathname.startsWith('/api/')
@@ -80,7 +78,11 @@ function buildUnauthorizedResponse(request, isInvalidSession = false) {
     return isInvalidSession ? clearSessionCookie(response) : response
   }
 
-  const loginUrl = new URL('/login', request.url)
+  const loginRedirectPath = getUnauthorizedRedirectPath(
+    request.nextUrl.pathname,
+    request.nextUrl.search,
+  )
+  const loginUrl = new URL(loginRedirectPath, request.url)
   const response = NextResponse.redirect(loginUrl)
   return isInvalidSession ? clearSessionCookie(response) : response
 }
@@ -106,7 +108,7 @@ export async function proxy(request) {
 
   const { pathname } = request.nextUrl
 
-  if (isPublicPath(pathname)) {
+  if (isPublicAppPath(pathname)) {
     const token = request.cookies.get(SESSION_COOKIE_NAME)?.value
     const session = token ? await readSessionToken(token) : null
 

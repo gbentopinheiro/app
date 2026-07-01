@@ -156,11 +156,16 @@ seedFixtureData()
 const { getAccessIdentityByPersonId, getAccessIdentityByUsername } = await import('../lib/access-identities.js')
 const { createClientData } = await import('../lib/clients.js')
 const { canApproveHours, createSessionToken, getDefaultPathForRole, readSessionToken } = await import('../lib/auth.js')
+const {
+  getUnauthorizedRedirectPath,
+  isPublicAppPath,
+} = await import('../lib/auth.js')
 const { getAllClients } = await import('../lib/clients.js')
 const { decryptProtectedPayload, getLoginTransportPublicKey } = await import('../lib/login-transport.js')
 const { verifyPassword } = await import('../lib/passwords.js')
 const { normalizePersonPricingInput } = await import('../lib/person-pricing.js')
 const { getEntityRoleLabel, getRoleDisplayLabel } = await import('../lib/roles.js')
+const { buildLoginRedirectPath, getSafeRedirectPath } = await import('../lib/safe-redirect.js')
 const { buildOperationalWorkStatuses } = await import('../lib/work-operation-status.js')
 const { getNextWorkNumber } = await import('../lib/work-numbering.js')
 const { deleteClientService } = await import('../server/services/clients-service.js')
@@ -311,6 +316,42 @@ test('login valida payload protegido, password e sessao do chefe', async () => {
   assert.equal(session.accountType, 'operational')
   assert.deepEqual(session.workIds, [1])
   assert.equal(getDefaultPathForRole(session.role), '/daily-hours')
+})
+
+test('redirectTo do login aceita apenas paths internos seguros', () => {
+  assert.equal(getSafeRedirectPath('/mobile/chef'), '/mobile/chef')
+  assert.equal(
+    getSafeRedirectPath('/mobile/chef/settings?tab=notifications'),
+    '/mobile/chef/settings?tab=notifications',
+  )
+  assert.equal(buildLoginRedirectPath('/mobile/chef'), '/login?redirectTo=%2Fmobile%2Fchef')
+  assert.equal(
+    buildLoginRedirectPath('/mobile/chef', '/mobile/login'),
+    '/mobile/login?redirectTo=%2Fmobile%2Fchef',
+  )
+  assert.equal(getSafeRedirectPath('https://evil.example/mobile/chef'), null)
+  assert.equal(getSafeRedirectPath('//evil.example/mobile/chef'), null)
+  assert.equal(getSafeRedirectPath('mobile/chef'), null)
+  assert.equal(getSafeRedirectPath('/\\evil'), null)
+  assert.equal(buildLoginRedirectPath('https://evil.example/mobile/chef'), '/login')
+  assert.equal(buildLoginRedirectPath('https://evil.example/mobile/chef', '/mobile/login'), '/mobile/login')
+})
+
+test('/mobile/login e tratado como rota publica pelo guard', () => {
+  assert.equal(isPublicAppPath('/mobile/login'), true)
+  assert.equal(getUnauthorizedRedirectPath('/mobile/login'), '/mobile/login')
+})
+
+test('/mobile/chef sem sessao redireciona para /mobile/login com redirectTo seguro', () => {
+  assert.equal(
+    getUnauthorizedRedirectPath('/mobile/chef'),
+    '/mobile/login?redirectTo=%2Fmobile%2Fchef',
+  )
+})
+
+test('/login web normal continua publico e sem redirectTo forçado', () => {
+  assert.equal(isPublicAppPath('/login'), true)
+  assert.equal(getUnauthorizedRedirectPath('/works'), '/login')
 })
 
 test('especializacao do chefe de segunda usa labels de exibicao sem criar novos roles', () => {

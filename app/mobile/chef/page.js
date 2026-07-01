@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import ChefMobileDailyHoursClient from './ChefMobileDailyHoursClient'
 import { canManageEntireApp, getDefaultPathForRole } from '../../../lib/auth.js'
 import { buildChefPreviewSession, getChefPreviewIdentity } from '../../../lib/chef-preview.js'
+import { buildLoginRedirectPath } from '../../../lib/safe-redirect.js'
 import { isChefRole } from '../../../lib/roles.js'
 import { getServerSession } from '../../../lib/server-session.js'
 
@@ -15,7 +16,7 @@ export default async function ChefMobileDailyHoursPage({ searchParams }) {
   const session = await getServerSession()
 
   if (!session) {
-    redirect('/login')
+    redirect(buildLoginRedirectPath('/mobile/chef', '/mobile/login'))
   }
 
   const previewMode = canManageEntireApp(session.role)
