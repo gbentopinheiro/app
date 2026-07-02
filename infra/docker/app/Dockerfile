@@ -22,6 +22,7 @@ COPY app ./app
 COPY config ./config
 COPY frontend ./frontend
 COPY lib ./lib
+COPY public ./public
 COPY server ./server
 COPY scripts ./scripts
 COPY data ./data
@@ -55,6 +56,7 @@ COPY --from=builder /app/app ./app
 COPY --from=builder /app/config ./config
 COPY --from=builder /app/frontend ./frontend
 COPY --from=builder /app/lib ./lib
+COPY --from=builder /app/public ./public
 COPY --from=builder /app/server ./server
 COPY --from=builder /app/scripts ./scripts
 COPY --from=builder /app/data ./data
