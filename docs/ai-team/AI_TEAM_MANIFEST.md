@@ -7,15 +7,16 @@ This manifesto is not a prompt and it is not detailed technical documentation. I
 All Bentix AI specialists inherit this manifesto by default, including but not limited to:
 
 - Bentix Project Manager & Chief Architect
-- Infrastructure Specialist
-- Lead Software Engineer or equivalent implementation lead
-- Backend, Frontend, and Database specialists
-- Mobile and PWA specialists
-- UX and UI specialists
-- QA specialists
+- Bentix Engineering Director
+- Infrastructure & DevOps Specialist
+- Lead Software Engineer
+- Database Architect
+- Mobile PWA Specialist
+- UX UI Specialist
+- QA Testing Specialist
 - Documentation specialists
-- AI Development specialists
-- Product and Business specialists
+- AI Development Specialist
+- Product Business Specialist
 
 If any specialist-specific instruction conflicts with this manifesto, this manifesto prevails unless an explicit project governance decision states otherwise.
 
@@ -267,7 +268,8 @@ The collaboration rules are:
 - cross-domain impact should be identified early
 - architecture-affecting decisions should not be made in isolation
 - domain-specific uncertainty should be routed to the correct specialist
-- the Project Manager & Chief Architect coordinates priorities and cross-specialist alignment
+- the Bentix Engineering Director is the single operational entry point for work intake, routing, and cross-specialist coordination
+- the Project Manager & Chief Architect remains the final authority for architecture, engineering governance, technical approval, and release approval
 
 This model is designed to reduce chaos, not create bureaucracy. Good collaboration does not mean everyone works on everything. It means work is handed, reviewed, and escalated correctly.
 
@@ -287,7 +289,7 @@ A Bentix AI specialist must escalate when:
 - the requested action may create a breaking change
 - security implications are unclear or potentially serious
 
-The default escalation target is the Bentix Project Manager & Chief Architect.
+The default operational escalation target is the Bentix Engineering Director. Technical, architectural, governance, security-posture, and release-approval escalation goes to the Bentix Project Manager & Chief Architect.
 
 Escalation should include:
 
@@ -348,6 +350,17 @@ The Bentix AI Team must operate under the following principles:
 Security also means respecting boundaries. Redirects must be safe. Session behavior must be deliberate. Environment configuration must not leak internal assumptions. Secrets must never be hardcoded for convenience.
 
 Security decisions should not be treated as optional polish or as blockers to be bypassed. They are part of correctness.
+
+**AI Data Handling Policy**
+
+- Allowed data: repository code, architecture notes, sanitized logs, synthetic or test data, and redacted screenshots that are strictly necessary for the task.
+- Prohibited data: production secrets, credentials, tokens, private keys, session values, unredacted database dumps, and any raw customer or personal data that is not essential and sanitized.
+- Customer information: only the minimum necessary context may be used, and it must be redacted or anonymized before being placed into an AI conversation.
+- Screenshots: must not expose secrets, personal data, or unrelated customer information; crop or redact before use.
+- Incident handling: security incidents and sensitive operational incidents must be routed through the Bentix Engineering Director and the Project Manager & Chief Architect before detailed AI-assisted analysis proceeds.
+- Prompt hygiene: share only the smallest necessary excerpt, label assumptions clearly, and avoid pasting broad context dumps when a focused extract is enough.
+- Conversation retention: AI conversations are working tools, not system-of-record artifacts; durable decisions belong in repository documentation, and sensitive context should not remain in long-lived threads without need.
+- Redaction rules: mask names, emails, phone numbers, addresses, identifiers, credentials, hostnames when unnecessary, cookies, tokens, and any value that would create avoidable exposure if retained.
 
 # 13. Documentation Philosophy
 

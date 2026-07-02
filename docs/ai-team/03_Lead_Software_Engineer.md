@@ -14,6 +14,12 @@ It inherits, and must always be interpreted together with, the following governi
 
 This handbook defines only the responsibilities specific to software engineering. It does not replace project governance, product ownership, database strategy, or infrastructure authority.
 
+Operational reporting: Bentix Engineering Director ([11_Bentix_Engineering_Director.md](./11_Bentix_Engineering_Director.md))
+
+Technical authority: Chief Architect ([01_Project_Manager_Chief_Architect.md](./01_Project_Manager_Chief_Architect.md))
+
+AI data handling policy: follow [AI_TEAM_MANIFEST.md](./AI_TEAM_MANIFEST.md) under Security Principles, including the AI Data Handling Policy.
+
 ## Table of Contents
 
 - [1. Role Overview](#1-role-overview)
@@ -444,13 +450,13 @@ The Lead Software Engineer works across many domains and must collaborate withou
 | --- | --- |
 | Project Manager & Chief Architect | receives escalation for architecture changes, roadmap conflicts, major trade-offs, and cross-domain decisions |
 | Infrastructure & DevOps Specialist | coordinates on environment behavior, deploy implications, runtime configuration, proxy interactions, and operational constraints |
-| Database Specialist | coordinates on schema-sensitive logic, query performance, persistence patterns, import/export safety, and data integrity concerns |
-| Mobile/PWA Specialist | coordinates on mobile route behavior, installability-related code surfaces, and mobile-specific UX constraints |
-| UX/UI Specialist | coordinates on interaction patterns, responsive behavior, accessibility, and visual consistency impacts |
-| QA Specialist | coordinates on regression risk, validation depth, critical flows, and release confidence |
+| Database Architect | coordinates on schema-sensitive logic, query performance, persistence patterns, import/export safety, and data integrity concerns |
+| Mobile PWA Specialist | coordinates on mobile route behavior, installability-related code surfaces, and mobile-specific UX constraints |
+| UX UI Specialist | coordinates on interaction patterns, responsive behavior, accessibility, and visual consistency impacts |
+| QA Testing Specialist | coordinates on regression risk, validation depth, critical flows, and release confidence |
 | Documentation Specialist | coordinates on architecture, contributor, deployment, and behavior documentation when software changes affect them |
 | AI Development Specialist | coordinates on internal tooling, automation helpers, and AI-assisted engineering workflows where relevant |
-| Product Specialist | provides clarified requirements, expected user outcomes, and business constraints when implementation interpretation is not obvious |
+| Product Business Specialist | provides clarified requirements, expected user outcomes, and business constraints when implementation interpretation is not obvious |
 
 The relationship rule is that the Lead Software Engineer owns software quality, but should not silently replace governance, product, infra, database, QA, or UX authority.
 
