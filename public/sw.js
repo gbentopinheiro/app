@@ -1,10 +1,49 @@
+const swUrl = new URL(self.location.href)
+const SW_BUILD_VERSION = swUrl.searchParams.get('v') || 'unversioned'
+self.__BENTIX_SW_VERSION__ = SW_BUILD_VERSION
+
+function shouldForceNoStore(request) {
+  if (request.method !== 'GET') {
+    return false
+  }
+
+  const requestUrl = new URL(request.url)
+
+  if (requestUrl.origin !== self.location.origin) {
+    return false
+  }
+
+  if (request.mode === 'navigate') {
+    return true
+  }
+
+  return (
+    requestUrl.pathname === '/sw.js' ||
+    requestUrl.pathname === '/manifest.webmanifest' ||
+    requestUrl.pathname === '/login' ||
+    requestUrl.pathname === '/mobile/login' ||
+    requestUrl.pathname.startsWith('/mobile/') ||
+    requestUrl.pathname.startsWith('/_next/')
+  )
+}
+
+function buildNetworkRequest(request) {
+  if (!shouldForceNoStore(request)) {
+    return request
+  }
+
+  return new Request(request, {
+    cache: 'no-store',
+  })
+}
+
 self.addEventListener('install', event => {
-  self.skipWaiting()
+  event.waitUntil(self.skipWaiting())
 })
 
 self.addEventListener('message', event => {
   if (event.data?.type === 'SKIP_WAITING') {
-    self.skipWaiting()
+    event.waitUntil(self.skipWaiting())
   }
 })
 
@@ -23,5 +62,5 @@ self.addEventListener('fetch', event => {
     return
   }
 
-  event.respondWith(fetch(event.request))
+  event.respondWith(fetch(buildNetworkRequest(event.request)))
 })

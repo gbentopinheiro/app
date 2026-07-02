@@ -16,6 +16,7 @@ import {
   saveWork as saveWorkRequest,
 } from '../../frontend/controllers/works-controller.js'
 import { listWorkAssignments } from '../../frontend/controllers/work-assignments-controller.js'
+import { getFinancialSummaryCost, getFinancialSummaryHours } from '../../lib/work-financial-summary.js'
 import { getNextWorkNumber } from '../../lib/work-numbering.js'
 import { buildWorkPricingSnapshot, hasWorkPricingChanges } from '../../lib/work-pricing.js'
 
@@ -379,24 +380,11 @@ function getWorkStatusLabel(status) {
 }
 
 function getAssignmentEstimatedHours(assignment) {
-  const approvedHours = Number(assignment?.approvedHours)
-  if (Number.isFinite(approvedHours) && assignment?.approvedHours !== null && assignment?.approvedHours !== undefined) {
-    return approvedHours
-  }
-
-  const hours = Number(assignment?.hours)
-  return Number.isFinite(hours) ? hours : 0
+  return getFinancialSummaryHours(assignment)
 }
 
 function getAssignmentEstimatedCost(assignment) {
-  const estimatedHours = getAssignmentEstimatedHours(assignment)
-  const hourlyCost = Number(assignment?.hourlyCost)
-
-  if (!Number.isFinite(hourlyCost) || estimatedHours <= 0) {
-    return 0
-  }
-
-  return Number((estimatedHours * hourlyCost).toFixed(2))
+  return getFinancialSummaryCost(assignment)
 }
 
 function formatMonthSummaryLabel(year, monthIndex) {

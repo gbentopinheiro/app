@@ -19,7 +19,8 @@
     "db:seed:permissions": "node scripts/seed-access-permissions.mjs",
     "db:baseline:mysql": "node scripts/refresh-mysql-validation-baseline.mjs",
     "db:validate:mysql": "node scripts/validate-mysql-import.mjs",
-    "db:reset:demo-hours": "node scripts/reset-demo-hour-states.mjs"
+    "db:reset:demo-hours": "node scripts/reset-demo-hour-states.mjs",
+    "db:cleanup:demo-summary": "node scripts/cleanup-demo-summary-data.mjs"
   },
   "keywords": [],
   "author": "",
