@@ -1,0 +1,4014 @@
+﻿diff --git a/app/daily-plan/page.js b/app/daily-plan/page.js
+index 8bf2b10..d6b89d6 100644
+--- a/app/daily-plan/page.js
++++ b/app/daily-plan/page.js
+@@ -6,13 +6,13 @@ import EditPencilIcon, { editPencilButtonStyle } from '../components/EditPencilI
+ import TrashBinIcon, { trashBinButtonStyle } from '../components/TrashBinIcon'
+ import { ViewportPage, ViewportScrollArea, ViewportShell } from '../components/ViewportLayout.js'
+ import {
+-  deleteWorkAssignment,
+-  listWorkAssignments,
+-  saveWorkAssignment,
+-} from '../../frontend/controllers/work-assignments-controller.js'
+-import { saveWorkPlan } from '../../frontend/controllers/work-plans-controller.js'
+-import { getDailyPlanLockState } from '../../lib/daily-plan-lock.js'
+-import { getDefaultHoursForDate } from '../../lib/default-hours.js'
++  deletePlanningDraftAssignment,
++  getPlanningWorkspaceView,
++  initializePlanningWorkspaceDraft,
++  publishPlanningWorkspace,
++  savePlanningDraftAssignment,
++  setPlanningWorkspaceToDraft,
++} from '../../frontend/controllers/planning-workspaces-controller.js'
+ import { getEntityRoleLabel, getRoleLabel, isChefRole } from '../../lib/roles.js'
+ 
+ const pageStyle = {
+@@ -215,6 +215,18 @@ const compactActionButtonStyle = {
+   textAlign: 'center',
+ }
+ 
++const statusPillStyle = {
++  display: 'inline-flex',
++  alignItems: 'center',
++  justifyContent: 'center',
++  borderRadius: '999px',
++  padding: '8px 14px',
++  fontSize: '12px',
++  fontWeight: 900,
++  letterSpacing: '0.04em',
++  textTransform: 'uppercase',
++}
++
+ const closeButtonStyle = {
+   border: '1px solid var(--vp-border)',
+   borderRadius: '999px',
+@@ -376,14 +388,14 @@ function getManualHourlyCostSuggestions(work, person) {
+ 
+ export default function DailyPlanPage() {
+   const [selectedDate, setSelectedDate] = useState(today)
+-  const [currentTime, setCurrentTime] = useState(() => new Date())
+-  const [workPlans, setWorkPlans] = useState([])
+-  const [selectedWorkPlan, setSelectedWorkPlan] = useState(null)
++  const [selectedPlanningWorkspace, setSelectedPlanningWorkspace] = useState(null)
+   const [assignments, setAssignments] = useState([])
+   const [defaults, setDefaults] = useState({ people: [], works: [] })
+   const [loading, setLoading] = useState(true)
+   const [creating, setCreating] = useState(false)
+   const [creatingMode, setCreatingMode] = useState('')
++  const [publishing, setPublishing] = useState(false)
++  const [switchingToDraft, setSwitchingToDraft] = useState(false)
+   const [savingAssignment, setSavingAssignment] = useState(false)
+   const [showAddModal, setShowAddModal] = useState(false)
+   const [showMessageModal, setShowMessageModal] = useState(false)
+@@ -403,14 +415,6 @@ export default function DailyPlanPage() {
+     loadDailyPlan(selectedDate)
+   }, [selectedDate])
+ 
+-  useEffect(() => {
+-    const intervalId = window.setInterval(() => {
+-      setCurrentTime(new Date())
+-    }, 60000)
+-
+-    return () => window.clearInterval(intervalId)
+-  }, [])
+-
+   const groupedAssignments = useMemo(() => {
+     const groups = new Map()
+ 
+@@ -444,7 +448,8 @@ export default function DailyPlanPage() {
+       .sort((left, right) => Number(left.workNumber) - Number(right.workNumber))
+   }, [assignments])
+ 
+-  const hasWorkPlanForDate = Boolean(selectedWorkPlan)
++  const isDraftPlanning = selectedPlanningWorkspace?.state === 'draft'
++  const isPublishedPlanning = selectedPlanningWorkspace?.state === 'published'
+   const activeWorks = useMemo(
+     () => defaults.works.filter(work => work.status !== 'completed'),
+     [defaults.works],
+@@ -613,7 +618,7 @@ export default function DailyPlanPage() {
+     [duplicateNonChefAssignments],
+   )
+   const generatedMessage = useMemo(() => {
+-    if (!selectedWorkPlan || selectedMessageWorkIds.length === 0) return ''
++    if (!selectedPlanningWorkspace || selectedMessageWorkIds.length === 0) return ''
+ 
+     const selectedGroups = groupedAssignments.filter(group => selectedMessageWorkIds.includes(String(group.workId)))
+ 
+@@ -627,8 +632,8 @@ export default function DailyPlanPage() {
+       return `${group.workName}\n${peopleLines}`
+     })
+ 
+-    return [`Plano do dia ${selectedWorkPlan.date}`, ...messageParts].join('\n\n')
+-  }, [groupedAssignments, selectedMessageWorkIds, selectedWorkPlan])
++    return [`Plano do dia ${selectedPlanningWorkspace.date}`, ...messageParts].join('\n\n')
++  }, [groupedAssignments, selectedMessageWorkIds, selectedPlanningWorkspace])
+ 
+   async function loadDailyPlan(date) {
+     setLoading(true)
+@@ -636,27 +641,21 @@ export default function DailyPlanPage() {
+     setSuccess('')
+ 
+     try {
+-      const data = await listWorkAssignments(
++      const data = await getPlanningWorkspaceView(
+         {
+-          includeDefaults: true,
+           date,
+         },
+         'Erro ao carregar plano diário',
+       )
+ 
+-      const nextDefaults = data.defaults || { people: [], works: [], workPlans: [] }
+-      const nextWorkPlans = Array.isArray(nextDefaults.workPlans) ? nextDefaults.workPlans : []
+-      const nextWorkPlan = nextWorkPlans.find(item => item.date === date) || null
+-
+-      setWorkPlans(nextWorkPlans)
++      const nextDefaults = data.defaults || { people: [], works: [] }
+       setDefaults(nextDefaults)
+-      setSelectedWorkPlan(nextWorkPlan)
++      setSelectedPlanningWorkspace(data.workspace || null)
+       setAssignments(Array.isArray(data.items) ? data.items : [])
+     } catch (err) {
+       setError(err.message)
+-      setWorkPlans([])
+-      setDefaults({ people: [], works: [], workPlans: [] })
+-      setSelectedWorkPlan(null)
++      setDefaults({ people: [], works: [] })
++      setSelectedPlanningWorkspace(null)
+       setAssignments([])
+     } finally {
+       setLoading(false)
+@@ -670,8 +669,7 @@ export default function DailyPlanPage() {
+     setSuccess('')
+ 
+     try {
+-      const data = await saveWorkPlan(
+-        null,
++      const data = await initializePlanningWorkspaceDraft(
+         {
+           date: selectedDate,
+           clonePreviousDay,
+@@ -681,12 +679,12 @@ export default function DailyPlanPage() {
+ 
+       setSuccess(
+         clonePreviousDay
+-          ? data.reusedWorkPlan
+-            ? `Plano de ${data.date} atualizado com ${data.clonedAssignments} afetações copiadas de ${data.clonedFromDate}.`
+-            : `Plano criado para ${data.date} com ${data.clonedAssignments} afetações copiadas de ${data.clonedFromDate}.`
+-          : data.reusedWorkPlan
+-            ? `Plano de ${data.date} reiniciado${data.clearedAssignments ? ` e limpo (${data.clearedAssignments} afetações removidas)` : ''}.`
+-            : `Plano criado para ${data.date}.`
++          ? data.reusedWorkspace
++            ? `Draft de ${data.workspace?.date || selectedDate} atualizado com ${data.clonedAssignments} afetações copiadas de ${data.clonedFromDate}.`
++            : `Draft criado para ${data.workspace?.date || selectedDate} com ${data.clonedAssignments} afetações copiadas de ${data.clonedFromDate}.`
++          : data.reusedWorkspace
++            ? `Draft de ${data.workspace?.date || selectedDate} reiniciado${data.clearedAssignments ? ` e limpo (${data.clearedAssignments} afetações removidas)` : ''}.`
++            : `Draft criado para ${data.workspace?.date || selectedDate}.`
+       )
+       await loadDailyPlan(selectedDate)
+     } catch (err) {
+@@ -697,8 +695,52 @@ export default function DailyPlanPage() {
+     }
+   }
+ 
++  async function handlePublishPlanning() {
++    if (!selectedPlanningWorkspace || !isDraftPlanning) return
++
++    setPublishing(true)
++    setError('')
++    setSuccess('')
++
++    try {
++      await publishPlanningWorkspace(
++        selectedPlanningWorkspace.id,
++        'Erro ao publicar planeamento',
++      )
++      setSuccess('Planeamento publicado com sucesso. Os chefes já veem esta versão.')
++      await loadDailyPlan(selectedDate)
++    } catch (err) {
++      setError(err.message)
++    } finally {
++      setPublishing(false)
++    }
++  }
++
++  async function handleEditPublishedPlanning() {
++    if (!selectedPlanningWorkspace || !isPublishedPlanning) return
++
++    setSwitchingToDraft(true)
++    setError('')
++    setSuccess('')
++
++    try {
++      await setPlanningWorkspaceToDraft(
++        selectedPlanningWorkspace.id,
++        'Erro ao voltar o planeamento para draft',
++      )
++      setSuccess(
++        'Planeamento voltou a draft. Os chefes continuam a ver a última versão publicada até confirmares novamente.',
++      )
++      await loadDailyPlan(selectedDate)
++    } catch (err) {
++      setError(err.message)
++    } finally {
++      setSwitchingToDraft(false)
++    }
++  }
++
+   function openAddModal() {
+-    if (!selectedWorkPlan) return
++    if (!selectedPlanningWorkspace || !isDraftPlanning) return
+     setAssignmentForm(emptyAssignmentForm)
+     setFormErrors({})
+     setError('')
+@@ -729,7 +771,7 @@ export default function DailyPlanPage() {
+   }
+ 
+   function openMessageModal() {
+-    if (!selectedWorkPlan || groupedAssignments.length === 0) return
++    if (!selectedPlanningWorkspace || groupedAssignments.length === 0) return
+ 
+     setSelectedMessageWorkIds(groupedAssignments.map(group => String(group.workId)))
+     setMessageSelectionError('')
+@@ -839,10 +881,6 @@ export default function DailyPlanPage() {
+     return Object.keys(nextErrors).length === 0
+   }
+ 
+-  function getDefaultHours() {
+-    return getDefaultHoursForDate(selectedWorkPlan?.date)
+-  }
+-
+   function handleMessageWorkToggle(workId) {
+     const normalizedWorkId = String(workId)
+ 
+@@ -895,7 +933,7 @@ export default function DailyPlanPage() {
+   async function handleCreateAssignment(event) {
+     event.preventDefault()
+ 
+-    if (!selectedWorkPlan || !validateAssignmentForm()) {
++    if (!selectedPlanningWorkspace || !isDraftPlanning || !validateAssignmentForm()) {
+       return
+     }
+ 
+@@ -906,7 +944,6 @@ export default function DailyPlanPage() {
+     try {
+       const payload = assignmentForm.id
+         ? {
+-            workPlanId: selectedWorkPlan.id,
+             workId: Number(assignmentForm.workId),
+             personId: Number(assignmentForm.personId),
+             manualHourlyCost: assignmentForm.manualHourlyCost === true,
+@@ -915,26 +952,25 @@ export default function DailyPlanPage() {
+             hasWorkAccess: selectedPerson && isChefRole(selectedPerson.role) ? assignmentForm.hasWorkAccess === true : false,
+           }
+         : {
+-            workPlanId: selectedWorkPlan.id,
++            workspaceId: selectedPlanningWorkspace.id,
+             workId: Number(assignmentForm.workId),
+             personId: Number(assignmentForm.personId),
+-            hours: getDefaultHours(),
+             manualHourlyCost: assignmentForm.manualHourlyCost === true,
+             hourlyCost: assignmentForm.manualHourlyCost ? selectedHourlyCost : undefined,
+             notes: assignmentForm.notes,
+             hasWorkAccess: selectedPerson && isChefRole(selectedPerson.role) ? assignmentForm.hasWorkAccess === true : false,
+           }
+ 
+-      const data = await saveWorkAssignment(
++      const data = await savePlanningDraftAssignment(
+         assignmentForm.id,
+         payload,
+-        'Erro ao criar afetação',
++        'Erro ao guardar afetação no draft',
+       )
+ 
+       setSuccess(
+         assignmentForm.id
+-          ? `Afetação atualizada para ${data.person?.name || 'pessoa'}.`
+-          : `Afetação criada para ${data.person?.name || 'pessoa'}.`
++          ? `Afetação do draft atualizada para ${data.person?.name || 'pessoa'}.`
++          : `Afetação criada no draft para ${data.person?.name || 'pessoa'}.`
+       )
+       closeAddModal()
+       await loadDailyPlan(selectedDate)
+@@ -946,8 +982,10 @@ export default function DailyPlanPage() {
+   }
+ 
+   async function handleDeleteAssignment(assignment) {
++    if (!isDraftPlanning) return
++
+     const confirmed = window.confirm(
+-      `Pretendes realmente eliminar a afetação de ${assignment.person?.name || 'esta pessoa'} do plano ativo?`
++      `Pretendes realmente eliminar a afetação de ${assignment.person?.name || 'esta pessoa'} do draft atual?`
+     )
+ 
+     if (!confirmed) return
+@@ -956,9 +994,9 @@ export default function DailyPlanPage() {
+     setSuccess('')
+ 
+     try {
+-      await deleteWorkAssignment(assignment.id, 'Erro ao eliminar afetação')
++      await deletePlanningDraftAssignment(assignment.id, 'Erro ao eliminar afetação do draft')
+ 
+-      setSuccess('Afetação eliminada com sucesso.')
++      setSuccess('Afetação removida do draft com sucesso.')
+       await loadDailyPlan(selectedDate)
+     } catch (err) {
+       setError(err.message)
+@@ -966,6 +1004,8 @@ export default function DailyPlanPage() {
+   }
+ 
+   function handleAssignmentDragStart(assignment) {
++    if (!isDraftPlanning || savingAssignment) return
++
+     setDraggedAssignmentId(String(assignment.id))
+     setDraggedSourceWorkId(String(assignment.workId))
+     setDropTargetWorkId(null)
+@@ -1004,7 +1044,7 @@ export default function DailyPlanPage() {
+     setDraggedSourceWorkId(null)
+     setDropTargetWorkId(null)
+ 
+-    if (!selectedWorkPlan || !assignment || !targetWork || String(assignment.workId) === String(targetWorkId)) {
++    if (!selectedPlanningWorkspace || !isDraftPlanning || !assignment || !targetWork || String(assignment.workId) === String(targetWorkId)) {
+       return
+     }
+ 
+@@ -1013,17 +1053,17 @@ export default function DailyPlanPage() {
+     setSuccess('')
+ 
+     try {
+-      await saveWorkAssignment(
++      await savePlanningDraftAssignment(
+         assignment.id,
+         {
+-          workPlanId: selectedWorkPlan.id,
+           workId: Number(targetWorkId),
+           personId: Number(assignment.personId),
+           manualHourlyCost: false,
+           hourlyCost: getWorkHourlyCostForPerson(targetWork, targetPerson, assignment.hourlyCost),
+           notes: assignment.notes || '',
++          hasWorkAccess: assignment.hasWorkAccess === true,
+         },
+-        'Erro ao mover afetação',
++        'Erro ao mover afetação no draft',
+       )
+ 
+       setSuccess(`${assignment.person?.name || 'Pessoa'} movido(a) para a obra #${targetWork.number} - ${targetWork.name}.`)
+@@ -1059,11 +1099,7 @@ export default function DailyPlanPage() {
+   const totalUnassignedPeople = unassignedPeople.length
+   const totalWorks = groupedAssignments.length
+   const totalUnplannedWorks = unplannedWorks.length
+-  const dailyPlanLockState = useMemo(
+-    () => getDailyPlanLockState(selectedDate, currentTime),
+-    [currentTime, selectedDate],
+-  )
+-  const isDailyPlanLockedForDate = dailyPlanLockState.locked
++  const isPlanActionBusy = creating || publishing || switchingToDraft
+ 
+   return (
+     <ViewportPage lockViewport style={pageStyle}>
+@@ -1082,9 +1118,9 @@ export default function DailyPlanPage() {
+               <button
+                 type="button"
+                 onClick={() => handleCreateWorkPlan(false)}
+-                disabled={creating}
++                disabled={isPlanActionBusy}
+                 style={
+-                  creating
++                  isPlanActionBusy
+                     ? { ...disabledButtonStyle, ...compactActionButtonStyle }
+                     : { ...primaryButtonStyle, ...compactActionButtonStyle }
+                 }
+@@ -1094,9 +1130,9 @@ export default function DailyPlanPage() {
+               <button
+                 type="button"
+                 onClick={() => handleCreateWorkPlan(true)}
+-                disabled={creating}
++                disabled={isPlanActionBusy}
+                 style={
+-                  creating
++                  isPlanActionBusy
+                     ? { ...disabledButtonStyle, ...compactActionButtonStyle }
+                     : { ...secondaryButtonStyle, ...compactActionButtonStyle }
+                 }
+@@ -1155,38 +1191,89 @@ export default function DailyPlanPage() {
+           </button>
+         </section>
+ 
+-        {(error || success || loading || (!selectedWorkPlan && !error && !loading)) && (
++        {(error || success || loading || (!selectedPlanningWorkspace && !error && !loading)) && (
+           <section style={panelStyle}>
+             {error && <p style={{ margin: 0, color: '#b42318' }}>{error}</p>}
+             {success && <p style={{ margin: 0, color: '#1f7a45' }}>{success}</p>}
+             {loading && <p style={{ margin: 0 }}>A carregar plano diário...</p>}
+-            {!loading && isDailyPlanLockedForDate && (
+-              <p style={{ margin: error || success ? '12px 0 0' : 0, color: '#b45309' }}>
+-                Depois das 08:00, por regra, já não é possível alterar o plano diário deste dia.
+-                Se existir uma exceção temporária configurada no servidor, Criar novo, Copiar anterior
+-                e as operações sobre afetações continuam disponíveis até ao prazo definido.
+-              </p>
+-            )}
+-            {!selectedWorkPlan && !error && !loading && (
++            {!selectedPlanningWorkspace && !error && !loading && (
+               <p style={{ margin: 0, color: 'var(--vp-text-muted)' }}>
+-                Ainda não existe plano para {selectedDate}. Usa Criar novo ou Copiar anterior.
++                Ainda não existe planeamento para {selectedDate}. Usa Criar novo ou Copiar anterior para preparar um draft.
+               </p>
+             )}
+           </section>
+         )}
+ 
+-        {!loading && selectedWorkPlan && (
++        {!loading && selectedPlanningWorkspace && (
+           <section style={panelStyle}>
+             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '20px' }}>
+               <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap', width: '100%' }}>
+-                <h2 style={{ margin: 0, fontWeight: 900 }}>Plano do dia</h2>
+-                <button
+-                  type="button"
+-                  onClick={openAddModal}
+-                  style={{ ...primaryButtonStyle, ...compactActionButtonStyle }}
+-                >
+-                  Adicionar
+-                </button>
++                <div style={{ display: 'grid', gap: '8px' }}>
++                  <h2 style={{ margin: 0, fontWeight: 900 }}>Plano do dia</h2>
++                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
++                    <span
++                      style={{
++                        ...statusPillStyle,
++                        background: isDraftPlanning ? 'rgba(245, 158, 11, 0.18)' : 'rgba(31, 122, 69, 0.16)',
++                        color: isDraftPlanning ? '#b45309' : '#1f7a45',
++                        border: `1px solid ${isDraftPlanning ? 'rgba(245, 158, 11, 0.32)' : 'rgba(31, 122, 69, 0.28)'}`,
++                      }}
++                    >
++                      {isDraftPlanning ? 'Draft' : 'Published'}
++                    </span>
++                    <span style={{ color: 'var(--vp-text-muted)', fontSize: '13px', fontWeight: 700 }}>
++                      {isDraftPlanning
++                        ? selectedPlanningWorkspace.publishedWorkPlanId
++                          ? 'Os chefes continuam a ver a última versão publicada até confirmares novamente.'
++                          : 'Enquanto estiver em draft, os chefes ainda não veem este planeamento.'
++                        : 'Os chefes já estão a ver esta versão publicada.'}
++                    </span>
++                  </div>
++                </div>
++
++                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
++                  {isDraftPlanning ? (
++                    <>
++                      <button
++                        type="button"
++                        onClick={openAddModal}
++                        disabled={savingAssignment || publishing}
++                        style={
++                          savingAssignment || publishing
++                            ? { ...disabledButtonStyle, ...compactActionButtonStyle }
++                            : { ...primaryButtonStyle, ...compactActionButtonStyle }
++                        }
++                      >
++                        Adicionar
++                      </button>
++                      <button
++                        type="button"
++                        onClick={handlePublishPlanning}
++                        disabled={publishing || savingAssignment}
++                        style={
++                          publishing || savingAssignment
++                            ? { ...disabledButtonStyle, ...compactActionButtonStyle }
++                            : { ...secondaryButtonStyle, ...compactActionButtonStyle }
++                        }
++                      >
++                        {publishing ? 'A publicar...' : 'Confirm / Publish'}
++                      </button>
++                    </>
++                  ) : (
++                    <button
++                      type="button"
++                      onClick={handleEditPublishedPlanning}
++                      disabled={switchingToDraft}
++                      style={
++                        switchingToDraft
++                          ? { ...disabledButtonStyle, ...compactActionButtonStyle }
++                          : { ...secondaryButtonStyle, ...compactActionButtonStyle }
++                      }
++                    >
++                      {switchingToDraft ? 'A voltar...' : 'Edit'}
++                    </button>
++                  )}
++                </div>
+               </div>
+             </div>
+             {duplicateNonChefAssignments.length > 0 && (
+@@ -1223,19 +1310,23 @@ export default function DailyPlanPage() {
+                   return (
+                   <article
+                     key={group.workId}
+-                    onDragOver={(event) => handleWorkDragOver(event, group.workId)}
+-                    onDragLeave={() => handleWorkDragLeave(group.workId)}
+-                    onDrop={(event) => handleWorkDrop(event, group.workId)}
++                    onDragOver={isDraftPlanning ? (event) => handleWorkDragOver(event, group.workId) : undefined}
++                    onDragLeave={isDraftPlanning ? () => handleWorkDragLeave(group.workId) : undefined}
++                    onDrop={isDraftPlanning ? (event) => handleWorkDrop(event, group.workId) : undefined}
+                     style={{
+                       ...workCardStyle,
+                       border:
+-                        dropTargetWorkId === String(group.workId) ||
+-                        (draggedSourceWorkId === String(group.workId) && !dropTargetWorkId)
++                        isDraftPlanning && (
++                          dropTargetWorkId === String(group.workId) ||
++                          (draggedSourceWorkId === String(group.workId) && !dropTargetWorkId)
++                        )
+                           ? '2px dashed var(--vp-accent)'
+                           : workCardStyle.border,
+                       background:
+-                        dropTargetWorkId === String(group.workId) ||
+-                        (draggedSourceWorkId === String(group.workId) && !dropTargetWorkId)
++                        isDraftPlanning && (
++                          dropTargetWorkId === String(group.workId) ||
++                          (draggedSourceWorkId === String(group.workId) && !dropTargetWorkId)
++                        )
+                           ? 'var(--vp-highlight)'
+                           : workCardStyle.background,
+                     }}
+@@ -1258,15 +1349,15 @@ export default function DailyPlanPage() {
+                         return (
+                         <div
+                           key={assignment.id}
+-                          draggable={!savingAssignment}
+-                          onDragStart={() => handleAssignmentDragStart(assignment)}
+-                          onDragEnd={handleAssignmentDragEnd}
++                          draggable={isDraftPlanning && !savingAssignment}
++                          onDragStart={isDraftPlanning ? () => handleAssignmentDragStart(assignment) : undefined}
++                          onDragEnd={isDraftPlanning ? handleAssignmentDragEnd : undefined}
+                           style={{
+                             border: '1px solid var(--vp-border)',
+                             borderRadius: '14px',
+                             padding: '14px',
+                             background: 'var(--vp-surface-muted)',
+-                            cursor: savingAssignment ? 'default' : 'grab',
++                            cursor: isDraftPlanning && !savingAssignment ? 'grab' : 'default',
+                             opacity: draggedAssignmentId === String(assignment.id) ? 0.55 : 1,
+                           }}
+                         >
+@@ -1293,26 +1384,28 @@ export default function DailyPlanPage() {
+                                 </p>
+                               )}
+                             </div>
+-                            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+-                              <button
+-                                type="button"
+-                                onClick={() => openEditModal(assignment)}
+-                                style={editPencilButtonStyle}
+-                                title="Editar afetação"
+-                                aria-label="Editar afetação"
+-                              >
+-                                <EditPencilIcon />
+-                              </button>
+-                              <button
+-                                type="button"
+-                                onClick={() => handleDeleteAssignment(assignment)}
+-                                style={trashBinButtonStyle}
+-                                title="Eliminar afetação"
+-                                aria-label="Eliminar afetação"
+-                              >
+-                                <TrashBinIcon />
+-                              </button>
+-                            </div>
++                            {isDraftPlanning && (
++                              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
++                                <button
++                                  type="button"
++                                  onClick={() => openEditModal(assignment)}
++                                  style={editPencilButtonStyle}
++                                  title="Editar afetação"
++                                  aria-label="Editar afetação"
++                                >
++                                  <EditPencilIcon />
++                                </button>
++                                <button
++                                  type="button"
++                                  onClick={() => handleDeleteAssignment(assignment)}
++                                  style={trashBinButtonStyle}
++                                  title="Eliminar afetação"
++                                  aria-label="Eliminar afetação"
++                                >
++                                  <TrashBinIcon />
++                                </button>
++                              </div>
++                            )}
+                           </div>
+                           {assignment.notes && (
+                             <p style={{ margin: '6px 0 0', color: 'var(--vp-text-soft)' }}>{assignment.notes}</p>
+@@ -1325,7 +1418,7 @@ export default function DailyPlanPage() {
+               </div>
+             )}
+ 
+-            {unplannedWorks.length > 0 && (
++            {isDraftPlanning && unplannedWorks.length > 0 && (
+               <div style={{ display: 'grid', gap: '14px', marginTop: '22px' }}>
+                 <div>
+                   <h3 style={{ margin: 0, fontSize: '20px', fontWeight: 900 }}>Obras disponíveis para receber pessoas</h3>
+@@ -1437,7 +1530,7 @@ export default function DailyPlanPage() {
+         </div>
+       )}
+ 
+-      {showAddModal && selectedWorkPlan && (
++      {showAddModal && selectedPlanningWorkspace && isDraftPlanning && (
+         <div style={modalBackdropStyle} onClick={closeAddModal}>
+           <section className="vp-modal-card" style={modalCardStyle} onClick={(event) => event.stopPropagation()}>
+             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center' }}>
+@@ -1667,7 +1760,7 @@ export default function DailyPlanPage() {
+         </div>
+       )}
+ 
+-      {showMessageModal && selectedWorkPlan && (
++      {showMessageModal && selectedPlanningWorkspace && (
+         <div style={modalBackdropStyle} onClick={closeMessageModal}>
+           <section className="vp-modal-card" style={modalCardStyle} onClick={(event) => event.stopPropagation()}>
+             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center' }}>
+diff --git a/lib/access-identities.js b/lib/access-identities.js
+index 072b26c..ec022e6 100644
+--- a/lib/access-identities.js
++++ b/lib/access-identities.js
+@@ -430,7 +430,7 @@ async function resolveDbIdentityWorks(user, legacyIdentity = null) {
+   const chefAssignmentsByPlanWork = new Map()
+ 
+   assignments.forEach(assignment => {
+-    if (!isChefRole(assignment?.person?.role)) {
++    if (!isChefRole(assignment?.person?.role) || assignment?.planningVisible === false) {
+       return
+     }
+ 
+diff --git a/lib/auth.js b/lib/auth.js
+index 166827f..83bd586 100644
+--- a/lib/auth.js
++++ b/lib/auth.js
+@@ -425,8 +425,21 @@ function hasPermissionPathMapping(pathname) {
+   if (pathname === '/people' || hasPathPrefix(pathname, '/people') || pathname === '/api/people' || pathname.startsWith('/api/people/')) return true
+   if (pathname === '/clients' || pathname === '/api/clients' || pathname.startsWith('/api/clients/')) return true
+   if (pathname === '/works' || hasPathPrefix(pathname, '/works') || pathname === '/api/works' || pathname.startsWith('/api/works/')) return true
+-  if (pathname === '/daily-plan' || pathname === '/api/work-plans' || pathname.startsWith('/api/work-plans/')) return true
+-  if (pathname === '/daily-hours' || pathname === '/work-assignments' || pathname === '/api/work-assignments' || pathname.startsWith('/api/work-assignments/')) return true
++  if (
++    pathname === '/daily-plan' ||
++    pathname === '/api/work-plans' ||
++    pathname.startsWith('/api/work-plans/') ||
++    pathname === '/api/planning-workspaces' ||
++    pathname.startsWith('/api/planning-workspaces/')
++  ) return true
++  if (
++    pathname === '/daily-hours' ||
++    pathname === '/work-assignments' ||
++    pathname === '/api/work-assignments' ||
++    pathname.startsWith('/api/work-assignments/') ||
++    pathname === '/api/planning-workspace-assignments' ||
++    pathname.startsWith('/api/planning-workspace-assignments/')
++  ) return true
+   if (pathname === '/hours-approval') return true
+   if (pathname === '/mobile/chef' || hasPathPrefix(pathname, '/mobile/chef')) return true
+   if (pathname === '/activity-history' || pathname === '/api/activity-history/export') return true
+@@ -487,11 +500,24 @@ export function canAccessPathByPermission(session, pathname) {
+     return sessionHasAnyPermission(session, WORKS_PERMISSION_KEYS)
+   }
+ 
+-  if (pathname === '/daily-plan' || pathname === '/api/work-plans' || pathname.startsWith('/api/work-plans/')) {
++  if (
++    pathname === '/daily-plan' ||
++    pathname === '/api/work-plans' ||
++    pathname.startsWith('/api/work-plans/') ||
++    pathname === '/api/planning-workspaces' ||
++    pathname.startsWith('/api/planning-workspaces/')
++  ) {
+     return sessionHasAnyPermission(session, WORK_PLANS_PERMISSION_KEYS)
+   }
+ 
+-  if (pathname === '/daily-hours' || pathname === '/work-assignments' || pathname === '/api/work-assignments' || pathname.startsWith('/api/work-assignments/')) {
++  if (
++    pathname === '/daily-hours' ||
++    pathname === '/work-assignments' ||
++    pathname === '/api/work-assignments' ||
++    pathname.startsWith('/api/work-assignments/') ||
++    pathname === '/api/planning-workspace-assignments' ||
++    pathname.startsWith('/api/planning-workspace-assignments/')
++  ) {
+     return sessionHasAnyPermission(session, WORK_ASSIGNMENTS_PERMISSION_KEYS)
+   }
+ 
+diff --git a/lib/data-management.js b/lib/data-management.js
+index 11e37df..3aba69e 100644
+--- a/lib/data-management.js
++++ b/lib/data-management.js
+@@ -6,6 +6,10 @@ import { getAllClientsData } from './clients.js'
+ import { getAllCompaniesData } from './companies.js'
+ import { getAllWorkAssignmentsData } from './work-assignments.js'
+ import { getAllDailyWorkNotesData } from './daily-work-notes.js'
++import {
++  getAllPlanningWorkspacesData,
++  getPlanningWorkspaceAssignmentsData,
++} from './planning-workspaces.js'
+ import { getAllWorkPlansData } from './work-plans.js'
+ import { getAllAdminsData } from './admins.js'
+ import { getAllDevelopersData } from './developers.js'
+@@ -20,6 +24,8 @@ export async function getDataStats() {
+       'works.json',
+       'clients.json',
+       'work-assignments.json',
++      'planning-workspaces.json',
++      'planning-workspace-assignments.json',
+       'daily-work-notes.json',
+       'developers.json',
+       'admins.json',
+@@ -75,6 +81,8 @@ export async function exportData(exportType = 'full') {
+         works: await getAllWorksData(),
+         clients: await getAllClientsData(),
+         workAssignments: await getAllWorkAssignmentsData(),
++        planningWorkspaces: await getAllPlanningWorkspacesData(),
++        planningWorkspaceAssignments: await getPlanningWorkspaceAssignmentsData(),
+         dailyWorkNotes: await getAllDailyWorkNotesData(),
+         workPlans: await getAllWorkPlansData(),
+         admins: await getAllAdminsData(),
+@@ -94,6 +102,8 @@ export async function exportData(exportType = 'full') {
+       exportData.dailyWorkNotes = await getAllDailyWorkNotesData()
+     } else if (exportType === 'plans') {
+       exportData.workPlans = await getAllWorkPlansData()
++      exportData.planningWorkspaces = await getAllPlanningWorkspacesData()
++      exportData.planningWorkspaceAssignments = await getPlanningWorkspaceAssignmentsData()
+     }
+ 
+     return exportData
+diff --git a/lib/db/core-mappers.js b/lib/db/core-mappers.js
+index 2cc24ec..146a310 100644
+--- a/lib/db/core-mappers.js
++++ b/lib/db/core-mappers.js
+@@ -10,6 +10,7 @@ const VALID_WORKING_DAYS = new Set([
+   'saturday',
+   'sunday',
+ ])
++const VALID_PLANNING_PUBLICATION_STATES = new Set(['draft', 'published'])
+ const DEFAULT_WORKING_DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday']
+ 
+ export function toPositiveInt(value, fallback = null) {
+@@ -173,6 +174,11 @@ export function mapPersonRecord(record) {
+   }
+ }
+ 
++export function normalizePlanningPublicationState(value, fallback = 'draft') {
++  const normalizedValue = String(value || '').trim().toLowerCase()
++  return VALID_PLANNING_PUBLICATION_STATES.has(normalizedValue) ? normalizedValue : fallback
++}
++
+ export function mapWorkPlanRecord(record) {
+   if (!record) {
+     return null
+@@ -185,6 +191,23 @@ export function mapWorkPlanRecord(record) {
+   }
+ }
+ 
++export function mapPlanningWorkspaceRecord(record) {
++  if (!record) {
++    return null
++  }
++
++  return {
++    id: Number(record.id),
++    companyId: Number(record.companyId),
++    date: toDateOnlyString(record.date),
++    state: normalizePlanningPublicationState(record.state),
++    publishedWorkPlanId: toPositiveInt(record.publishedWorkPlanId, null),
++    publishedAt: toDateTimeString(record.publishedAt),
++    createdAt: toDateTimeString(record.createdAt),
++    updatedAt: toDateTimeString(record.updatedAt),
++  }
++}
++
+ export function mapWorkRecord(record) {
+   if (!record) {
+     return null
+diff --git a/lib/db/work-assignments-db.js b/lib/db/work-assignments-db.js
+index e72a69f..7d45936 100644
+--- a/lib/db/work-assignments-db.js
++++ b/lib/db/work-assignments-db.js
+@@ -82,6 +82,7 @@ function toWorkAssignmentMutation(data = {}) {
+   if (data.manualHourlyCost !== undefined) mutation.manualHourlyCost = data.manualHourlyCost === true
+   if (data.notes !== undefined) mutation.notes = toRequiredString(data.notes) || null
+   if (data.hasWorkAccess !== undefined) mutation.hasWorkAccess = data.hasWorkAccess === true
++  if (data.planningVisible !== undefined) mutation.planningVisible = data.planningVisible !== false
+ 
+   return mutation
+ }
+@@ -124,6 +125,7 @@ function mapWorkAssignmentRecord(record) {
+     manualHourlyCost: record.manualHourlyCost === true,
+     notes: toRequiredString(record.notes),
+     hasWorkAccess: record.hasWorkAccess === true,
++    planningVisible: record.planningVisible !== false,
+     date: record.workPlan ? mapWorkPlanRecord(record.workPlan)?.date || null : null,
+     person: record.person ? mapPersonRecord(record.person) : null,
+     work: record.work ? mapWorkRecord(record.work) : null,
+@@ -138,6 +140,8 @@ export async function getAllWorkAssignmentsDb(filters = {}) {
+   const workId = toPositiveInt(filters.workId)
+   const personId = toPositiveInt(filters.personId)
+   const date = filters.date ? toDateOnlyValue(filters.date) : null
++  const planningVisible =
++    filters.planningVisible === undefined ? undefined : filters.planningVisible !== false
+ 
+   const assignments = await prisma.workAssignment.findMany({
+     where: {
+@@ -145,6 +149,7 @@ export async function getAllWorkAssignmentsDb(filters = {}) {
+       ...(workId ? { workId } : {}),
+       ...(personId ? { personId } : {}),
+       ...(date ? { workPlan: { date } } : {}),
++      ...(planningVisible !== undefined ? { planningVisible } : {}),
+     },
+     include: getWorkAssignmentIncludes(),
+     orderBy: [{ workPlanId: 'asc' }, { workId: 'asc' }, { id: 'asc' }],
+diff --git a/lib/work-assignment-policy.js b/lib/work-assignment-policy.js
+index ead46b5..d566636 100644
+--- a/lib/work-assignment-policy.js
++++ b/lib/work-assignment-policy.js
+@@ -1,7 +1,7 @@
+ import { canAccessAssignmentsOverview, canManageEntireApp } from './auth.js'
+ import { buildChefPreviewSession, getChefPreviewIdentity } from './chef-preview.js'
+ import { isChefRole } from './roles.js'
+-import { getAllWorkAssignmentsData } from './work-assignments.js'
++import { getAllWorkAssignmentsData, isAssignmentOperationallyVisible } from './work-assignments.js'
+ import { getWorkPlanByIdData } from './work-plans.js'
+ 
+ export function canAccessWork(session, workId) {
+@@ -41,11 +41,15 @@ export async function resolvePreviewScopedSession(session, searchParams) {
+ }
+ 
+ export function filterAssignmentsForSession(assignments, session) {
++  const visibleAssignments = (Array.isArray(assignments) ? assignments : []).filter(
++    isAssignmentOperationallyVisible,
++  )
++
+   if (!session || canAccessAssignmentsOverview(session.role)) {
+-    return assignments
++    return visibleAssignments
+   }
+ 
+-  return assignments.filter(assignment => canAccessWork(session, assignment.workId))
++  return visibleAssignments.filter(assignment => canAccessWork(session, assignment.workId))
+ }
+ 
+ export function filterDefaultsForSession(defaults, session) {
+diff --git a/lib/work-assignments.js b/lib/work-assignments.js
+index 5684136..fb9454c 100644
+--- a/lib/work-assignments.js
++++ b/lib/work-assignments.js
+@@ -10,6 +10,7 @@ import {
+   getWorkAssignmentByIdDb,
+   updateWorkAssignmentDb,
+ } from './db/work-assignments-db.js'
++import { getDefaultHoursForDate } from './default-hours.js'
+ import { isMysqlDataSourceEnabled } from './data-source.js'
+ import { getAllPeople, getAllPeopleData, getPersonById, getPersonByIdData } from './people.js'
+ import { prisma } from './prisma.js'
+@@ -51,6 +52,7 @@ export class WorkAssignment {
+     this.manualHourlyCost = data.manualHourlyCost === true
+     this.notes = String(data.notes || '').trim()
+     this.hasWorkAccess = data.hasWorkAccess === true
++    this.planningVisible = data.planningVisible !== false
+   }
+ }
+ 
+@@ -113,6 +115,10 @@ export class WorkAssignmentsService {
+       .filter(assignment => !filters.workPlanId || assignment.workPlanId === parseInt(filters.workPlanId))
+       .filter(assignment => !filters.workId || assignment.workId === parseInt(filters.workId))
+       .filter(assignment => !filters.personId || assignment.personId === parseInt(filters.personId))
++      .filter(
++        assignment =>
++          filters.planningVisible === undefined || assignment.planningVisible === (filters.planningVisible !== false),
++      )
+       .filter(assignment => {
+         if (!filters.date) return true
+         const workPlan = getWorkPlanById(assignment.workPlanId)
+@@ -356,6 +362,42 @@ function resolveAssignmentDate(assignment) {
+   return String(assignment?.date || assignment?.workPlan?.date || resolveAssignmentWorkPlan(assignment)?.date || '')
+ }
+ 
++function hasAssignmentHoursDeltaFromDefault(assignment) {
++  const assignmentDate = resolveAssignmentDate(assignment)
++
++  if (!assignmentDate) {
++    return false
++  }
++
++  const defaultHours = Number(getDefaultHoursForDate(assignmentDate) || 0)
++  const hours = Number(assignment?.hours ?? 0)
++  const dailyHours = Number(assignment?.dailyHours ?? hours)
++
++  return hours !== defaultHours || dailyHours !== defaultHours
++}
++
++export function hasAssignmentWorkflowActivity(assignment) {
++  if (!assignment) {
++    return false
++  }
++
++  return (
++    assignment.submitted === true ||
++    Boolean(assignment.submittedAt) ||
++    assignment.approvedHours !== undefined && assignment.approvedHours !== null ||
++    Boolean(assignment.adminApprovedAt) ||
++    hasAssignmentHoursDeltaFromDefault(assignment)
++  )
++}
++
++export function isAssignmentOperationallyVisible(assignment) {
++  if (!assignment) {
++    return false
++  }
++
++  return assignment.planningVisible !== false || hasAssignmentWorkflowActivity(assignment)
++}
++
+ function getChefAssignmentWithWorkAccess(assignments, workPlanId, workId) {
+   const chefAssignments = getChefAssignmentsForWork(assignments, workPlanId, workId)
+ 
+@@ -417,7 +459,7 @@ function buildResolvedChefAccessMap(assignments) {
+   assignments.forEach(assignment => {
+     const person = resolveAssignmentPerson(assignment)
+ 
+-    if (!isChefRole(person?.role)) {
++    if (!isChefRole(person?.role) || assignment.planningVisible === false) {
+       return
+     }
+ 
+@@ -599,6 +641,7 @@ function enrichAssignment(assignment, resolvedChefAccessMap = null) {
+     date: assignment?.date || workPlan?.date || null,
+     totalCost: Number((assignment.hours * assignment.hourlyCost).toFixed(2)),
+     hasWorkAccess: resolvedHasWorkAccess,
++    planningVisible: assignment.planningVisible !== false,
+     person: person ? {
+       id: person.id,
+       name: person.name,
+@@ -846,6 +889,10 @@ async function syncChefAccessForWorkPlanData(workPlanId) {
+   return null
+ }
+ 
++export async function syncChefWorkAccessForWorkPlanData(workPlanId) {
++  return syncChefAccessForWorkPlanData(workPlanId)
++}
++
+ export function getAllWorkAssignments(filters) {
+   return getLegacyWorkAssignmentsService()?.getAll(filters) || []
+ }
+@@ -954,6 +1001,7 @@ export async function createWorkAssignmentData(data) {
+     manualHourlyCost: data.manualHourlyCost === true,
+     notes: data.notes,
+     hasWorkAccess: data.hasWorkAccess === true,
++    planningVisible: data.planningVisible !== false,
+   })
+ 
+   if (assignment.hasWorkAccess) {
+@@ -989,8 +1037,16 @@ export async function updateWorkAssignmentData(id, data, options = {}) {
+   const isApprovedHoursUpdate = data.approvedHours !== undefined
+   const isSubmittedStatusUpdate =
+     data.submitted !== undefined || data.submittedAt !== undefined || data.submittedBy !== undefined
+-
+-  if (currentAssignment.submitted && !isApprovedHoursUpdate && !isSubmittedStatusUpdate) {
++  const isPlanningVisibilityOnlyUpdate =
++    Object.keys(data || {}).every(key => key === 'planningVisible' || key === 'hasWorkAccess' || key === 'notes')
++
++  if (
++    currentAssignment.submitted &&
++    !isApprovedHoursUpdate &&
++    !isSubmittedStatusUpdate &&
++    !options.allowSubmittedPlanningUpdate &&
++    !isPlanningVisibilityOnlyUpdate
++  ) {
+     throw new Error('Esta afetacao ja foi submetida pelo chef e nao pode ser modificada. O administrador precisa de aprovar.')
+   }
+ 
+@@ -1068,6 +1124,10 @@ export async function updateWorkAssignmentData(id, data, options = {}) {
+       data.hasWorkAccess !== undefined
+         ? data.hasWorkAccess === true
+         : currentAssignment.hasWorkAccess === true,
++    planningVisible:
++      data.planningVisible !== undefined
++        ? data.planningVisible !== false
++        : currentAssignment.planningVisible !== false,
+   })
+ 
+   if (!updatedAssignment) {
+@@ -1132,6 +1192,72 @@ export async function deleteWorkAssignmentData(id) {
+   return true
+ }
+ 
++export async function updateWorkAssignmentPlanningData(id, data) {
++  if (!isMysqlDataSourceEnabled()) {
++    const legacyService = getLegacyWorkAssignmentsService()
++
++    if (!legacyService) {
++      return null
++    }
++
++    legacyService.refresh()
++
++    const index = legacyService.assignments.findIndex(
++      assignment => assignment.id === parseInt(id, 10),
++    )
++
++    if (index === -1) {
++      return null
++    }
++
++    const currentAssignment = legacyService.assignments[index]
++    const nextAssignment = new WorkAssignment({
++      ...currentAssignment,
++      ...(data.hourlyCost !== undefined ? { hourlyCost: data.hourlyCost } : {}),
++      ...(data.manualHourlyCost !== undefined
++        ? { manualHourlyCost: data.manualHourlyCost === true }
++        : {}),
++      ...(data.notes !== undefined ? { notes: data.notes } : {}),
++      ...(data.hasWorkAccess !== undefined
++        ? { hasWorkAccess: data.hasWorkAccess === true }
++        : {}),
++      ...(data.planningVisible !== undefined
++        ? { planningVisible: data.planningVisible !== false }
++        : {}),
++    })
++
++    legacyService.assignments[index] = nextAssignment
++
++    if (nextAssignment.hasWorkAccess) {
++      applyExclusiveChefWorkAccess(
++        legacyService.assignments,
++        nextAssignment.workPlanId,
++        nextAssignment.workId,
++        nextAssignment.id,
++      )
++    }
++
++    legacyService.save()
++    syncChefAccessForWorkPlan(legacyService.assignments, nextAssignment.workPlanId)
++    return enrichAssignment(nextAssignment, buildResolvedChefAccessMap(legacyService.assignments))
++  }
++
++  const allowedKeys = new Set([
++    'hourlyCost',
++    'manualHourlyCost',
++    'notes',
++    'hasWorkAccess',
++    'planningVisible',
++  ])
++  const payload = Object.fromEntries(
++    Object.entries(data || {}).filter(([key]) => allowedKeys.has(key)),
++  )
++
++  return updateWorkAssignmentData(id, payload, {
++    allowSubmittedPlanningUpdate: true,
++  })
++}
++
+ export async function repriceWorkAssignmentsForWorkData(workId, startDate) {
+   if (!isMysqlDataSourceEnabled()) {
+     return repriceWorkAssignmentsForWork(workId, startDate)
+diff --git a/schema.prisma b/schema.prisma
+index 2920877..e257a46 100644
+--- a/schema.prisma
++++ b/schema.prisma
+@@ -74,20 +74,26 @@ enum WorkingDay {
+   sunday
+ }
+ 
++enum PlanningPublicationState {
++  draft
++  published
++}
++
+ model Company {
+-  id              Int        @id
+-  holdingId       Int        @map("holding_id")
+-  name            String
+-  slug            String     @unique
+-  countryCode     String     @map("country_code") @db.Char(2)
+-  documentMark    String?    @map("document_mark") @db.VarChar(32)
+-  documentLabel   String?    @map("document_label")
+-  documentLogoUrl String?    @map("document_logo_url") @db.Text
+-  active          Boolean    @default(true)
+-  clients         Client[]
+-  works           Work[]
+-  people          Person[]
+-  workPlans       WorkPlan[]
++  id                 Int                @id
++  holdingId          Int                @map("holding_id")
++  name               String
++  slug               String             @unique
++  countryCode        String             @map("country_code") @db.Char(2)
++  documentMark       String?            @map("document_mark") @db.VarChar(32)
++  documentLabel      String?            @map("document_label")
++  documentLogoUrl    String?            @map("document_logo_url") @db.Text
++  active             Boolean            @default(true)
++  clients            Client[]
++  works              Work[]
++  people             Person[]
++  workPlans          WorkPlan[]
++  planningWorkspaces PlanningWorkspace[]
+ 
+   @@map("companies")
+ }
+@@ -117,13 +123,14 @@ model Person {
+   isMonthlyBilling Boolean              @default(false) @map("is_monthly_billing")
+   role             Role
+   chefCategory     String?              @map("chef_category") @db.VarChar(32)
+-  company          Company              @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+-  user             User?
+-  workAssignments  WorkAssignment[]
+-  workHourlyCosts  WorkPersonHourlyCost[]
+-  authoredNotes    DailyWorkNote[]
+-  loginEvents      LoginEvent[]
+-  documentReminders PersonDocumentReminder[]
++  company                    Company                     @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
++  user                       User?
++  workAssignments            WorkAssignment[]
++  planningWorkspaceAssignments PlanningWorkspaceAssignment[]
++  workHourlyCosts            WorkPersonHourlyCost[]
++  authoredNotes              DailyWorkNote[]
++  loginEvents                LoginEvent[]
++  documentReminders          PersonDocumentReminder[]
+ 
+   @@index([companyId, role])
+   @@map("people")
+@@ -147,8 +154,9 @@ model Work {
+   workingDays        WorkWorkingDay[]
+   roleHourlyCosts    WorkRoleHourlyCost[]
+   personHourlyCosts  WorkPersonHourlyCost[]
+-  workAssignments    WorkAssignment[]
+-  dailyWorkNotes     DailyWorkNote[]
++  workAssignments            WorkAssignment[]
++  planningWorkspaceAssignments PlanningWorkspaceAssignment[]
++  dailyWorkNotes             DailyWorkNote[]
+ 
+   @@unique([companyId, number])
+   @@map("works")
+@@ -188,11 +196,12 @@ model WorkPersonHourlyCost {
+ }
+ 
+ model WorkPlan {
+-  id              Int              @id
+-  companyId       Int              @map("company_id")
+-  date            DateTime         @db.Date
+-  company         Company          @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+-  workAssignments WorkAssignment[]
++  id                         Int                @id
++  companyId                  Int                @map("company_id")
++  date                       DateTime           @db.Date
++  company                    Company            @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
++  workAssignments            WorkAssignment[]
++  publishedPlanningWorkspace PlanningWorkspace? @relation("PublishedWorkPlan")
+ 
+   @@unique([companyId, date])
+   @@map("work_plans")
+@@ -268,6 +277,7 @@ model WorkAssignment {
+   manualHourlyCost      Boolean   @default(false) @map("manual_hourly_cost")
+   notes                 String?   @db.Text
+   hasWorkAccess         Boolean   @default(false) @map("has_work_access")
++  planningVisible       Boolean   @default(true) @map("planning_visible")
+   workPlan              WorkPlan  @relation(fields: [workPlanId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+   work                  Work      @relation(fields: [workId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+   person                Person    @relation(fields: [personId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+@@ -281,6 +291,45 @@ model WorkAssignment {
+   @@map("work_assignments")
+ }
+ 
++model PlanningWorkspace {
++  id                  Int                        @id @default(autoincrement())
++  companyId           Int                        @map("company_id")
++  date                DateTime                   @db.Date
++  state               PlanningPublicationState   @default(draft)
++  publishedWorkPlanId Int?                       @unique @map("published_work_plan_id")
++  publishedAt         DateTime?                  @map("published_at")
++  createdAt           DateTime                   @default(now()) @map("created_at")
++  updatedAt           DateTime                   @updatedAt @map("updated_at")
++  company             Company                    @relation(fields: [companyId], references: [id], onDelete: Cascade, onUpdate: Cascade)
++  publishedWorkPlan   WorkPlan?                  @relation("PublishedWorkPlan", fields: [publishedWorkPlanId], references: [id], onDelete: SetNull, onUpdate: Cascade)
++  assignments         PlanningWorkspaceAssignment[]
++
++  @@unique([companyId, date])
++  @@map("planning_workspaces")
++}
++
++model PlanningWorkspaceAssignment {
++  id                 Int               @id @default(autoincrement())
++  workspaceId        Int               @map("workspace_id")
++  workId             Int               @map("work_id")
++  personId           Int               @map("person_id")
++  hourlyCost         Decimal           @default(0) @map("hourly_cost") @db.Decimal(10, 2)
++  manualHourlyCost   Boolean           @default(false) @map("manual_hourly_cost")
++  notes              String?           @db.Text
++  hasWorkAccess      Boolean           @default(false) @map("has_work_access")
++  createdAt          DateTime          @default(now()) @map("created_at")
++  updatedAt          DateTime          @updatedAt @map("updated_at")
++  workspace          PlanningWorkspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade, onUpdate: Cascade)
++  work               Work              @relation(fields: [workId], references: [id], onDelete: Cascade, onUpdate: Cascade)
++  person             Person            @relation(fields: [personId], references: [id], onDelete: Cascade, onUpdate: Cascade)
++
++  @@unique([workspaceId, workId, personId])
++  @@index([workspaceId])
++  @@index([workId])
++  @@index([personId])
++  @@map("planning_workspace_assignments")
++}
++
+ model DailyWorkNote {
+   id         Int       @id
+   date       DateTime  @db.Date
+diff --git a/scripts/import-json-to-mysql.mjs b/scripts/import-json-to-mysql.mjs
+index 6877ed5..fd6059c 100644
+--- a/scripts/import-json-to-mysql.mjs
++++ b/scripts/import-json-to-mysql.mjs
+@@ -27,6 +27,8 @@ async function main() {
+     prisma.loginAttempt.deleteMany(),
+     prisma.loginEvent.deleteMany(),
+     prisma.dailyWorkNote.deleteMany(),
++    prisma.planningWorkspaceAssignment.deleteMany(),
++    prisma.planningWorkspace.deleteMany(),
+     prisma.workAssignment.deleteMany(),
+     prisma.workPersonHourlyCost.deleteMany(),
+     prisma.workRoleHourlyCost.deleteMany(),
+@@ -47,8 +49,14 @@ async function main() {
+   await prisma.workRoleHourlyCost.createMany({ data: target.workRoleHourlyCosts })
+   await prisma.workPersonHourlyCost.createMany({ data: target.workPersonHourlyCosts })
+   await prisma.workPlan.createMany({ data: target.workPlans.map(prepareWorkPlanForImport) })
++  await prisma.planningWorkspace.createMany({
++    data: target.planningWorkspaces.map(preparePlanningWorkspaceForImport),
++  })
+   await prisma.user.createMany({ data: target.users })
+   await prisma.workAssignment.createMany({ data: target.workAssignments })
++  await prisma.planningWorkspaceAssignment.createMany({
++    data: target.planningWorkspaceAssignments.map(preparePlanningWorkspaceAssignmentForImport),
++  })
+   await prisma.dailyWorkNote.createMany({ data: target.dailyWorkNotes.map(prepareDailyWorkNoteForImport) })
+   await prisma.loginEvent.createMany({ data: target.loginEvents })
+   await prisma.loginAttempt.createMany({ data: target.loginAttempts.map(prepareLoginAttemptForImport) })
+@@ -80,7 +88,9 @@ async function loadSnapshot() {
+       Array.isArray(snapshot?.target?.calendarNotificationStates) &&
+       Array.isArray(snapshot?.target?.loginAttempts) &&
+       Array.isArray(snapshot?.target?.auditTrailEvents) &&
+-      Array.isArray(snapshot?.target?.featureFlags)
++      Array.isArray(snapshot?.target?.featureFlags) &&
++      Array.isArray(snapshot?.target?.planningWorkspaces) &&
++      Array.isArray(snapshot?.target?.planningWorkspaceAssignments)
+     ) {
+       return snapshot
+     }
+@@ -120,6 +130,24 @@ function prepareWorkPlanForImport(workPlan) {
+   }
+ }
+ 
++function preparePlanningWorkspaceForImport(workspace) {
++  return {
++    ...workspace,
++    date: toDateOnly(workspace.date),
++    publishedAt: workspace.publishedAt ? new Date(workspace.publishedAt) : null,
++    createdAt: workspace.createdAt ? new Date(workspace.createdAt) : new Date(),
++    updatedAt: workspace.updatedAt ? new Date(workspace.updatedAt) : new Date(),
++  }
++}
++
++function preparePlanningWorkspaceAssignmentForImport(assignment) {
++  return {
++    ...assignment,
++    createdAt: assignment.createdAt ? new Date(assignment.createdAt) : new Date(),
++    updatedAt: assignment.updatedAt ? new Date(assignment.updatedAt) : new Date(),
++  }
++}
++
+ function prepareDailyWorkNoteForImport(note) {
+   return {
+     ...note,
+diff --git a/scripts/mysql-migration-utils.mjs b/scripts/mysql-migration-utils.mjs
+index 8360081..3ec1684 100644
+--- a/scripts/mysql-migration-utils.mjs
++++ b/scripts/mysql-migration-utils.mjs
+@@ -39,6 +39,7 @@ const CALENDAR_EVENT_COLOR_VALUES = new Set(['#16a34a', '#2563eb', '#dc2626', '#
+ const CALENDAR_EVENT_TYPE_VALUES = new Set(['viagem'])
+ const CALENDAR_TRAVEL_TRANSPORT_VALUES = new Set(['comboio', 'aviao'])
+ const CALENDAR_TRAVEL_AIRPORT_VALUES = new Set(['zaventem', 'charleroi', 'bruxelles-midi', 'outro'])
++const PLANNING_PUBLICATION_STATE_VALUES = new Set(['draft', 'published'])
+ 
+ export async function buildMysqlMigrationSnapshot() {
+   const companies = await readJsonArray('companies.json')
+@@ -47,6 +48,8 @@ export async function buildMysqlMigrationSnapshot() {
+   const people = await readJsonArray('people.json')
+   const workPlans = await readJsonArray('work-plans.json')
+   const workAssignments = await readJsonArray('work-assignments.json')
++  const planningWorkspaces = await readJsonArray('planning-workspaces.json')
++  const planningWorkspaceAssignments = await readJsonArray('planning-workspace-assignments.json')
+   const dailyWorkNotes = await readJsonArray('daily-work-notes.json')
+   const accessIdentities = await readJsonArray('access-identities.json')
+   const admins = await readJsonArray('admins.json')
+@@ -70,18 +73,41 @@ export async function buildMysqlMigrationSnapshot() {
+   const users = buildUsers({ accessIdentities, admins, developers, peopleById, loginEvents })
+   const usersByUsername = new Map(users.map(user => [user.username.toLowerCase(), user]))
+   const usersByPersonId = new Map(users.filter(user => user.personId).map(user => [user.personId, user]))
++  const worksById = new Map(
++    works
++      .map(normalizeWork)
++      .filter(Boolean)
++      .map(work => [work.id, work]),
++  )
++  const workPlansById = new Map(
++    workPlans
++      .map(normalizeWorkPlan)
++      .filter(Boolean)
++      .map(workPlan => [workPlan.id, workPlan]),
++  )
++  const planningWorkspacesTarget = planningWorkspaces
++    .map(workspace => normalizePlanningWorkspace(workspace, workPlansById))
++    .filter(Boolean)
++  const planningWorkspacesById = new Map(planningWorkspacesTarget.map(workspace => [workspace.id, workspace]))
+ 
+   const target = {
+     companies: companies.map(normalizeCompany).filter(Boolean),
+     clients: clients.map(normalizeClient).filter(Boolean),
+     people: Array.from(peopleById.values()),
+-    works: works.map(normalizeWork).filter(Boolean),
++    works: Array.from(worksById.values()),
+     workWorkingDays: buildWorkWorkingDays(works),
+     workRoleHourlyCosts: buildWorkRoleHourlyCosts(works),
+     workPersonHourlyCosts: buildWorkPersonHourlyCosts(works, peopleById),
+-    workPlans: workPlans.map(normalizeWorkPlan).filter(Boolean),
++    workPlans: Array.from(workPlansById.values()),
++    planningWorkspaces: planningWorkspacesTarget,
+     users,
+     workAssignments: buildWorkAssignments(workAssignments, usersByUsername, usersByPersonId, peopleById),
++    planningWorkspaceAssignments: buildPlanningWorkspaceAssignments(
++      planningWorkspaceAssignments,
++      planningWorkspacesById,
++      worksById,
++      peopleById,
++    ),
+     dailyWorkNotes: dailyWorkNotes.map(note => normalizeDailyWorkNote(note, peopleById)).filter(Boolean),
+     loginEvents: buildLoginEvents(loginEvents, usersByUsername, usersByPersonId, peopleById),
+     loginAttempts: loginAttempts.map(normalizeLoginAttempt).filter(Boolean),
+@@ -110,6 +136,8 @@ export async function buildMysqlMigrationSnapshot() {
+       people: people.length,
+       workPlans: workPlans.length,
+       workAssignments: workAssignments.length,
++      planningWorkspaces: planningWorkspaces.length,
++      planningWorkspaceAssignments: planningWorkspaceAssignments.length,
+       dailyWorkNotes: dailyWorkNotes.length,
+       accessIdentities: accessIdentities.length,
+       admins: admins.length,
+@@ -348,6 +376,37 @@ function normalizeWorkPlan(workPlan) {
+   }
+ }
+ 
++function normalizePlanningPublicationState(value) {
++  const normalizedValue = String(value || '').trim().toLowerCase()
++  return PLANNING_PUBLICATION_STATE_VALUES.has(normalizedValue) ? normalizedValue : 'draft'
++}
++
++function normalizePlanningWorkspace(workspace, workPlansById) {
++  const id = normalizePositiveInt(workspace?.id)
++  const companyId = normalizePositiveInt(workspace?.companyId)
++  const date = normalizeDate(workspace?.date)
++  const publishedWorkPlanId = normalizePositiveInt(workspace?.publishedWorkPlanId)
++
++  if (!id || !companyId || !date) {
++    return null
++  }
++
++  if (publishedWorkPlanId && !workPlansById.has(publishedWorkPlanId)) {
++    return null
++  }
++
++  return {
++    id,
++    companyId,
++    date,
++    state: normalizePlanningPublicationState(workspace?.state),
++    publishedWorkPlanId: publishedWorkPlanId || null,
++    publishedAt: normalizeDateTime(workspace?.publishedAt),
++    createdAt: normalizeDateTime(workspace?.createdAt, new Date().toISOString()),
++    updatedAt: normalizeDateTime(workspace?.updatedAt, workspace?.createdAt || new Date().toISOString()),
++  }
++}
++
+ function normalizeDailyWorkNote(note, peopleById) {
+   const id = normalizePositiveInt(note?.id)
+   const date = normalizeDate(note?.date)
+@@ -741,6 +800,38 @@ function buildWorkAssignments(assignments, usersByUsername, usersByPersonId, peo
+         manualHourlyCost: assignment?.manualHourlyCost === true,
+         notes: String(assignment?.notes || '').trim() || null,
+         hasWorkAccess: assignment?.hasWorkAccess === true,
++        planningVisible: assignment?.planningVisible !== false,
++      }
++    })
++    .filter(Boolean)
++}
++
++function buildPlanningWorkspaceAssignments(assignments, planningWorkspacesById, worksById, peopleById) {
++  return assignments
++    .map(assignment => {
++      const id = normalizePositiveInt(assignment?.id)
++      const workspaceId = normalizePositiveInt(assignment?.workspaceId)
++      const workId = normalizePositiveInt(assignment?.workId)
++      const personId = normalizePositiveInt(assignment?.personId)
++      const workspace = workspaceId ? planningWorkspacesById.get(workspaceId) : null
++      const work = workId ? worksById.get(workId) : null
++      const person = personId ? peopleById.get(personId) : null
++
++      if (!id || !workspace || !work || !person) {
++        return null
++      }
++
++      return {
++        id,
++        workspaceId,
++        workId,
++        personId,
++        hourlyCost: normalizeDecimal(assignment?.hourlyCost),
++        manualHourlyCost: assignment?.manualHourlyCost === true,
++        notes: normalizeOptionalText(assignment?.notes),
++        hasWorkAccess: assignment?.hasWorkAccess === true,
++        createdAt: normalizeDateTime(assignment?.createdAt, new Date().toISOString()),
++        updatedAt: normalizeDateTime(assignment?.updatedAt, assignment?.createdAt || new Date().toISOString()),
+       }
+     })
+     .filter(Boolean)
+diff --git a/scripts/mysql-validation-baseline-utils.mjs b/scripts/mysql-validation-baseline-utils.mjs
+index a115347..394d6bc 100644
+--- a/scripts/mysql-validation-baseline-utils.mjs
++++ b/scripts/mysql-validation-baseline-utils.mjs
+@@ -24,6 +24,8 @@ export async function getMysqlCountSnapshot(prisma) {
+     workRoleHourlyCosts: await prisma.workRoleHourlyCost.count(),
+     workPersonHourlyCosts: await prisma.workPersonHourlyCost.count(),
+     workPlans: await prisma.workPlan.count(),
++    planningWorkspaces: await prisma.planningWorkspace.count(),
++    planningWorkspaceAssignments: await prisma.planningWorkspaceAssignment.count(),
+     users: await prisma.user.count(),
+     workAssignments: await prisma.workAssignment.count(),
+     dailyWorkNotes: await prisma.dailyWorkNote.count(),
+diff --git a/tests/critical-flows.test.mjs b/tests/critical-flows.test.mjs
+index fcb91dd..37b5ef8 100644
+--- a/tests/critical-flows.test.mjs
++++ b/tests/critical-flows.test.mjs
+@@ -81,6 +81,14 @@ function buildFixtureData() {
+         monthlyPrice: 0,
+         role: 'carpinteiro',
+       },
++      {
++        id: 4,
++        companyId: 1,
++        name: 'Ferrajeiro Teste',
++        price: 13,
++        monthlyPrice: 0,
++        role: 'ferrajeiro',
++      },
+     ],
+     'works.json': [
+       {
+@@ -103,6 +111,8 @@ function buildFixtureData() {
+     ],
+     'work-plans.json': [],
+     'work-assignments.json': [],
++    'planning-workspaces.json': [],
++    'planning-workspace-assignments.json': [],
+     'daily-work-notes.json': [],
+     'feature-flags.json': {
+       activityHistory: true,
+@@ -154,7 +164,6 @@ function seedFixtureData() {
+ seedFixtureData()
+ 
+ const { getAccessIdentityByPersonId, getAccessIdentityByUsername } = await import('../lib/access-identities.js')
+-const { createClientData } = await import('../lib/clients.js')
+ const { canApproveHours, createSessionToken, getDefaultPathForRole, readSessionToken } = await import('../lib/auth.js')
+ const {
+   getUnauthorizedRedirectPath,
+@@ -184,84 +193,47 @@ const {
+   updateWorkAssignment,
+ } = await import('../lib/work-assignments.js')
+ const { getAllWorkPlans, getWorkPlanByDate } = await import('../lib/work-plans.js')
+-const { createWorkAssignmentService } = await import('../server/services/work-assignments-service.js')
+ const {
+-  updateWorkAssignmentService,
+-  deleteWorkAssignmentService,
++  approveWorkAssignmentService,
++  getWorkAssignmentsListService,
++  submitWorkAssignmentService,
+ } = await import('../server/services/work-assignments-service.js')
+-const { createWorkPlanService } = await import('../server/services/work-plans-service.js')
++const {
++  createPlanningDraftAssignmentService,
++  deletePlanningDraftAssignmentService,
++  getPlanningWorkspaceViewService,
++  initializePlanningWorkspaceDraftService,
++  publishPlanningWorkspaceService,
++  setPlanningWorkspaceToDraftService,
++  updatePlanningDraftAssignmentService,
++} = await import('../server/services/planning-publication-service.js')
+ const { getAllWorks } = await import('../lib/works.js')
+-const { createWorkData } = await import('../lib/works.js')
+-
+-const PLANNING_CUTOFF_BYPASS_ENV_KEYS = [
+-  'PLANNING_CUTOFF_BYPASS_CLIENT_IDS',
+-  'PLANNING_CUTOFF_BYPASS_UNTIL',
+-  'PLANNING_CUTOFF_BYPASS_WORK_PLAN_CREATE_UNTIL',
+-]
+ const ADMIN_SESSION = {
+   role: 'admin',
+   accountType: 'admin',
+   accessProfile: 'admin',
++  name: 'Administrador Teste',
++}
++const CHEF_SESSION = {
++  role: 'chef_primeira',
++  accountType: 'operational',
++  accessProfile: 'chef',
++  workIds: [1],
++  name: 'Chefe Teste',
+ }
+-const LOCKED_DAILY_PLAN_DATE = '2000-01-01'
+-const FUTURE_BYPASS_UNTIL = '2999-12-31T23:59:59+00:00'
+-const EXPIRED_BYPASS_UNTIL = '2000-01-01T00:00:00+00:00'
++const PLANNING_WORKFLOW_DATE = '2030-02-10'
++const REPUBLISH_WORKFLOW_DATE = '2030-02-11'
+ 
+ beforeEach(() => {
+   seedFixtureData()
+ })
+ 
+-async function withPlanningCutoffBypassEnv(overrides, callback) {
+-  const snapshot = Object.fromEntries(
+-    PLANNING_CUTOFF_BYPASS_ENV_KEYS.map(key => [key, process.env[key]]),
++function createSearchParams(params = {}) {
++  return new URLSearchParams(
++    Object.entries(params)
++      .filter(([, value]) => value !== undefined && value !== null && value !== '')
++      .map(([key, value]) => [key, String(value)]),
+   )
+-
+-  try {
+-    PLANNING_CUTOFF_BYPASS_ENV_KEYS.forEach(key => {
+-      if (Object.prototype.hasOwnProperty.call(overrides, key)) {
+-        const value = overrides[key]
+-
+-        if (value === undefined) {
+-          delete process.env[key]
+-          return
+-        }
+-
+-        process.env[key] = String(value)
+-        return
+-      }
+-
+-      delete process.env[key]
+-    })
+-
+-    return await callback()
+-  } finally {
+-    PLANNING_CUTOFF_BYPASS_ENV_KEYS.forEach(key => {
+-      if (snapshot[key] === undefined) {
+-        delete process.env[key]
+-        return
+-      }
+-
+-      process.env[key] = snapshot[key]
+-    })
+-  }
+-}
+-
+-async function createWorkForClient(clientName, workName) {
+-  const client = await createClientData({
+-    companyId: 1,
+-    name: clientName,
+-  })
+-
+-  const work = await createWorkData({
+-    companyId: 1,
+-    name: workName,
+-    clientId: client.id,
+-    location: '',
+-    status: 'planned',
+-    defaultHourlyCost: 12,
+-  })
+-
+-  return { client, work }
+ }
+ 
+ function createProtectedPayload(payload) {
+@@ -457,305 +429,201 @@ test('chefes podem ser guardados sem acesso a app e editar pode remover o acesso
+   assert.equal(getAccessIdentityByPersonId(2), null)
+ })
+ 
+-test('cliente normal continua bloqueado mesmo com bypass ativo para outro cliente', async () => {
+-  const { client: bypassClient } = await createWorkForClient('Cliente bypass', 'Obra bypass')
+-
+-  await withPlanningCutoffBypassEnv(
+-    {
+-      PLANNING_CUTOFF_BYPASS_CLIENT_IDS: String(bypassClient.id),
+-      PLANNING_CUTOFF_BYPASS_UNTIL: FUTURE_BYPASS_UNTIL,
+-    },
+-    async () => {
+-      await assert.rejects(
+-        createWorkAssignmentService(ADMIN_SESSION, {
+-          workId: 1,
+-          personId: 3,
+-          date: LOCKED_DAILY_PLAN_DATE,
+-          hours: 8,
+-        }),
+-        error => {
+-          assert.equal(error?.status, 403)
+-          assert.match(String(error?.message || ''), /Depois das 08:00/)
+-          return true
+-        },
+-      )
+-    },
+-  )
+-})
++test('admin edita draft sem publicar e a versao oficial continua vazia', async () => {
++  const { workspace } = await initializePlanningWorkspaceDraftService(ADMIN_SESSION, {
++    date: PLANNING_WORKFLOW_DATE,
++  })
+ 
+-test('cliente na lista passa antes do prazo configurado', async () => {
+-  const { client, work } = await createWorkForClient('Cliente liberado', 'Obra liberada')
++  const createdAssignment = await createPlanningDraftAssignmentService(ADMIN_SESSION, {
++    workspaceId: workspace.id,
++    workId: 1,
++    personId: 3,
++    notes: 'Primeiro draft',
++  })
+ 
+-  await withPlanningCutoffBypassEnv(
++  const updatedAssignment = await updatePlanningDraftAssignmentService(
++    ADMIN_SESSION,
++    createdAssignment.id,
+     {
+-      PLANNING_CUTOFF_BYPASS_CLIENT_IDS: String(client.id),
+-      PLANNING_CUTOFF_BYPASS_UNTIL: FUTURE_BYPASS_UNTIL,
+-    },
+-    async () => {
+-      const assignment = await createWorkAssignmentService(ADMIN_SESSION, {
+-        workId: work.id,
+-        personId: 3,
+-        date: LOCKED_DAILY_PLAN_DATE,
+-        hours: 8,
+-      })
+-
+-      assert.equal(assignment.workId, work.id)
+-      assert.equal(assignment.personId, 3)
++      notes: 'Draft revisto',
+     },
+   )
++  const workspaceView = await getPlanningWorkspaceViewService(
++    ADMIN_SESSION,
++    createSearchParams({ date: PLANNING_WORKFLOW_DATE }),
++  )
++
++  assert.equal(updatedAssignment.notes, 'Draft revisto')
++  assert.equal(workspaceView.workspace.state, 'draft')
++  assert.equal(workspaceView.items.length, 1)
++  assert.equal(workspaceView.items[0].notes, 'Draft revisto')
++  assert.equal(getAllWorkAssignments({ date: PLANNING_WORKFLOW_DATE }).length, 0)
+ })
+ 
+-test('cliente na lista volta a bloquear depois do prazo', async () => {
+-  const { client, work } = await createWorkForClient('Cliente expirado', 'Obra expirada')
++test('draft fica invisivel para chefes enquanto nao for publicado', async () => {
++  const { workspace } = await initializePlanningWorkspaceDraftService(ADMIN_SESSION, {
++    date: PLANNING_WORKFLOW_DATE,
++  })
+ 
+-  await withPlanningCutoffBypassEnv(
+-    {
+-      PLANNING_CUTOFF_BYPASS_CLIENT_IDS: String(client.id),
+-      PLANNING_CUTOFF_BYPASS_UNTIL: EXPIRED_BYPASS_UNTIL,
+-    },
+-    async () => {
+-      await assert.rejects(
+-        createWorkAssignmentService(ADMIN_SESSION, {
+-          workId: work.id,
+-          personId: 3,
+-          date: LOCKED_DAILY_PLAN_DATE,
+-          hours: 8,
+-        }),
+-        error => {
+-          assert.equal(error?.status, 403)
+-          assert.match(String(error?.message || ''), /Depois das 08:00/)
+-          return true
+-        },
+-      )
+-    },
++  await createPlanningDraftAssignmentService(ADMIN_SESSION, {
++    workspaceId: workspace.id,
++    workId: 1,
++    personId: 3,
++    notes: 'So em draft',
++  })
++
++  const chefAssignments = await getWorkAssignmentsListService(
++    CHEF_SESSION,
++    createSearchParams({ date: PLANNING_WORKFLOW_DATE }),
+   )
++
++  assert.deepEqual(chefAssignments, [])
+ })
+ 
+-test('variavel vazia mantem comportamento atual', async () => {
+-  const { work } = await createWorkForClient('Cliente sem lista', 'Obra sem lista')
++test('publicar torna o planeamento visivel para chefes', async () => {
++  const { workspace } = await initializePlanningWorkspaceDraftService(ADMIN_SESSION, {
++    date: PLANNING_WORKFLOW_DATE,
++  })
+ 
+-  await withPlanningCutoffBypassEnv(
+-    {
+-      PLANNING_CUTOFF_BYPASS_CLIENT_IDS: '',
+-      PLANNING_CUTOFF_BYPASS_UNTIL: FUTURE_BYPASS_UNTIL,
+-    },
+-    async () => {
+-      await assert.rejects(
+-        createWorkAssignmentService(ADMIN_SESSION, {
+-          workId: work.id,
+-          personId: 3,
+-          date: LOCKED_DAILY_PLAN_DATE,
+-          hours: 8,
+-        }),
+-        error => {
+-          assert.equal(error?.status, 403)
+-          assert.match(String(error?.message || ''), /Depois das 08:00/)
+-          return true
+-        },
+-      )
+-    },
++  await createPlanningDraftAssignmentService(ADMIN_SESSION, {
++    workspaceId: workspace.id,
++    workId: 1,
++    personId: 3,
++    notes: 'Planeamento publicado',
++  })
++
++  const publishedWorkspace = await publishPlanningWorkspaceService(ADMIN_SESSION, workspace.id)
++  const workPlan = getWorkPlanByDate(PLANNING_WORKFLOW_DATE, 1)
++  const chefAssignments = await getWorkAssignmentsListService(
++    CHEF_SESSION,
++    createSearchParams({ date: PLANNING_WORKFLOW_DATE }),
+   )
++
++  assert.equal(publishedWorkspace.state, 'published')
++  assert.ok(workPlan)
++  assert.equal(chefAssignments.length, 1)
++  assert.equal(chefAssignments[0].personId, 3)
++  assert.equal(chefAssignments[0].notes, 'Planeamento publicado')
+ })
+ 
+-test('criar novo plano diario continua bloqueado por defeito depois das 08:00', async () => {
+-  await withPlanningCutoffBypassEnv({}, async () => {
+-    await assert.rejects(
+-      createWorkPlanService(ADMIN_SESSION, {
+-        date: LOCKED_DAILY_PLAN_DATE,
+-      }),
+-      error => {
+-        assert.equal(error?.status, 403)
+-        assert.match(String(error?.message || ''), /Depois das 08:00/)
+-        return true
+-      },
+-    )
++test('Edit devolve o planeamento a draft sem esconder a ultima versao publicada', async () => {
++  const { workspace } = await initializePlanningWorkspaceDraftService(ADMIN_SESSION, {
++    date: PLANNING_WORKFLOW_DATE,
+   })
+-})
+ 
+-test('criar novo plano diario passa antes do prazo configurado', async () => {
+-  await withPlanningCutoffBypassEnv(
+-    {
+-      PLANNING_CUTOFF_BYPASS_WORK_PLAN_CREATE_UNTIL: FUTURE_BYPASS_UNTIL,
+-    },
+-    async () => {
+-      const workPlan = await createWorkPlanService(ADMIN_SESSION, {
+-        date: LOCKED_DAILY_PLAN_DATE,
+-      })
+-
+-      assert.equal(workPlan.date, LOCKED_DAILY_PLAN_DATE)
+-      assert.equal(workPlan.companyId, 1)
+-      assert.equal(getWorkPlanByDate(LOCKED_DAILY_PLAN_DATE, 1)?.id, workPlan.id)
+-    },
+-  )
+-})
++  await createPlanningDraftAssignmentService(ADMIN_SESSION, {
++    workspaceId: workspace.id,
++    workId: 1,
++    personId: 3,
++    notes: 'Publicado antes do edit',
++  })
+ 
+-test('criar editar e remover afetacoes passa com bypass temporario ativo', async () => {
+-  await withPlanningCutoffBypassEnv(
+-    {
+-      PLANNING_CUTOFF_BYPASS_WORK_PLAN_CREATE_UNTIL: FUTURE_BYPASS_UNTIL,
+-    },
+-    async () => {
+-      const assignment = await createWorkAssignmentService(ADMIN_SESSION, {
+-        workId: 1,
+-        personId: 3,
+-        date: LOCKED_DAILY_PLAN_DATE,
+-        hours: 8,
+-        notes: 'Criado com bypass',
+-      })
++  await publishPlanningWorkspaceService(ADMIN_SESSION, workspace.id)
++  const draftWorkspace = await setPlanningWorkspaceToDraftService(ADMIN_SESSION, workspace.id)
++  const chefAssignments = await getWorkAssignmentsListService(
++    CHEF_SESSION,
++    createSearchParams({ date: PLANNING_WORKFLOW_DATE }),
++  )
+ 
+-      assert.equal(assignment.workId, 1)
+-      assert.equal(assignment.personId, 3)
++  assert.equal(draftWorkspace.state, 'draft')
++  assert.equal(chefAssignments.length, 1)
++  assert.equal(chefAssignments[0].notes, 'Publicado antes do edit')
++})
+ 
+-      const updatedAssignment = await updateWorkAssignmentService(ADMIN_SESSION, assignment.id, {
+-        notes: 'Atualizado com bypass',
+-      })
++test('ultima versao publicada mantem-se visivel ate nova publicacao', async () => {
++  const { workspace } = await initializePlanningWorkspaceDraftService(ADMIN_SESSION, {
++    date: REPUBLISH_WORKFLOW_DATE,
++  })
+ 
+-      assert.equal(updatedAssignment.id, assignment.id)
+-      assert.equal(updatedAssignment.notes, 'Atualizado com bypass')
++  const firstDraftAssignment = await createPlanningDraftAssignmentService(ADMIN_SESSION, {
++    workspaceId: workspace.id,
++    workId: 1,
++    personId: 3,
++    notes: 'Equipa publicada',
++  })
+ 
+-      const deleteResult = await deleteWorkAssignmentService(ADMIN_SESSION, assignment.id)
++  await publishPlanningWorkspaceService(ADMIN_SESSION, workspace.id)
++  await setPlanningWorkspaceToDraftService(ADMIN_SESSION, workspace.id)
++  await deletePlanningDraftAssignmentService(ADMIN_SESSION, firstDraftAssignment.id)
++  await createPlanningDraftAssignmentService(ADMIN_SESSION, {
++    workspaceId: workspace.id,
++    workId: 1,
++    personId: 4,
++    notes: 'Nova equipa em draft',
++  })
+ 
+-      assert.equal(deleteResult.message, 'Afetacao removida com sucesso')
+-      assert.equal(getAllWorkAssignments({ date: LOCKED_DAILY_PLAN_DATE }).length, 0)
+-    },
++  const chefAssignmentsBeforeRepublish = await getWorkAssignmentsListService(
++    CHEF_SESSION,
++    createSearchParams({ date: REPUBLISH_WORKFLOW_DATE }),
+   )
+-})
+ 
+-test('criar novo plano diario volta a bloquear depois do prazo', async () => {
+-  await withPlanningCutoffBypassEnv(
+-    {
+-      PLANNING_CUTOFF_BYPASS_WORK_PLAN_CREATE_UNTIL: EXPIRED_BYPASS_UNTIL,
+-    },
+-    async () => {
+-      await assert.rejects(
+-        createWorkPlanService(ADMIN_SESSION, {
+-          date: LOCKED_DAILY_PLAN_DATE,
+-        }),
+-        error => {
+-          assert.equal(error?.status, 403)
+-          assert.match(String(error?.message || ''), /Depois das 08:00/)
+-          return true
+-        },
+-      )
+-    },
+-  )
+-})
++  await publishPlanningWorkspaceService(ADMIN_SESSION, workspace.id)
+ 
+-test('variavel vazia para criar plano diario mantem o bloqueio atual', async () => {
+-  await withPlanningCutoffBypassEnv(
+-    {
+-      PLANNING_CUTOFF_BYPASS_WORK_PLAN_CREATE_UNTIL: '',
+-    },
+-    async () => {
+-      await assert.rejects(
+-        createWorkPlanService(ADMIN_SESSION, {
+-          date: LOCKED_DAILY_PLAN_DATE,
+-        }),
+-        error => {
+-          assert.equal(error?.status, 403)
+-          assert.match(String(error?.message || ''), /Depois das 08:00/)
+-          return true
+-        },
+-      )
+-    },
++  const chefAssignmentsAfterRepublish = await getWorkAssignmentsListService(
++    CHEF_SESSION,
++    createSearchParams({ date: REPUBLISH_WORKFLOW_DATE }),
+   )
++  const officialAssignments = getAllWorkAssignments({ date: REPUBLISH_WORKFLOW_DATE })
++  const hiddenPreviousAssignment = officialAssignments.find(assignment => assignment.personId === 3)
++  const visibleRepublishedAssignment = officialAssignments.find(assignment => assignment.personId === 4)
++
++  assert.equal(chefAssignmentsBeforeRepublish.length, 1)
++  assert.equal(chefAssignmentsBeforeRepublish[0].personId, 3)
++  assert.equal(chefAssignmentsAfterRepublish.length, 1)
++  assert.equal(chefAssignmentsAfterRepublish[0].personId, 4)
++  assert.equal(officialAssignments.length, 2)
++  assert.equal(hiddenPreviousAssignment?.planningVisible, false)
++  assert.equal(visibleRepublishedAssignment?.planningVisible, true)
+ })
+ 
+-test('afetacoes continuam bloqueadas quando o bypass esta ausente', async () => {
+-  const lockedAssignment = createWorkAssignment({
+-    date: LOCKED_DAILY_PLAN_DATE,
++test('workflow de submissao continua funcional com planeamento publicado', async () => {
++  const { workspace } = await initializePlanningWorkspaceDraftService(ADMIN_SESSION, {
++    date: PLANNING_WORKFLOW_DATE,
++  })
++
++  await createPlanningDraftAssignmentService(ADMIN_SESSION, {
++    workspaceId: workspace.id,
+     workId: 1,
+     personId: 3,
+-    hours: 8,
+-    notes: 'Afetacao bloqueada sem bypass',
+-  })
+-
+-  await withPlanningCutoffBypassEnv({}, async () => {
+-    await assert.rejects(
+-      createWorkAssignmentService(ADMIN_SESSION, {
+-        workId: 1,
+-        personId: 3,
+-        date: LOCKED_DAILY_PLAN_DATE,
+-        hours: 8,
+-      }),
+-      error => {
+-        assert.equal(error?.status, 403)
+-        assert.match(String(error?.message || ''), /Depois das 08:00/)
+-        return true
+-      },
+-    )
+-
+-    await assert.rejects(
+-      updateWorkAssignmentService(ADMIN_SESSION, lockedAssignment.id, {
+-        notes: 'Nao devia atualizar',
+-      }),
+-      error => {
+-        assert.equal(error?.status, 403)
+-        assert.match(String(error?.message || ''), /Depois das 08:00/)
+-        return true
+-      },
+-    )
+-
+-    await assert.rejects(
+-      deleteWorkAssignmentService(ADMIN_SESSION, lockedAssignment.id),
+-      error => {
+-        assert.equal(error?.status, 403)
+-        assert.match(String(error?.message || ''), /Depois das 08:00/)
+-        return true
+-      },
+-    )
++    notes: 'Submissao valida',
+   })
++  await publishPlanningWorkspaceService(ADMIN_SESSION, workspace.id)
++
++  const publishedAssignment = getAllWorkAssignments({ date: PLANNING_WORKFLOW_DATE }).find(
++    assignment => assignment.personId === 3 && assignment.planningVisible !== false,
++  )
++  const submittedAssignment = await submitWorkAssignmentService(CHEF_SESSION, publishedAssignment.id)
++
++  assert.equal(submittedAssignment.submitted, true)
++  assert.equal(submittedAssignment.submittedBy, 'Chefe Teste')
++  assert.equal(submittedAssignment.approvedHours, null)
+ })
+ 
+-test('afetacoes voltam a bloquear quando o bypass expira', async () => {
+-  const lockedAssignment = createWorkAssignment({
+-    date: LOCKED_DAILY_PLAN_DATE,
++test('workflow de aprovacao continua funcional com planeamento publicado', async () => {
++  const { workspace } = await initializePlanningWorkspaceDraftService(ADMIN_SESSION, {
++    date: PLANNING_WORKFLOW_DATE,
++  })
++
++  await createPlanningDraftAssignmentService(ADMIN_SESSION, {
++    workspaceId: workspace.id,
+     workId: 1,
+     personId: 3,
+-    hours: 8,
+-    notes: 'Afetacao bloqueada com bypass expirado',
++    notes: 'Aprovacao valida',
+   })
++  await publishPlanningWorkspaceService(ADMIN_SESSION, workspace.id)
+ 
+-  await withPlanningCutoffBypassEnv(
+-    {
+-      PLANNING_CUTOFF_BYPASS_WORK_PLAN_CREATE_UNTIL: EXPIRED_BYPASS_UNTIL,
+-    },
+-    async () => {
+-      await assert.rejects(
+-        createWorkAssignmentService(ADMIN_SESSION, {
+-          workId: 1,
+-          personId: 3,
+-          date: LOCKED_DAILY_PLAN_DATE,
+-          hours: 8,
+-        }),
+-        error => {
+-          assert.equal(error?.status, 403)
+-          assert.match(String(error?.message || ''), /Depois das 08:00/)
+-          return true
+-        },
+-      )
+-
+-      await assert.rejects(
+-        updateWorkAssignmentService(ADMIN_SESSION, lockedAssignment.id, {
+-          notes: 'Nao devia atualizar com bypass expirado',
+-        }),
+-        error => {
+-          assert.equal(error?.status, 403)
+-          assert.match(String(error?.message || ''), /Depois das 08:00/)
+-          return true
+-        },
+-      )
+-
+-      await assert.rejects(
+-        deleteWorkAssignmentService(ADMIN_SESSION, lockedAssignment.id),
+-        error => {
+-          assert.equal(error?.status, 403)
+-          assert.match(String(error?.message || ''), /Depois das 08:00/)
+-          return true
+-        },
+-      )
+-    },
++  const publishedAssignment = getAllWorkAssignments({ date: PLANNING_WORKFLOW_DATE }).find(
++    assignment => assignment.personId === 3 && assignment.planningVisible !== false,
+   )
++
++  await submitWorkAssignmentService(CHEF_SESSION, publishedAssignment.id)
++  const approvedAssignment = await approveWorkAssignmentService(ADMIN_SESSION, publishedAssignment.id, {
++    approvedHours: 7,
++  })
++
++  assert.equal(approvedAssignment.approvedHours, 7)
++  assert.equal(approvedAssignment.adminApprovedBy, 'Administrador Teste')
++  assert.ok(approvedAssignment.adminApprovedAt)
+ })
+ 
+ test('propoe automaticamente o proximo numero de obra', () => {
+diff --git a/app/api/planning-workspace-assignments/route.js b/app/api/planning-workspace-assignments/route.js
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/app/api/planning-workspace-assignments/route.js
++import { createPlanningDraftAssignmentController } from '../../../server/controllers/planning-publication-controller.js'
++import { toNextErrorResponse, toNextResponse } from '../../../server/responses/route-response.js'
++
++export async function POST(request) {
++  try {
++    return toNextResponse(await createPlanningDraftAssignmentController(request))
++  } catch (error) {
++    return toNextErrorResponse(error, 'Erro ao criar afetacao de draft')
++  }
++}
+
+diff --git a/app/api/planning-workspace-assignments/[id]/route.js b/app/api/planning-workspace-assignments/[id]/route.js
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/app/api/planning-workspace-assignments/[id]/route.js
++import {
++  deletePlanningDraftAssignmentController,
++  updatePlanningDraftAssignmentController,
++} from '../../../../server/controllers/planning-publication-controller.js'
++import { toNextErrorResponse, toNextResponse } from '../../../../server/responses/route-response.js'
++
++export async function PUT(request, context) {
++  try {
++    return toNextResponse(
++      await updatePlanningDraftAssignmentController(request, (await context.params).id),
++    )
++  } catch (error) {
++    return toNextErrorResponse(error, 'Erro ao atualizar afetacao de draft')
++  }
++}
++
++export async function DELETE(request, context) {
++  try {
++    return toNextResponse(
++      await deletePlanningDraftAssignmentController((await context.params).id),
++    )
++  } catch (error) {
++    return toNextErrorResponse(error, 'Erro ao remover afetacao de draft')
++  }
++}
+
+diff --git a/app/api/planning-workspaces/route.js b/app/api/planning-workspaces/route.js
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/app/api/planning-workspaces/route.js
++import {
++  getPlanningWorkspaceViewController,
++  initializePlanningWorkspaceDraftController,
++} from '../../../server/controllers/planning-publication-controller.js'
++import { toNextErrorResponse, toNextResponse } from '../../../server/responses/route-response.js'
++
++export async function GET(request) {
++  try {
++    return toNextResponse(await getPlanningWorkspaceViewController(request))
++  } catch (error) {
++    return toNextErrorResponse(error, 'Erro ao obter draft do planeamento')
++  }
++}
++
++export async function POST(request) {
++  try {
++    return toNextResponse(await initializePlanningWorkspaceDraftController(request))
++  } catch (error) {
++    return toNextErrorResponse(error, 'Erro ao preparar draft do planeamento')
++  }
++}
+
+diff --git a/app/api/planning-workspaces/[id]/edit/route.js b/app/api/planning-workspaces/[id]/edit/route.js
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/app/api/planning-workspaces/[id]/edit/route.js
++import { setPlanningWorkspaceToDraftController } from '../../../../../server/controllers/planning-publication-controller.js'
++import { toNextErrorResponse, toNextResponse } from '../../../../../server/responses/route-response.js'
++
++export async function POST(request, context) {
++  try {
++    return toNextResponse(
++      await setPlanningWorkspaceToDraftController((await context.params).id),
++    )
++  } catch (error) {
++    return toNextErrorResponse(error, 'Erro ao voltar o planeamento para draft')
++  }
++}
+
+diff --git a/app/api/planning-workspaces/[id]/publish/route.js b/app/api/planning-workspaces/[id]/publish/route.js
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/app/api/planning-workspaces/[id]/publish/route.js
++import { publishPlanningWorkspaceController } from '../../../../../server/controllers/planning-publication-controller.js'
++import { toNextErrorResponse, toNextResponse } from '../../../../../server/responses/route-response.js'
++
++export async function POST(request, context) {
++  try {
++    return toNextResponse(
++      await publishPlanningWorkspaceController((await context.params).id),
++    )
++  } catch (error) {
++    return toNextErrorResponse(error, 'Erro ao publicar planeamento')
++  }
++}
+
+diff --git a/frontend/controllers/planning-workspaces-controller.js b/frontend/controllers/planning-workspaces-controller.js
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/frontend/controllers/planning-workspaces-controller.js
++import { apiFetchJson } from '../api/api-client.js'
++
++function buildQueryString(params = {}) {
++  const searchParams = new URLSearchParams()
++
++  Object.entries(params || {}).forEach(([key, value]) => {
++    if (value === undefined || value === null || value === '') {
++      return
++    }
++
++    searchParams.set(key, String(value))
++  })
++
++  const query = searchParams.toString()
++  return query ? `?${query}` : ''
++}
++
++async function requestPlanningJson(path, options, fallbackMessage) {
++  const { response, data } = await apiFetchJson(path, options)
++
++  if (!response.ok) {
++    throw new Error(data.error || fallbackMessage)
++  }
++
++  return data
++}
++
++export async function getPlanningWorkspaceView(
++  params = {},
++  fallbackMessage = 'Erro ao carregar o draft do planeamento',
++) {
++  return requestPlanningJson(
++    `/api/planning-workspaces${buildQueryString(params)}`,
++    undefined,
++    fallbackMessage,
++  )
++}
++
++export async function initializePlanningWorkspaceDraft(
++  payload,
++  fallbackMessage = 'Erro ao preparar o draft do planeamento',
++) {
++  return requestPlanningJson(
++    '/api/planning-workspaces',
++    {
++      method: 'POST',
++      headers: { 'Content-Type': 'application/json' },
++      body: JSON.stringify(payload),
++    },
++    fallbackMessage,
++  )
++}
++
++export async function publishPlanningWorkspace(
++  workspaceId,
++  fallbackMessage = 'Erro ao publicar o planeamento',
++) {
++  return requestPlanningJson(
++    `/api/planning-workspaces/${workspaceId}/publish`,
++    { method: 'POST' },
++    fallbackMessage,
++  )
++}
++
++export async function setPlanningWorkspaceToDraft(
++  workspaceId,
++  fallbackMessage = 'Erro ao voltar o planeamento para draft',
++) {
++  return requestPlanningJson(
++    `/api/planning-workspaces/${workspaceId}/edit`,
++    { method: 'POST' },
++    fallbackMessage,
++  )
++}
++
++export async function savePlanningDraftAssignment(
++  assignmentId,
++  payload,
++  fallbackMessage = 'Erro ao gravar afetacao no draft',
++) {
++  const hasAssignmentId = assignmentId !== null && assignmentId !== undefined && assignmentId !== ''
++  const path = hasAssignmentId
++    ? `/api/planning-workspace-assignments/${assignmentId}`
++    : '/api/planning-workspace-assignments'
++  const method = hasAssignmentId ? 'PUT' : 'POST'
++
++  return requestPlanningJson(
++    path,
++    {
++      method,
++      headers: { 'Content-Type': 'application/json' },
++      body: JSON.stringify(payload),
++    },
++    fallbackMessage,
++  )
++}
++
++export async function deletePlanningDraftAssignment(
++  assignmentId,
++  fallbackMessage = 'Erro ao remover afetacao do draft',
++) {
++  return requestPlanningJson(
++    `/api/planning-workspace-assignments/${assignmentId}`,
++    { method: 'DELETE' },
++    fallbackMessage,
++  )
++}
+
+diff --git a/lib/db/planning-workspaces-db.js b/lib/db/planning-workspaces-db.js
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/lib/db/planning-workspaces-db.js
++import {
++  mapPersonRecord,
++  mapPlanningWorkspaceRecord,
++  mapWorkRecord,
++  normalizePlanningPublicationState,
++  toDateOnlyValue,
++  toDateTimeString,
++  toNumber,
++  toPositiveInt,
++  toRequiredString,
++} from './core-mappers.js'
++import { prisma } from '../prisma.js'
++
++function getPlanningWorkspaceAssignmentIncludes() {
++  return {
++    person: true,
++    work: {
++      include: {
++        company: true,
++        client: true,
++        workingDays: true,
++        roleHourlyCosts: true,
++        personHourlyCosts: true,
++      },
++    },
++  }
++}
++
++function toOptionalDateTimeValue(value) {
++  if (value === undefined) {
++    return undefined
++  }
++
++  if (value === null || value === '') {
++    return null
++  }
++
++  const candidate = value instanceof Date ? value : new Date(value)
++  return Number.isNaN(candidate.getTime()) ? null : candidate
++}
++
++function toPlanningWorkspaceMutation(data = {}) {
++  const mutation = {}
++
++  if (data.companyId !== undefined) mutation.companyId = toPositiveInt(data.companyId, 1)
++  if (data.date !== undefined) mutation.date = toDateOnlyValue(data.date)
++  if (data.state !== undefined) {
++    mutation.state = normalizePlanningPublicationState(data.state)
++  }
++  if (data.publishedWorkPlanId !== undefined) {
++    mutation.publishedWorkPlanId = toPositiveInt(data.publishedWorkPlanId, null)
++  }
++  if (data.publishedAt !== undefined) {
++    mutation.publishedAt = toOptionalDateTimeValue(data.publishedAt)
++  }
++
++  return mutation
++}
++
++function toPlanningWorkspaceAssignmentMutation(data = {}) {
++  const mutation = {}
++
++  if (data.workspaceId !== undefined) mutation.workspaceId = toPositiveInt(data.workspaceId)
++  if (data.workId !== undefined) mutation.workId = toPositiveInt(data.workId)
++  if (data.personId !== undefined) mutation.personId = toPositiveInt(data.personId)
++  if (data.hourlyCost !== undefined) mutation.hourlyCost = toNumber(data.hourlyCost)
++  if (data.manualHourlyCost !== undefined) mutation.manualHourlyCost = data.manualHourlyCost === true
++  if (data.notes !== undefined) mutation.notes = toRequiredString(data.notes) || null
++  if (data.hasWorkAccess !== undefined) mutation.hasWorkAccess = data.hasWorkAccess === true
++
++  return mutation
++}
++
++function mapPlanningWorkspaceAssignmentRecord(record) {
++  if (!record) {
++    return null
++  }
++
++  return {
++    id: Number(record.id),
++    workspaceId: Number(record.workspaceId),
++    workId: Number(record.workId),
++    personId: Number(record.personId),
++    hourlyCost: toNumber(record.hourlyCost),
++    manualHourlyCost: record.manualHourlyCost === true,
++    notes: toRequiredString(record.notes),
++    hasWorkAccess: record.hasWorkAccess === true,
++    createdAt: toDateTimeString(record.createdAt),
++    updatedAt: toDateTimeString(record.updatedAt),
++    person: record.person ? mapPersonRecord(record.person) : null,
++    work: record.work ? mapWorkRecord(record.work) : null,
++  }
++}
++
++export async function getPlanningWorkspaceByIdDb(id) {
++  const normalizedId = toPositiveInt(id)
++
++  if (!normalizedId) {
++    return null
++  }
++
++  const workspace = await prisma.planningWorkspace.findUnique({
++    where: { id: normalizedId },
++  })
++
++  return mapPlanningWorkspaceRecord(workspace)
++}
++
++export async function getAllPlanningWorkspacesDb(filters = {}) {
++  const companyId = toPositiveInt(filters.companyId, null)
++
++  const workspaces = await prisma.planningWorkspace.findMany({
++    where: companyId ? { companyId } : undefined,
++    orderBy: [{ date: 'asc' }, { id: 'asc' }],
++  })
++
++  return workspaces.map(mapPlanningWorkspaceRecord)
++}
++
++export async function getPlanningWorkspaceByDateDb(date, companyId) {
++  const normalizedDate = toDateOnlyValue(date)
++  const normalizedCompanyId = toPositiveInt(companyId, 1)
++
++  if (!normalizedDate) {
++    return null
++  }
++
++  const workspace = await prisma.planningWorkspace.findUnique({
++    where: {
++      companyId_date: {
++        companyId: normalizedCompanyId,
++        date: normalizedDate,
++      },
++    },
++  })
++
++  return mapPlanningWorkspaceRecord(workspace)
++}
++
++export async function createPlanningWorkspaceDb(data) {
++  const workspace = await prisma.planningWorkspace.create({
++    data: toPlanningWorkspaceMutation(data),
++  })
++
++  return mapPlanningWorkspaceRecord(workspace)
++}
++
++export async function updatePlanningWorkspaceDb(id, data) {
++  const normalizedId = toPositiveInt(id)
++
++  if (!normalizedId) {
++    return null
++  }
++
++  const currentWorkspace = await prisma.planningWorkspace.findUnique({
++    where: { id: normalizedId },
++  })
++
++  if (!currentWorkspace) {
++    return null
++  }
++
++  const workspace = await prisma.planningWorkspace.update({
++    where: { id: normalizedId },
++    data: toPlanningWorkspaceMutation(data),
++  })
++
++  return mapPlanningWorkspaceRecord(workspace)
++}
++
++export async function getPlanningWorkspaceAssignmentsDb(filters = {}) {
++  const workspaceId = toPositiveInt(filters.workspaceId)
++  const workId = toPositiveInt(filters.workId)
++  const personId = toPositiveInt(filters.personId)
++
++  const assignments = await prisma.planningWorkspaceAssignment.findMany({
++    where: {
++      ...(workspaceId ? { workspaceId } : {}),
++      ...(workId ? { workId } : {}),
++      ...(personId ? { personId } : {}),
++    },
++    include: getPlanningWorkspaceAssignmentIncludes(),
++    orderBy: [{ workspaceId: 'asc' }, { workId: 'asc' }, { id: 'asc' }],
++  })
++
++  return assignments.map(mapPlanningWorkspaceAssignmentRecord)
++}
++
++export async function getPlanningWorkspaceAssignmentByIdDb(id) {
++  const normalizedId = toPositiveInt(id)
++
++  if (!normalizedId) {
++    return null
++  }
++
++  const assignment = await prisma.planningWorkspaceAssignment.findUnique({
++    where: { id: normalizedId },
++    include: getPlanningWorkspaceAssignmentIncludes(),
++  })
++
++  return mapPlanningWorkspaceAssignmentRecord(assignment)
++}
++
++export async function createPlanningWorkspaceAssignmentDb(data) {
++  const assignment = await prisma.planningWorkspaceAssignment.create({
++    data: toPlanningWorkspaceAssignmentMutation(data),
++    include: getPlanningWorkspaceAssignmentIncludes(),
++  })
++
++  return mapPlanningWorkspaceAssignmentRecord(assignment)
++}
++
++export async function updatePlanningWorkspaceAssignmentDb(id, data) {
++  const normalizedId = toPositiveInt(id)
++
++  if (!normalizedId) {
++    return null
++  }
++
++  const currentAssignment = await prisma.planningWorkspaceAssignment.findUnique({
++    where: { id: normalizedId },
++  })
++
++  if (!currentAssignment) {
++    return null
++  }
++
++  const assignment = await prisma.planningWorkspaceAssignment.update({
++    where: { id: normalizedId },
++    data: toPlanningWorkspaceAssignmentMutation(data),
++    include: getPlanningWorkspaceAssignmentIncludes(),
++  })
++
++  return mapPlanningWorkspaceAssignmentRecord(assignment)
++}
++
++export async function deletePlanningWorkspaceAssignmentDb(id) {
++  const normalizedId = toPositiveInt(id)
++
++  if (!normalizedId) {
++    return false
++  }
++
++  try {
++    await prisma.planningWorkspaceAssignment.delete({
++      where: { id: normalizedId },
++    })
++
++    return true
++  } catch {
++    return false
++  }
++}
++
++export async function deletePlanningWorkspaceAssignmentsByWorkspaceIdDb(workspaceId) {
++  const normalizedWorkspaceId = toPositiveInt(workspaceId)
++
++  if (!normalizedWorkspaceId) {
++    return 0
++  }
++
++  const result = await prisma.planningWorkspaceAssignment.deleteMany({
++    where: { workspaceId: normalizedWorkspaceId },
++  })
++
++  return Number(result.count || 0)
++}
+
+diff --git a/lib/planning-publication.js b/lib/planning-publication.js
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/lib/planning-publication.js
++import { resolveCompanyId } from './companies.js'
++import { getDefaultHoursForDate } from './default-hours.js'
++import { getAssignmentDefaultsData, getAllWorkAssignmentsData, updateWorkAssignmentPlanningData, createWorkAssignmentData } from './work-assignments.js'
++import { getPersonByIdData } from './people.js'
++import {
++  PLANNING_WORKSPACE_STATE_DRAFT,
++  PLANNING_WORKSPACE_STATE_PUBLISHED,
++  createPlanningWorkspaceAssignmentData,
++  createPlanningWorkspaceData,
++  deletePlanningWorkspaceAssignmentData,
++  getPlanningWorkspaceAssignmentByIdData,
++  getPlanningWorkspaceAssignmentsData,
++  getPlanningWorkspaceByDateData,
++  getPlanningWorkspaceByIdData,
++  replacePlanningWorkspaceAssignmentsData,
++  resolveDraftChefAccessAssignments,
++  updatePlanningWorkspaceAssignmentData,
++  updatePlanningWorkspaceData,
++} from './planning-workspaces.js'
++import { isChefRole } from './roles.js'
++import { getAllWorkPlansData, getWorkPlanByDateData, getWorkPlanByIdData, createWorkPlanData } from './work-plans.js'
++import { getWorkByIdData } from './works.js'
++
++function normalizeDate(date) {
++  const value = String(date || '').trim()
++
++  if (!value || Number.isNaN(new Date(value).getTime())) {
++    throw new Error('date tem de ser uma data valida')
++  }
++
++  return value.slice(0, 10)
++}
++
++function getPlanningAssignmentKey(workId, personId) {
++  return `${Number(workId)}:${Number(personId)}`
++}
++
++function ensureWorkspaceIsDraft(workspace) {
++  if (!workspace || workspace.state === PLANNING_WORKSPACE_STATE_DRAFT) {
++    return
++  }
++
++  throw new Error('O planeamento publicado tem de voltar a draft antes de ser editado')
++}
++
++function isPublishedPlanningAssignment(assignment) {
++  return assignment?.planningVisible !== false
++}
++
++function hasCommittedHours(assignment) {
++  return (
++    assignment?.submitted === true ||
++    Boolean(assignment?.submittedAt) ||
++    assignment?.approvedHours !== undefined && assignment?.approvedHours !== null ||
++    Boolean(assignment?.adminApprovedAt)
++  )
++}
++
++function getHourlyCostForDraftAssignment(work, person, payload = {}) {
++  if (payload.manualHourlyCost === true) {
++    const manualHourlyCost = Number(payload.hourlyCost)
++
++    if (!Number.isFinite(manualHourlyCost) || manualHourlyCost < 0) {
++      throw new Error('hourlyCost nao pode ser negativo')
++    }
++
++    return manualHourlyCost
++  }
++
++  const specialPersonHourlyCost = work?.specialPersonHourlyCosts?.[String(person.id)]
++
++  if (
++    specialPersonHourlyCost !== undefined &&
++    specialPersonHourlyCost !== null &&
++    specialPersonHourlyCost !== ''
++  ) {
++    return Number(specialPersonHourlyCost)
++  }
++
++  const roleHourlyCost = work?.roleHourlyCosts?.[person.role]
++
++  if (roleHourlyCost !== undefined && roleHourlyCost !== null && roleHourlyCost !== '') {
++    return Number(roleHourlyCost)
++  }
++
++  return Number(work?.defaultHourlyCost ?? 0)
++}
++
++function toDraftSeedAssignment(assignment) {
++  return {
++    workId: Number(assignment.workId),
++    personId: Number(assignment.personId),
++    hourlyCost: Number(assignment.hourlyCost ?? 0),
++    manualHourlyCost: assignment.manualHourlyCost === true,
++    notes: assignment.notes || '',
++    hasWorkAccess: assignment.hasWorkAccess === true,
++  }
++}
++
++async function getPublishedAssignmentsForWorkPlan(workPlanId) {
++  return (await getAllWorkAssignmentsData({ workPlanId })).filter(isPublishedPlanningAssignment)
++}
++
++async function ensureWorkspaceSeededFromPublishedPlan(date, companyId) {
++  const existingWorkspace = await getPlanningWorkspaceByDateData(date, companyId)
++
++  if (existingWorkspace) {
++    return existingWorkspace
++  }
++
++  const publishedWorkPlan = await getWorkPlanByDateData(date, companyId)
++
++  if (!publishedWorkPlan) {
++    return null
++  }
++
++  const workspace = await createPlanningWorkspaceData({
++    companyId,
++    date,
++    state: PLANNING_WORKSPACE_STATE_PUBLISHED,
++    publishedWorkPlanId: publishedWorkPlan.id,
++    publishedAt: null,
++  })
++
++  const publishedAssignments = await getPublishedAssignmentsForWorkPlan(publishedWorkPlan.id)
++  await replacePlanningWorkspaceAssignmentsData(
++    workspace.id,
++    publishedAssignments.map(toDraftSeedAssignment),
++  )
++
++  return workspace
++}
++
++async function getWorkspaceOrBackfill(date, companyId) {
++  return (await getPlanningWorkspaceByDateData(date, companyId)) ||
++    (await ensureWorkspaceSeededFromPublishedPlan(date, companyId))
++}
++
++async function getLatestPreviousPublishedPlanWithAssignments(date, companyId) {
++  const targetDate = new Date(`${normalizeDate(date)}T00:00:00.000Z`)
++  const normalizedCompanyId = resolveCompanyId(companyId)
++  const workPlans = await getAllWorkPlansData({ companyId: normalizedCompanyId })
++  const orderedWorkPlans = workPlans
++    .filter(workPlan => new Date(`${String(workPlan.date).slice(0, 10)}T00:00:00.000Z`) < targetDate)
++    .sort((left, right) => String(right.date).localeCompare(String(left.date)))
++
++  for (const workPlan of orderedWorkPlans) {
++    const assignments = await getPublishedAssignmentsForWorkPlan(workPlan.id)
++
++    if (assignments.length > 0) {
++      return {
++        workPlan,
++        assignments,
++      }
++    }
++  }
++
++  return {
++    workPlan: null,
++    assignments: [],
++  }
++}
++
++async function normalizeDraftChefAccessForWorkspace(workspaceId, workId, preferredAssignmentId = null) {
++  const workspaceAssignments = await getPlanningWorkspaceAssignmentsData({
++    workspaceId,
++    workId,
++  })
++  const chefAssignments = resolveDraftChefAccessAssignments(workspaceAssignments, workId)
++
++  if (chefAssignments.length === 0) {
++    return workspaceAssignments
++  }
++
++  const preferredChefAssignment = preferredAssignmentId
++    ? chefAssignments.find(item => Number(item.id) === Number(preferredAssignmentId))
++    : null
++  const explicitChefAssignment = chefAssignments.find(item => item.hasWorkAccess === true)
++  const selectedChefAssignment = preferredChefAssignment || explicitChefAssignment || chefAssignments[0]
++
++  for (const assignment of chefAssignments) {
++    const shouldHaveAccess = Number(assignment.id) === Number(selectedChefAssignment.id)
++
++    if (assignment.hasWorkAccess === shouldHaveAccess) {
++      continue
++    }
++
++    await updatePlanningWorkspaceAssignmentData(assignment.id, {
++      hasWorkAccess: shouldHaveAccess,
++    })
++  }
++
++  return getPlanningWorkspaceAssignmentsData({ workspaceId })
++}
++
++async function buildPlanningWorkspaceView(date, companyId) {
++  const workspace = await getWorkspaceOrBackfill(date, companyId)
++  const defaults = await getAssignmentDefaultsData()
++
++  if (!workspace) {
++    return {
++      workspace: null,
++      items: [],
++      defaults: {
++        people: defaults.people || [],
++        works: defaults.works || [],
++      },
++    }
++  }
++
++  return {
++    workspace,
++    items: await getPlanningWorkspaceAssignmentsData({ workspaceId: workspace.id }),
++    defaults: {
++      people: defaults.people || [],
++      works: defaults.works || [],
++    },
++  }
++}
++
++async function ensureDraftWorkspacePersonAndWork(workspace, { workId, personId }) {
++  const [work, person] = await Promise.all([
++    getWorkByIdData(workId),
++    getPersonByIdData(personId),
++  ])
++
++  if (!work) {
++    throw new Error('Obra nao encontrada')
++  }
++
++  if (!person) {
++    throw new Error('Pessoa nao encontrada')
++  }
++
++  if (Number(work.companyId) !== Number(workspace.companyId)) {
++    throw new Error('A obra tem de pertencer a mesma empresa do draft')
++  }
++
++  if (Number(person.companyId) !== Number(workspace.companyId)) {
++    throw new Error('A pessoa tem de pertencer a mesma empresa do draft')
++  }
++
++  return { work, person }
++}
++
++export async function getPlanningWorkspaceViewData({ date, companyId } = {}) {
++  return buildPlanningWorkspaceView(normalizeDate(date), resolveCompanyId(companyId))
++}
++
++export async function initializePlanningWorkspaceDraftData({
++  date,
++  companyId,
++  clonePreviousDay = false,
++} = {}) {
++  const normalizedDate = normalizeDate(date)
++  const normalizedCompanyId = resolveCompanyId(companyId)
++  const existingWorkspace = await getWorkspaceOrBackfill(normalizedDate, normalizedCompanyId)
++  const workspace =
++    existingWorkspace ||
++    (await createPlanningWorkspaceData({
++      companyId: normalizedCompanyId,
++      date: normalizedDate,
++      state: PLANNING_WORKSPACE_STATE_DRAFT,
++      publishedWorkPlanId: null,
++      publishedAt: null,
++    }))
++
++  let sourceAssignments = []
++  let clonedFromDate = null
++
++  if (clonePreviousDay) {
++    const previousPublished = await getLatestPreviousPublishedPlanWithAssignments(
++      normalizedDate,
++      normalizedCompanyId,
++    )
++
++    if (!previousPublished.workPlan) {
++      throw new Error('Nao existe nenhum planeamento publicado anterior com afetacoes para copiar')
++    }
++
++    sourceAssignments = previousPublished.assignments.map(toDraftSeedAssignment)
++    clonedFromDate = previousPublished.workPlan.date
++  }
++
++  const currentAssignments = await getPlanningWorkspaceAssignmentsData({ workspaceId: workspace.id })
++  const nextAssignments = clonePreviousDay ? sourceAssignments : []
++
++  await replacePlanningWorkspaceAssignmentsData(workspace.id, nextAssignments)
++  const updatedWorkspace = await updatePlanningWorkspaceData(workspace.id, {
++    state: PLANNING_WORKSPACE_STATE_DRAFT,
++  })
++
++  return {
++    workspace: updatedWorkspace,
++    clonedAssignments: sourceAssignments.length,
++    clonedFromDate,
++    clearedAssignments: clonePreviousDay ? 0 : currentAssignments.length,
++    reusedWorkspace: Boolean(existingWorkspace),
++    items: await getPlanningWorkspaceAssignmentsData({ workspaceId: workspace.id }),
++  }
++}
++
++export async function setPlanningWorkspaceToDraftData(workspaceId) {
++  const workspace = await getPlanningWorkspaceByIdData(workspaceId)
++
++  if (!workspace) {
++    throw new Error('Draft de planeamento nao encontrado')
++  }
++
++  const currentAssignments = await getPlanningWorkspaceAssignmentsData({ workspaceId: workspace.id })
++
++  if (currentAssignments.length === 0 && workspace.publishedWorkPlanId) {
++    const publishedAssignments = await getPublishedAssignmentsForWorkPlan(workspace.publishedWorkPlanId)
++    await replacePlanningWorkspaceAssignmentsData(
++      workspace.id,
++      publishedAssignments.map(toDraftSeedAssignment),
++    )
++  }
++
++  return updatePlanningWorkspaceData(workspace.id, {
++    state: PLANNING_WORKSPACE_STATE_DRAFT,
++  })
++}
++
++export async function createPlanningDraftAssignmentData(workspaceId, payload = {}) {
++  const workspace = await getPlanningWorkspaceByIdData(workspaceId)
++
++  if (!workspace) {
++    throw new Error('Draft de planeamento nao encontrado')
++  }
++
++  ensureWorkspaceIsDraft(workspace)
++
++  const workId = Number(payload.workId)
++  const personId = Number(payload.personId)
++
++  if (!workId || !personId) {
++    throw new Error('workId e personId sao obrigatorios')
++  }
++
++  const { work, person } = await ensureDraftWorkspacePersonAndWork(workspace, { workId, personId })
++  const assignment = await createPlanningWorkspaceAssignmentData({
++    workspaceId: workspace.id,
++    workId,
++    personId,
++    hourlyCost: getHourlyCostForDraftAssignment(work, person, payload),
++    manualHourlyCost: payload.manualHourlyCost === true,
++    notes: payload.notes,
++    hasWorkAccess: payload.hasWorkAccess === true,
++  })
++
++  await updatePlanningWorkspaceData(workspace.id, {
++    state: PLANNING_WORKSPACE_STATE_DRAFT,
++  })
++  await normalizeDraftChefAccessForWorkspace(workspace.id, workId, assignment.id)
++
++  return getPlanningWorkspaceAssignmentByIdData(assignment.id)
++}
++
++export async function updatePlanningDraftAssignmentData(assignmentId, payload = {}) {
++  const currentAssignment = await getPlanningWorkspaceAssignmentByIdData(assignmentId)
++
++  if (!currentAssignment) {
++    throw new Error('Afetacao de draft nao encontrada')
++  }
++
++  const workspace = await getPlanningWorkspaceByIdData(currentAssignment.workspaceId)
++
++  if (!workspace) {
++    throw new Error('Draft de planeamento nao encontrado')
++  }
++
++  ensureWorkspaceIsDraft(workspace)
++
++  const workId = payload.workId !== undefined ? Number(payload.workId) : Number(currentAssignment.workId)
++  const personId =
++    payload.personId !== undefined ? Number(payload.personId) : Number(currentAssignment.personId)
++  const { work, person } = await ensureDraftWorkspacePersonAndWork(workspace, { workId, personId })
++
++  const updatedAssignment = await updatePlanningWorkspaceAssignmentData(assignmentId, {
++    workId,
++    personId,
++    hourlyCost:
++      payload.hourlyCost !== undefined || payload.manualHourlyCost !== undefined || payload.workId !== undefined || payload.personId !== undefined
++        ? getHourlyCostForDraftAssignment(work, person, {
++            ...currentAssignment,
++            ...payload,
++          })
++        : currentAssignment.hourlyCost,
++    manualHourlyCost:
++      payload.manualHourlyCost !== undefined
++        ? payload.manualHourlyCost === true
++        : currentAssignment.manualHourlyCost === true,
++    notes: payload.notes !== undefined ? payload.notes : currentAssignment.notes,
++    hasWorkAccess:
++      payload.hasWorkAccess !== undefined
++        ? payload.hasWorkAccess === true
++        : currentAssignment.hasWorkAccess === true,
++  })
++
++  await updatePlanningWorkspaceData(workspace.id, {
++    state: PLANNING_WORKSPACE_STATE_DRAFT,
++  })
++  await normalizeDraftChefAccessForWorkspace(workspace.id, currentAssignment.workId)
++
++  if (Number(workId) !== Number(currentAssignment.workId)) {
++    await normalizeDraftChefAccessForWorkspace(workspace.id, workId, updatedAssignment?.id)
++  } else {
++    await normalizeDraftChefAccessForWorkspace(workspace.id, workId, updatedAssignment?.id)
++  }
++
++  return getPlanningWorkspaceAssignmentByIdData(assignmentId)
++}
++
++export async function deletePlanningDraftAssignmentData(assignmentId) {
++  const currentAssignment = await getPlanningWorkspaceAssignmentByIdData(assignmentId)
++
++  if (!currentAssignment) {
++    return false
++  }
++
++  const workspace = await getPlanningWorkspaceByIdData(currentAssignment.workspaceId)
++
++  if (!workspace) {
++    throw new Error('Draft de planeamento nao encontrado')
++  }
++
++  ensureWorkspaceIsDraft(workspace)
++
++  const deleted = await deletePlanningWorkspaceAssignmentData(assignmentId)
++
++  if (!deleted) {
++    return false
++  }
++
++  await normalizeDraftChefAccessForWorkspace(currentAssignment.workspaceId, currentAssignment.workId)
++  await updatePlanningWorkspaceData(currentAssignment.workspaceId, {
++    state: PLANNING_WORKSPACE_STATE_DRAFT,
++  })
++
++  return true
++}
++
++export async function publishPlanningWorkspaceData(workspaceId) {
++  const workspace = await getPlanningWorkspaceByIdData(workspaceId)
++
++  if (!workspace) {
++    throw new Error('Draft de planeamento nao encontrado')
++  }
++
++  ensureWorkspaceIsDraft(workspace)
++
++  const draftAssignments = await getPlanningWorkspaceAssignmentsData({ workspaceId: workspace.id })
++  const currentPublishedWorkPlan =
++    (workspace.publishedWorkPlanId && (await getWorkPlanByIdData(workspace.publishedWorkPlanId))) ||
++    (await getWorkPlanByDateData(workspace.date, workspace.companyId))
++  const publishedWorkPlan =
++    currentPublishedWorkPlan ||
++    (await createWorkPlanData({
++      companyId: workspace.companyId,
++      date: workspace.date,
++    }))
++  const officialAssignments = await getAllWorkAssignmentsData({ workPlanId: publishedWorkPlan.id })
++  const officialAssignmentsByKey = new Map(
++    officialAssignments.map(assignment => [
++      getPlanningAssignmentKey(assignment.workId, assignment.personId),
++      assignment,
++    ]),
++  )
++  const desiredAssignmentKeys = new Set(
++    draftAssignments.map(assignment => getPlanningAssignmentKey(assignment.workId, assignment.personId)),
++  )
++
++  for (const officialAssignment of officialAssignments) {
++    const key = getPlanningAssignmentKey(officialAssignment.workId, officialAssignment.personId)
++
++    if (desiredAssignmentKeys.has(key)) {
++      continue
++    }
++
++    if (
++      officialAssignment.planningVisible === false &&
++      officialAssignment.hasWorkAccess === false
++    ) {
++      continue
++    }
++
++    await updateWorkAssignmentPlanningData(officialAssignment.id, {
++      hasWorkAccess: false,
++      planningVisible: false,
++    })
++  }
++
++  for (const draftAssignment of draftAssignments) {
++    const key = getPlanningAssignmentKey(draftAssignment.workId, draftAssignment.personId)
++    const officialAssignment = officialAssignmentsByKey.get(key)
++
++    if (!officialAssignment) {
++      await createWorkAssignmentData({
++        workPlanId: publishedWorkPlan.id,
++        workId: draftAssignment.workId,
++        personId: draftAssignment.personId,
++        hours: getDefaultHoursForDate(workspace.date),
++        hourlyCost: draftAssignment.hourlyCost,
++        manualHourlyCost: draftAssignment.manualHourlyCost === true,
++        notes: draftAssignment.notes,
++        hasWorkAccess: draftAssignment.hasWorkAccess === true,
++        planningVisible: true,
++      })
++      continue
++    }
++
++    const planningMutation = {
++      notes: draftAssignment.notes,
++      hasWorkAccess: draftAssignment.hasWorkAccess === true,
++      planningVisible: true,
++    }
++
++    if (!hasCommittedHours(officialAssignment)) {
++      planningMutation.hourlyCost = draftAssignment.hourlyCost
++      planningMutation.manualHourlyCost = draftAssignment.manualHourlyCost === true
++    }
++
++    await updateWorkAssignmentPlanningData(officialAssignment.id, planningMutation)
++  }
++
++  return updatePlanningWorkspaceData(workspace.id, {
++    state: PLANNING_WORKSPACE_STATE_PUBLISHED,
++    publishedWorkPlanId: publishedWorkPlan.id,
++    publishedAt: new Date().toISOString(),
++  })
++}
+
+diff --git a/lib/planning-workspaces.js b/lib/planning-workspaces.js
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/lib/planning-workspaces.js
++import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
++import { dirname, join } from 'path'
++import { fileURLToPath } from 'url'
++import { resolveCompanyId } from './companies.js'
++import { isMysqlDataSourceEnabled } from './data-source.js'
++import { getPersonById, getPersonByIdData } from './people.js'
++import { isChefRole } from './roles.js'
++import { getWorkById, getWorkByIdData } from './works.js'
++import {
++  createPlanningWorkspaceAssignmentDb,
++  createPlanningWorkspaceDb,
++  getAllPlanningWorkspacesDb,
++  deletePlanningWorkspaceAssignmentDb,
++  deletePlanningWorkspaceAssignmentsByWorkspaceIdDb,
++  getPlanningWorkspaceAssignmentByIdDb,
++  getPlanningWorkspaceAssignmentsDb,
++  getPlanningWorkspaceByDateDb,
++  getPlanningWorkspaceByIdDb,
++  updatePlanningWorkspaceAssignmentDb,
++  updatePlanningWorkspaceDb,
++} from './db/planning-workspaces-db.js'
++
++const __filename = fileURLToPath(import.meta.url)
++const __dirname = dirname(__filename)
++
++const dataDir = join(__dirname, '..', 'data')
++const planningWorkspacesFilePath = join(dataDir, 'planning-workspaces.json')
++const planningWorkspaceAssignmentsFilePath = join(dataDir, 'planning-workspace-assignments.json')
++
++export const PLANNING_WORKSPACE_STATE_DRAFT = 'draft'
++export const PLANNING_WORKSPACE_STATE_PUBLISHED = 'published'
++
++function normalizeDate(date) {
++  const value = String(date || '').trim()
++
++  if (!value || Number.isNaN(new Date(value).getTime())) {
++    throw new Error('date tem de ser uma data valida')
++  }
++
++  return value.slice(0, 10)
++}
++
++function normalizePositiveInt(value, fallback = null) {
++  const parsedValue = Number.parseInt(value, 10)
++  return Number.isInteger(parsedValue) && parsedValue > 0 ? parsedValue : fallback
++}
++
++function normalizeNonNegativeNumber(value, fallback = 0) {
++  const parsedValue = Number.parseFloat(value)
++  return Number.isFinite(parsedValue) && parsedValue >= 0 ? parsedValue : fallback
++}
++
++function normalizePublicationState(value, fallback = PLANNING_WORKSPACE_STATE_DRAFT) {
++  const normalizedValue = String(value || '').trim().toLowerCase()
++
++  if (normalizedValue === PLANNING_WORKSPACE_STATE_PUBLISHED) {
++    return PLANNING_WORKSPACE_STATE_PUBLISHED
++  }
++
++  if (normalizedValue === PLANNING_WORKSPACE_STATE_DRAFT) {
++    return PLANNING_WORKSPACE_STATE_DRAFT
++  }
++
++  return fallback
++}
++
++function normalizeDateTime(value, fallback = new Date().toISOString()) {
++  if (!value) {
++    return fallback
++  }
++
++  const candidate = new Date(value)
++  return Number.isNaN(candidate.getTime()) ? fallback : candidate.toISOString()
++}
++
++export class PlanningWorkspace {
++  constructor(data) {
++    this.id = normalizePositiveInt(data.id)
++    this.companyId = resolveCompanyId(data.companyId)
++    this.date = normalizeDate(data.date)
++    this.state = normalizePublicationState(
++      data.state,
++      data.publishedWorkPlanId ? PLANNING_WORKSPACE_STATE_PUBLISHED : PLANNING_WORKSPACE_STATE_DRAFT,
++    )
++    this.publishedWorkPlanId = normalizePositiveInt(data.publishedWorkPlanId, null)
++    this.publishedAt = data.publishedAt ? normalizeDateTime(data.publishedAt) : null
++    this.createdAt = normalizeDateTime(data.createdAt)
++    this.updatedAt = normalizeDateTime(data.updatedAt, this.createdAt)
++  }
++}
++
++export class PlanningWorkspaceAssignment {
++  constructor(data) {
++    this.id = normalizePositiveInt(data.id)
++    this.workspaceId = normalizePositiveInt(data.workspaceId)
++    this.workId = normalizePositiveInt(data.workId)
++    this.personId = normalizePositiveInt(data.personId)
++    this.hourlyCost = normalizeNonNegativeNumber(data.hourlyCost)
++    this.manualHourlyCost = data.manualHourlyCost === true
++    this.notes = String(data.notes || '').trim()
++    this.hasWorkAccess = data.hasWorkAccess === true
++    this.createdAt = normalizeDateTime(data.createdAt)
++    this.updatedAt = normalizeDateTime(data.updatedAt, this.createdAt)
++  }
++}
++
++function normalizePlanningWorkspaces(list) {
++  if (!Array.isArray(list)) {
++    return []
++  }
++
++  const seenKeys = new Set()
++
++  return list
++    .map(item => {
++      try {
++        return new PlanningWorkspace(item)
++      } catch {
++        return null
++      }
++    })
++    .filter(item => {
++      if (!item) {
++        return false
++      }
++
++      const key = `${item.companyId}:${item.date}`
++
++      if (seenKeys.has(key)) {
++        return false
++      }
++
++      seenKeys.add(key)
++      return true
++    })
++}
++
++function normalizePlanningWorkspaceAssignments(list) {
++  if (!Array.isArray(list)) {
++    return []
++  }
++
++  return list
++    .map(item => {
++      try {
++        return new PlanningWorkspaceAssignment(item)
++      } catch {
++        return null
++      }
++    })
++    .filter(item => item && item.workspaceId && item.workId && item.personId)
++}
++
++function enrichPlanningWorkspaceAssignment(assignment, personResolver, workResolver) {
++  const person = personResolver(assignment.personId)
++  const work = workResolver(assignment.workId)
++
++  return {
++    ...assignment,
++    person: person
++      ? {
++          id: person.id,
++          name: person.name,
++          defaultHourlyPrice: person.price,
++          role: person.role,
++          chefCategory: person.chefCategory || null,
++        }
++      : null,
++    work: work
++      ? {
++          id: work.id,
++          number: work.number,
++          name: work.name,
++          defaultHourlyCost: work.defaultHourlyCost,
++          roleHourlyCosts: work.roleHourlyCosts,
++          specialPersonHourlyCosts: work.specialPersonHourlyCosts,
++          status: work.status,
++        }
++      : null,
++  }
++}
++
++export class PlanningWorkspacesService {
++  constructor(
++    workspacesPath = planningWorkspacesFilePath,
++    assignmentsPath = planningWorkspaceAssignmentsFilePath,
++  ) {
++    this.workspacesPath = workspacesPath
++    this.assignmentsPath = assignmentsPath
++    this.workspaces = this.loadWorkspaces()
++    this.assignments = this.loadAssignments()
++  }
++
++  ensureDataDir() {
++    if (!existsSync(dataDir)) {
++      mkdirSync(dataDir, { recursive: true })
++    }
++  }
++
++  loadWorkspaces() {
++    this.ensureDataDir()
++
++    if (!existsSync(this.workspacesPath)) {
++      return []
++    }
++
++    try {
++      return normalizePlanningWorkspaces(JSON.parse(readFileSync(this.workspacesPath, 'utf8')))
++    } catch {
++      return []
++    }
++  }
++
++  loadAssignments() {
++    this.ensureDataDir()
++
++    if (!existsSync(this.assignmentsPath)) {
++      return []
++    }
++
++    try {
++      return normalizePlanningWorkspaceAssignments(
++        JSON.parse(readFileSync(this.assignmentsPath, 'utf8')),
++      )
++    } catch {
++      return []
++    }
++  }
++
++  save() {
++    if (isMysqlDataSourceEnabled()) {
++      return
++    }
++
++    this.ensureDataDir()
++    writeFileSync(this.workspacesPath, JSON.stringify(this.workspaces, null, 2), 'utf8')
++    writeFileSync(this.assignmentsPath, JSON.stringify(this.assignments, null, 2), 'utf8')
++  }
++
++  refresh() {
++    this.workspaces = this.loadWorkspaces()
++    this.assignments = this.loadAssignments()
++  }
++
++  getWorkspaces() {
++    this.refresh()
++    return this.workspaces
++  }
++
++  getNextWorkspaceId() {
++    if (this.workspaces.length === 0) {
++      return 1
++    }
++
++    return Math.max(...this.workspaces.map(item => item.id || 0)) + 1
++  }
++
++  getNextAssignmentId() {
++    if (this.assignments.length === 0) {
++      return 1
++    }
++
++    return Math.max(...this.assignments.map(item => item.id || 0)) + 1
++  }
++
++  getWorkspaceById(id) {
++    this.refresh()
++    return this.workspaces.find(item => item.id === normalizePositiveInt(id)) || null
++  }
++
++  getWorkspaceByDate(date, companyId) {
++    this.refresh()
++    const normalizedDate = normalizeDate(date)
++    const normalizedCompanyId = resolveCompanyId(companyId)
++
++    return (
++      this.workspaces.find(
++        item => item.date === normalizedDate && Number(item.companyId) === Number(normalizedCompanyId),
++      ) || null
++    )
++  }
++
++  createWorkspace(data) {
++    this.refresh()
++
++    const normalizedCompanyId = resolveCompanyId(data?.companyId)
++    const normalizedDate = normalizeDate(data?.date)
++
++    if (this.getWorkspaceByDate(normalizedDate, normalizedCompanyId)) {
++      throw new Error('Ja existe um draft de planeamento para essa data')
++    }
++
++    const workspace = new PlanningWorkspace({
++      id: this.getNextWorkspaceId(),
++      companyId: normalizedCompanyId,
++      date: normalizedDate,
++      state: data?.state,
++      publishedWorkPlanId: data?.publishedWorkPlanId,
++      publishedAt: data?.publishedAt || null,
++      createdAt: new Date().toISOString(),
++      updatedAt: new Date().toISOString(),
++    })
++
++    this.workspaces.push(workspace)
++    this.save()
++    return workspace
++  }
++
++  updateWorkspace(id, data) {
++    this.refresh()
++
++    const index = this.workspaces.findIndex(item => item.id === normalizePositiveInt(id))
++
++    if (index === -1) {
++      return null
++    }
++
++    const currentWorkspace = this.workspaces[index]
++    const nextCompanyId =
++      data?.companyId !== undefined
++        ? resolveCompanyId(data.companyId)
++        : currentWorkspace.companyId
++    const nextDate = data?.date !== undefined ? normalizeDate(data.date) : currentWorkspace.date
++    const duplicate = this.workspaces.find(
++      item =>
++        item.id !== currentWorkspace.id &&
++        Number(item.companyId) === Number(nextCompanyId) &&
++        item.date === nextDate,
++    )
++
++    if (duplicate) {
++      throw new Error('Ja existe um draft de planeamento para essa data')
++    }
++
++    const updatedWorkspace = new PlanningWorkspace({
++      ...currentWorkspace,
++      ...data,
++      id: currentWorkspace.id,
++      companyId: nextCompanyId,
++      date: nextDate,
++      updatedAt: new Date().toISOString(),
++    })
++
++    this.workspaces[index] = updatedWorkspace
++    this.save()
++    return updatedWorkspace
++  }
++
++  getAssignments(filters = {}) {
++    this.refresh()
++
++    return this.assignments
++      .filter(item => !filters.workspaceId || item.workspaceId === normalizePositiveInt(filters.workspaceId))
++      .filter(item => !filters.workId || item.workId === normalizePositiveInt(filters.workId))
++      .filter(item => !filters.personId || item.personId === normalizePositiveInt(filters.personId))
++      .map(item => enrichPlanningWorkspaceAssignment(item, getPersonById, getWorkById))
++  }
++
++  getAssignmentById(id) {
++    this.refresh()
++    const assignment = this.assignments.find(item => item.id === normalizePositiveInt(id)) || null
++    return assignment ? enrichPlanningWorkspaceAssignment(assignment, getPersonById, getWorkById) : null
++  }
++
++  createAssignment(data) {
++    this.refresh()
++
++    const workspaceId = normalizePositiveInt(data?.workspaceId)
++    const workId = normalizePositiveInt(data?.workId)
++    const personId = normalizePositiveInt(data?.personId)
++
++    if (!workspaceId || !this.workspaces.some(item => item.id === workspaceId)) {
++      throw new Error('Draft de planeamento nao encontrado')
++    }
++
++    if (!workId || !personId) {
++      throw new Error('workId e personId sao obrigatorios')
++    }
++
++    const duplicate = this.assignments.find(
++      item =>
++        item.workspaceId === workspaceId &&
++        item.workId === workId &&
++        item.personId === personId,
++    )
++
++    if (duplicate) {
++      throw new Error('Ja existe uma afetacao de draft para essa pessoa e obra')
++    }
++
++    const assignment = new PlanningWorkspaceAssignment({
++      id: this.getNextAssignmentId(),
++      workspaceId,
++      workId,
++      personId,
++      hourlyCost: data?.hourlyCost,
++      manualHourlyCost: data?.manualHourlyCost === true,
++      notes: data?.notes,
++      hasWorkAccess: data?.hasWorkAccess === true,
++      createdAt: new Date().toISOString(),
++      updatedAt: new Date().toISOString(),
++    })
++
++    this.assignments.push(assignment)
++    this.save()
++    return enrichPlanningWorkspaceAssignment(assignment, getPersonById, getWorkById)
++  }
++
++  updateAssignment(id, data) {
++    this.refresh()
++
++    const index = this.assignments.findIndex(item => item.id === normalizePositiveInt(id))
++
++    if (index === -1) {
++      return null
++    }
++
++    const currentAssignment = this.assignments[index]
++    const workspaceId =
++      data?.workspaceId !== undefined
++        ? normalizePositiveInt(data.workspaceId)
++        : currentAssignment.workspaceId
++    const workId = data?.workId !== undefined ? normalizePositiveInt(data.workId) : currentAssignment.workId
++    const personId =
++      data?.personId !== undefined ? normalizePositiveInt(data.personId) : currentAssignment.personId
++
++    const duplicate = this.assignments.find(
++      item =>
++        item.id !== currentAssignment.id &&
++        item.workspaceId === workspaceId &&
++        item.workId === workId &&
++        item.personId === personId,
++    )
++
++    if (duplicate) {
++      throw new Error('Ja existe uma afetacao de draft para essa pessoa e obra')
++    }
++
++    const updatedAssignment = new PlanningWorkspaceAssignment({
++      ...currentAssignment,
++      ...data,
++      id: currentAssignment.id,
++      workspaceId,
++      workId,
++      personId,
++      updatedAt: new Date().toISOString(),
++    })
++
++    this.assignments[index] = updatedAssignment
++    this.save()
++    return enrichPlanningWorkspaceAssignment(updatedAssignment, getPersonById, getWorkById)
++  }
++
++  deleteAssignment(id) {
++    this.refresh()
++
++    const index = this.assignments.findIndex(item => item.id === normalizePositiveInt(id))
++
++    if (index === -1) {
++      return false
++    }
++
++    this.assignments.splice(index, 1)
++    this.save()
++    return true
++  }
++
++  replaceAssignments(workspaceId, nextAssignments = []) {
++    this.refresh()
++
++    const normalizedWorkspaceId = normalizePositiveInt(workspaceId)
++
++    this.assignments = this.assignments.filter(item => item.workspaceId !== normalizedWorkspaceId)
++
++    nextAssignments.forEach(item => {
++      this.assignments.push(
++        new PlanningWorkspaceAssignment({
++          id: this.getNextAssignmentId(),
++          workspaceId: normalizedWorkspaceId,
++          workId: item.workId,
++          personId: item.personId,
++          hourlyCost: item.hourlyCost,
++          manualHourlyCost: item.manualHourlyCost === true,
++          notes: item.notes,
++          hasWorkAccess: item.hasWorkAccess === true,
++          createdAt: new Date().toISOString(),
++          updatedAt: new Date().toISOString(),
++        }),
++      )
++    })
++
++    this.save()
++    return this.getAssignments({ workspaceId: normalizedWorkspaceId })
++  }
++}
++
++let planningWorkspacesService = null
++
++function getLegacyPlanningWorkspacesService() {
++  if (isMysqlDataSourceEnabled()) {
++    return null
++  }
++
++  if (!planningWorkspacesService) {
++    planningWorkspacesService = new PlanningWorkspacesService()
++  }
++
++  return planningWorkspacesService
++}
++
++async function enrichPlanningWorkspaceAssignmentsData(assignments) {
++  const people = await Promise.all(assignments.map(item => getPersonByIdData(item.personId)))
++  const works = await Promise.all(assignments.map(item => getWorkByIdData(item.workId)))
++
++  return assignments.map((item, index) =>
++    enrichPlanningWorkspaceAssignment(
++      item,
++      () => people[index],
++      () => works[index],
++    ),
++  )
++}
++
++export function getPlanningWorkspaceById(id) {
++  return getLegacyPlanningWorkspacesService()?.getWorkspaceById(id) || null
++}
++
++export function getAllPlanningWorkspaces() {
++  return getLegacyPlanningWorkspacesService()?.getWorkspaces() || []
++}
++
++export function getPlanningWorkspaceByDate(date, companyId) {
++  return getLegacyPlanningWorkspacesService()?.getWorkspaceByDate(date, companyId) || null
++}
++
++export function createPlanningWorkspace(data) {
++  return getLegacyPlanningWorkspacesService()?.createWorkspace(data) || null
++}
++
++export function updatePlanningWorkspace(id, data) {
++  return getLegacyPlanningWorkspacesService()?.updateWorkspace(id, data) || null
++}
++
++export function getPlanningWorkspaceAssignments(filters = {}) {
++  return getLegacyPlanningWorkspacesService()?.getAssignments(filters) || []
++}
++
++export function getPlanningWorkspaceAssignmentById(id) {
++  return getLegacyPlanningWorkspacesService()?.getAssignmentById(id) || null
++}
++
++export function createPlanningWorkspaceAssignment(data) {
++  return getLegacyPlanningWorkspacesService()?.createAssignment(data) || null
++}
++
++export function updatePlanningWorkspaceAssignment(id, data) {
++  return getLegacyPlanningWorkspacesService()?.updateAssignment(id, data) || null
++}
++
++export function deletePlanningWorkspaceAssignment(id) {
++  return getLegacyPlanningWorkspacesService()?.deleteAssignment(id) || false
++}
++
++export function replacePlanningWorkspaceAssignments(workspaceId, nextAssignments = []) {
++  return getLegacyPlanningWorkspacesService()?.replaceAssignments(workspaceId, nextAssignments) || []
++}
++
++export async function getPlanningWorkspaceByIdData(id) {
++  if (!isMysqlDataSourceEnabled()) {
++    return getPlanningWorkspaceById(id)
++  }
++
++  return getPlanningWorkspaceByIdDb(id)
++}
++
++export async function getAllPlanningWorkspacesData(filters = {}) {
++  if (!isMysqlDataSourceEnabled()) {
++    return getAllPlanningWorkspaces()
++  }
++
++  return getAllPlanningWorkspacesDb(filters)
++}
++
++export async function getPlanningWorkspaceByDateData(date, companyId) {
++  if (!isMysqlDataSourceEnabled()) {
++    return getPlanningWorkspaceByDate(date, companyId)
++  }
++
++  return getPlanningWorkspaceByDateDb(date, companyId)
++}
++
++export async function createPlanningWorkspaceData(data) {
++  if (!isMysqlDataSourceEnabled()) {
++    return createPlanningWorkspace(data)
++  }
++
++  return createPlanningWorkspaceDb(data)
++}
++
++export async function updatePlanningWorkspaceData(id, data) {
++  if (!isMysqlDataSourceEnabled()) {
++    return updatePlanningWorkspace(id, data)
++  }
++
++  return updatePlanningWorkspaceDb(id, data)
++}
++
++export async function getPlanningWorkspaceAssignmentsData(filters = {}) {
++  if (!isMysqlDataSourceEnabled()) {
++    return getPlanningWorkspaceAssignments(filters)
++  }
++
++  return enrichPlanningWorkspaceAssignmentsData(await getPlanningWorkspaceAssignmentsDb(filters))
++}
++
++export async function getPlanningWorkspaceAssignmentByIdData(id) {
++  if (!isMysqlDataSourceEnabled()) {
++    return getPlanningWorkspaceAssignmentById(id)
++  }
++
++  const assignment = await getPlanningWorkspaceAssignmentByIdDb(id)
++
++  if (!assignment) {
++    return null
++  }
++
++  return enrichPlanningWorkspaceAssignmentsData([assignment]).then(items => items[0] || null)
++}
++
++export async function createPlanningWorkspaceAssignmentData(data) {
++  if (!isMysqlDataSourceEnabled()) {
++    return createPlanningWorkspaceAssignment(data)
++  }
++
++  const assignment = await createPlanningWorkspaceAssignmentDb(data)
++  return (await enrichPlanningWorkspaceAssignmentsData([assignment]))[0] || null
++}
++
++export async function updatePlanningWorkspaceAssignmentData(id, data) {
++  if (!isMysqlDataSourceEnabled()) {
++    return updatePlanningWorkspaceAssignment(id, data)
++  }
++
++  const assignment = await updatePlanningWorkspaceAssignmentDb(id, data)
++
++  if (!assignment) {
++    return null
++  }
++
++  return (await enrichPlanningWorkspaceAssignmentsData([assignment]))[0] || null
++}
++
++export async function deletePlanningWorkspaceAssignmentData(id) {
++  if (!isMysqlDataSourceEnabled()) {
++    return deletePlanningWorkspaceAssignment(id)
++  }
++
++  return deletePlanningWorkspaceAssignmentDb(id)
++}
++
++export async function replacePlanningWorkspaceAssignmentsData(workspaceId, nextAssignments = []) {
++  if (!isMysqlDataSourceEnabled()) {
++    return replacePlanningWorkspaceAssignments(workspaceId, nextAssignments)
++  }
++
++  await deletePlanningWorkspaceAssignmentsByWorkspaceIdDb(workspaceId)
++
++  const createdAssignments = []
++
++  for (const assignment of nextAssignments) {
++    createdAssignments.push(
++      await createPlanningWorkspaceAssignmentDb({
++        workspaceId,
++        workId: assignment.workId,
++        personId: assignment.personId,
++        hourlyCost: assignment.hourlyCost,
++        manualHourlyCost: assignment.manualHourlyCost === true,
++        notes: assignment.notes,
++        hasWorkAccess: assignment.hasWorkAccess === true,
++      }),
++    )
++  }
++
++  return enrichPlanningWorkspaceAssignmentsData(createdAssignments)
++}
++
++export function resolveDraftChefAccessAssignments(assignments, workId, excludeAssignmentId = null) {
++  return assignments
++    .filter(
++      assignment =>
++        Number(assignment.workId) === Number(workId) &&
++        Number(assignment.id) !== Number(excludeAssignmentId) &&
++        isChefRole(assignment.person?.role),
++    )
++    .sort((left, right) => Number(left.id) - Number(right.id))
++}
+
+diff --git a/server/controllers/planning-publication-controller.js b/server/controllers/planning-publication-controller.js
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/server/controllers/planning-publication-controller.js
++import { HttpError } from '../errors/http-error.js'
++import { jsonResponse } from '../responses/route-response.js'
++import { requireSessionService } from '../services/session-service.js'
++import {
++  createPlanningDraftAssignmentService,
++  deletePlanningDraftAssignmentService,
++  getPlanningWorkspaceViewService,
++  initializePlanningWorkspaceDraftService,
++  publishPlanningWorkspaceService,
++  setPlanningWorkspaceToDraftService,
++  updatePlanningDraftAssignmentService,
++} from '../services/planning-publication-service.js'
++
++async function readRequestBody(request) {
++  try {
++    return await request.json()
++  } catch (error) {
++    throw new HttpError(500, String(error?.message || 'Corpo JSON invalido').trim() || 'Corpo JSON invalido')
++  }
++}
++
++export async function getPlanningWorkspaceViewController(request) {
++  const session = await requireSessionService()
++  const searchParams = new URL(request.url).searchParams
++  return jsonResponse(await getPlanningWorkspaceViewService(session, searchParams))
++}
++
++export async function initializePlanningWorkspaceDraftController(request) {
++  const session = await requireSessionService()
++  return jsonResponse(await initializePlanningWorkspaceDraftService(session, await readRequestBody(request)), 201)
++}
++
++export async function publishPlanningWorkspaceController(workspaceId) {
++  const session = await requireSessionService()
++  return jsonResponse(await publishPlanningWorkspaceService(session, workspaceId))
++}
++
++export async function setPlanningWorkspaceToDraftController(workspaceId) {
++  const session = await requireSessionService()
++  return jsonResponse(await setPlanningWorkspaceToDraftService(session, workspaceId))
++}
++
++export async function createPlanningDraftAssignmentController(request) {
++  const session = await requireSessionService()
++  return jsonResponse(await createPlanningDraftAssignmentService(session, await readRequestBody(request)), 201)
++}
++
++export async function updatePlanningDraftAssignmentController(request, assignmentId) {
++  const session = await requireSessionService()
++  return jsonResponse(await updatePlanningDraftAssignmentService(session, assignmentId, await readRequestBody(request)))
++}
++
++export async function deletePlanningDraftAssignmentController(assignmentId) {
++  const session = await requireSessionService()
++  return jsonResponse(await deletePlanningDraftAssignmentService(session, assignmentId))
++}
+
+diff --git a/server/services/planning-publication-service.js b/server/services/planning-publication-service.js
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/server/services/planning-publication-service.js
++import { resolveCompanyId } from '../../lib/companies.js'
++import { hasPermission } from '../../lib/permissions.js'
++import {
++  createPlanningDraftAssignmentData,
++  deletePlanningDraftAssignmentData,
++  getPlanningWorkspaceViewData,
++  initializePlanningWorkspaceDraftData,
++  publishPlanningWorkspaceData,
++  setPlanningWorkspaceToDraftData,
++  updatePlanningDraftAssignmentData,
++} from '../../lib/planning-publication.js'
++import { HttpError } from '../errors/http-error.js'
++
++function ensurePermission(session, permissionKey, message = 'Sem permissao para gerir o planeamento diario.') {
++  if (!hasPermission(session, permissionKey)) {
++    throw new HttpError(403, message)
++  }
++}
++
++function toPlanningMutationError(error, fallbackMessage) {
++  const message = String(error?.message || fallbackMessage).trim() || fallbackMessage
++  const status =
++    message.includes('nao encontrado') || message.includes('Nao existe')
++      ? 404
++      : message.includes('obrigatorio') ||
++          message.includes('Ja existe') ||
++          message.includes('data valida') ||
++          message.includes('negativo') ||
++          message.includes('voltar a draft')
++        ? 400
++        : 500
++
++  return new HttpError(status, message)
++}
++
++export async function getPlanningWorkspaceViewService(session, searchParams) {
++  ensurePermission(session, 'work_plans.read', 'Sem permissao para consultar o planeamento diario.')
++
++  const date = searchParams.get('date')
++  const companyId = resolveCompanyId(searchParams.get('companyId'))
++
++  if (!date) {
++    throw new HttpError(400, 'date e obrigatorio')
++  }
++
++  return getPlanningWorkspaceViewData({ date, companyId })
++}
++
++export async function initializePlanningWorkspaceDraftService(session, body) {
++  ensurePermission(session, 'work_plans.create')
++
++  const date = body?.date
++  const clonePreviousDay = body?.clonePreviousDay === true
++  const companyId = resolveCompanyId(body?.companyId)
++
++  if (!date) {
++    throw new HttpError(400, 'date e obrigatorio')
++  }
++
++  if (clonePreviousDay) {
++    ensurePermission(
++      session,
++      'work_plans.copy_previous',
++      'Sem permissao para copiar o planeamento anterior.',
++    )
++  }
++
++  try {
++    return await initializePlanningWorkspaceDraftData({
++      date,
++      companyId,
++      clonePreviousDay,
++    })
++  } catch (error) {
++    throw toPlanningMutationError(error, 'Erro ao preparar draft do planeamento')
++  }
++}
++
++export async function publishPlanningWorkspaceService(session, workspaceId) {
++  ensurePermission(session, 'work_plans.update')
++
++  try {
++    return await publishPlanningWorkspaceData(workspaceId)
++  } catch (error) {
++    throw toPlanningMutationError(error, 'Erro ao publicar planeamento')
++  }
++}
++
++export async function setPlanningWorkspaceToDraftService(session, workspaceId) {
++  ensurePermission(session, 'work_plans.update')
++
++  try {
++    return await setPlanningWorkspaceToDraftData(workspaceId)
++  } catch (error) {
++    throw toPlanningMutationError(error, 'Erro ao voltar o planeamento para draft')
++  }
++}
++
++export async function createPlanningDraftAssignmentService(session, body) {
++  ensurePermission(session, 'work_assignments.create', 'Sem permissao para criar afetacoes no draft.')
++
++  const workspaceId = Number(body?.workspaceId)
++  const workId = Number(body?.workId)
++  const personId = Number(body?.personId)
++
++  if (!workspaceId || !workId || !personId) {
++    throw new HttpError(400, 'workspaceId, workId e personId sao obrigatorios')
++  }
++
++  try {
++    return await createPlanningDraftAssignmentData(workspaceId, body || {})
++  } catch (error) {
++    throw toPlanningMutationError(error, 'Erro ao criar afetacao no draft')
++  }
++}
++
++export async function updatePlanningDraftAssignmentService(session, assignmentId, body) {
++  ensurePermission(session, 'work_assignments.update', 'Sem permissao para editar afetacoes no draft.')
++
++  try {
++    const assignment = await updatePlanningDraftAssignmentData(assignmentId, body || {})
++
++    if (!assignment) {
++      throw new HttpError(404, 'Afetacao de draft nao encontrada')
++    }
++
++    return assignment
++  } catch (error) {
++    if (error instanceof HttpError) {
++      throw error
++    }
++
++    throw toPlanningMutationError(error, 'Erro ao atualizar afetacao no draft')
++  }
++}
++
++export async function deletePlanningDraftAssignmentService(session, assignmentId) {
++  ensurePermission(session, 'work_assignments.delete', 'Sem permissao para remover afetacoes do draft.')
++
++  try {
++    const deleted = await deletePlanningDraftAssignmentData(assignmentId)
++
++    if (!deleted) {
++      throw new HttpError(404, 'Afetacao de draft nao encontrada')
++    }
++
++    return { message: 'Afetacao de draft removida com sucesso' }
++  } catch (error) {
++    if (error instanceof HttpError) {
++      throw error
++    }
++
++    throw toPlanningMutationError(error, 'Erro ao remover afetacao do draft')
++  }
++}
+

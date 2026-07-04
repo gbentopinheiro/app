@@ -74,20 +74,26 @@ enum WorkingDay {
   sunday
 }
 
+enum PlanningPublicationState {
+  draft
+  published
+}
+
 model Company {
-  id              Int        @id
-  holdingId       Int        @map("holding_id")
-  name            String
-  slug            String     @unique
-  countryCode     String     @map("country_code") @db.Char(2)
-  documentMark    String?    @map("document_mark") @db.VarChar(32)
-  documentLabel   String?    @map("document_label")
-  documentLogoUrl String?    @map("document_logo_url") @db.Text
-  active          Boolean    @default(true)
-  clients         Client[]
-  works           Work[]
-  people          Person[]
-  workPlans       WorkPlan[]
+  id                 Int                @id
+  holdingId          Int                @map("holding_id")
+  name               String
+  slug               String             @unique
+  countryCode        String             @map("country_code") @db.Char(2)
+  documentMark       String?            @map("document_mark") @db.VarChar(32)
+  documentLabel      String?            @map("document_label")
+  documentLogoUrl    String?            @map("document_logo_url") @db.Text
+  active             Boolean            @default(true)
+  clients            Client[]
+  works              Work[]
+  people             Person[]
+  workPlans          WorkPlan[]
+  planningWorkspaces PlanningWorkspace[]
 
   @@map("companies")
 }
@@ -117,13 +123,14 @@ model Person {
   isMonthlyBilling Boolean              @default(false) @map("is_monthly_billing")
   role             Role
   chefCategory     String?              @map("chef_category") @db.VarChar(32)
-  company          Company              @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  user             User?
-  workAssignments  WorkAssignment[]
-  workHourlyCosts  WorkPersonHourlyCost[]
-  authoredNotes    DailyWorkNote[]
-  loginEvents      LoginEvent[]
-  documentReminders PersonDocumentReminder[]
+  company                    Company                     @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  user                       User?
+  workAssignments            WorkAssignment[]
+  planningWorkspaceAssignments PlanningWorkspaceAssignment[]
+  workHourlyCosts            WorkPersonHourlyCost[]
+  authoredNotes              DailyWorkNote[]
+  loginEvents                LoginEvent[]
+  documentReminders          PersonDocumentReminder[]
 
   @@index([companyId, role])
   @@map("people")
@@ -147,8 +154,9 @@ model Work {
   workingDays        WorkWorkingDay[]
   roleHourlyCosts    WorkRoleHourlyCost[]
   personHourlyCosts  WorkPersonHourlyCost[]
-  workAssignments    WorkAssignment[]
-  dailyWorkNotes     DailyWorkNote[]
+  workAssignments            WorkAssignment[]
+  planningWorkspaceAssignments PlanningWorkspaceAssignment[]
+  dailyWorkNotes             DailyWorkNote[]
 
   @@unique([companyId, number])
   @@map("works")
@@ -188,11 +196,12 @@ model WorkPersonHourlyCost {
 }
 
 model WorkPlan {
-  id              Int              @id
-  companyId       Int              @map("company_id")
-  date            DateTime         @db.Date
-  company         Company          @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  workAssignments WorkAssignment[]
+  id                         Int                @id
+  companyId                  Int                @map("company_id")
+  date                       DateTime           @db.Date
+  company                    Company            @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  workAssignments            WorkAssignment[]
+  publishedPlanningWorkspace PlanningWorkspace? @relation("PublishedWorkPlan")
 
   @@unique([companyId, date])
   @@map("work_plans")
@@ -268,6 +277,7 @@ model WorkAssignment {
   manualHourlyCost      Boolean   @default(false) @map("manual_hourly_cost")
   notes                 String?   @db.Text
   hasWorkAccess         Boolean   @default(false) @map("has_work_access")
+  planningVisible       Boolean   @default(true) @map("planning_visible")
   workPlan              WorkPlan  @relation(fields: [workPlanId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   work                  Work      @relation(fields: [workId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   person                Person    @relation(fields: [personId], references: [id], onDelete: Restrict, onUpdate: Cascade)
@@ -279,6 +289,45 @@ model WorkAssignment {
   @@index([workId])
   @@index([personId])
   @@map("work_assignments")
+}
+
+model PlanningWorkspace {
+  id                  Int                        @id @default(autoincrement())
+  companyId           Int                        @map("company_id")
+  date                DateTime                   @db.Date
+  state               PlanningPublicationState   @default(draft)
+  publishedWorkPlanId Int?                       @unique @map("published_work_plan_id")
+  publishedAt         DateTime?                  @map("published_at")
+  createdAt           DateTime                   @default(now()) @map("created_at")
+  updatedAt           DateTime                   @updatedAt @map("updated_at")
+  company             Company                    @relation(fields: [companyId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  publishedWorkPlan   WorkPlan?                  @relation("PublishedWorkPlan", fields: [publishedWorkPlanId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  assignments         PlanningWorkspaceAssignment[]
+
+  @@unique([companyId, date])
+  @@map("planning_workspaces")
+}
+
+model PlanningWorkspaceAssignment {
+  id                 Int               @id @default(autoincrement())
+  workspaceId        Int               @map("workspace_id")
+  workId             Int               @map("work_id")
+  personId           Int               @map("person_id")
+  hourlyCost         Decimal           @default(0) @map("hourly_cost") @db.Decimal(10, 2)
+  manualHourlyCost   Boolean           @default(false) @map("manual_hourly_cost")
+  notes              String?           @db.Text
+  hasWorkAccess      Boolean           @default(false) @map("has_work_access")
+  createdAt          DateTime          @default(now()) @map("created_at")
+  updatedAt          DateTime          @updatedAt @map("updated_at")
+  workspace          PlanningWorkspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  work               Work              @relation(fields: [workId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  person             Person            @relation(fields: [personId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@unique([workspaceId, workId, personId])
+  @@index([workspaceId])
+  @@index([workId])
+  @@index([personId])
+  @@map("planning_workspace_assignments")
 }
 
 model DailyWorkNote {

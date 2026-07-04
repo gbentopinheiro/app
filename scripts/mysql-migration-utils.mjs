@@ -39,6 +39,7 @@ const CALENDAR_EVENT_COLOR_VALUES = new Set(['#16a34a', '#2563eb', '#dc2626', '#
 const CALENDAR_EVENT_TYPE_VALUES = new Set(['viagem'])
 const CALENDAR_TRAVEL_TRANSPORT_VALUES = new Set(['comboio', 'aviao'])
 const CALENDAR_TRAVEL_AIRPORT_VALUES = new Set(['zaventem', 'charleroi', 'bruxelles-midi', 'outro'])
+const PLANNING_PUBLICATION_STATE_VALUES = new Set(['draft', 'published'])
 
 export async function buildMysqlMigrationSnapshot() {
   const companies = await readJsonArray('companies.json')
@@ -47,6 +48,8 @@ export async function buildMysqlMigrationSnapshot() {
   const people = await readJsonArray('people.json')
   const workPlans = await readJsonArray('work-plans.json')
   const workAssignments = await readJsonArray('work-assignments.json')
+  const planningWorkspaces = await readJsonArray('planning-workspaces.json')
+  const planningWorkspaceAssignments = await readJsonArray('planning-workspace-assignments.json')
   const dailyWorkNotes = await readJsonArray('daily-work-notes.json')
   const accessIdentities = await readJsonArray('access-identities.json')
   const admins = await readJsonArray('admins.json')
@@ -70,18 +73,41 @@ export async function buildMysqlMigrationSnapshot() {
   const users = buildUsers({ accessIdentities, admins, developers, peopleById, loginEvents })
   const usersByUsername = new Map(users.map(user => [user.username.toLowerCase(), user]))
   const usersByPersonId = new Map(users.filter(user => user.personId).map(user => [user.personId, user]))
+  const worksById = new Map(
+    works
+      .map(normalizeWork)
+      .filter(Boolean)
+      .map(work => [work.id, work]),
+  )
+  const workPlansById = new Map(
+    workPlans
+      .map(normalizeWorkPlan)
+      .filter(Boolean)
+      .map(workPlan => [workPlan.id, workPlan]),
+  )
+  const planningWorkspacesTarget = planningWorkspaces
+    .map(workspace => normalizePlanningWorkspace(workspace, workPlansById))
+    .filter(Boolean)
+  const planningWorkspacesById = new Map(planningWorkspacesTarget.map(workspace => [workspace.id, workspace]))
 
   const target = {
     companies: companies.map(normalizeCompany).filter(Boolean),
     clients: clients.map(normalizeClient).filter(Boolean),
     people: Array.from(peopleById.values()),
-    works: works.map(normalizeWork).filter(Boolean),
+    works: Array.from(worksById.values()),
     workWorkingDays: buildWorkWorkingDays(works),
     workRoleHourlyCosts: buildWorkRoleHourlyCosts(works),
     workPersonHourlyCosts: buildWorkPersonHourlyCosts(works, peopleById),
-    workPlans: workPlans.map(normalizeWorkPlan).filter(Boolean),
+    workPlans: Array.from(workPlansById.values()),
+    planningWorkspaces: planningWorkspacesTarget,
     users,
     workAssignments: buildWorkAssignments(workAssignments, usersByUsername, usersByPersonId, peopleById),
+    planningWorkspaceAssignments: buildPlanningWorkspaceAssignments(
+      planningWorkspaceAssignments,
+      planningWorkspacesById,
+      worksById,
+      peopleById,
+    ),
     dailyWorkNotes: dailyWorkNotes.map(note => normalizeDailyWorkNote(note, peopleById)).filter(Boolean),
     loginEvents: buildLoginEvents(loginEvents, usersByUsername, usersByPersonId, peopleById),
     loginAttempts: loginAttempts.map(normalizeLoginAttempt).filter(Boolean),
@@ -110,6 +136,8 @@ export async function buildMysqlMigrationSnapshot() {
       people: people.length,
       workPlans: workPlans.length,
       workAssignments: workAssignments.length,
+      planningWorkspaces: planningWorkspaces.length,
+      planningWorkspaceAssignments: planningWorkspaceAssignments.length,
       dailyWorkNotes: dailyWorkNotes.length,
       accessIdentities: accessIdentities.length,
       admins: admins.length,
@@ -345,6 +373,37 @@ function normalizeWorkPlan(workPlan) {
     id,
     companyId,
     date,
+  }
+}
+
+function normalizePlanningPublicationState(value) {
+  const normalizedValue = String(value || '').trim().toLowerCase()
+  return PLANNING_PUBLICATION_STATE_VALUES.has(normalizedValue) ? normalizedValue : 'draft'
+}
+
+function normalizePlanningWorkspace(workspace, workPlansById) {
+  const id = normalizePositiveInt(workspace?.id)
+  const companyId = normalizePositiveInt(workspace?.companyId)
+  const date = normalizeDate(workspace?.date)
+  const publishedWorkPlanId = normalizePositiveInt(workspace?.publishedWorkPlanId)
+
+  if (!id || !companyId || !date) {
+    return null
+  }
+
+  if (publishedWorkPlanId && !workPlansById.has(publishedWorkPlanId)) {
+    return null
+  }
+
+  return {
+    id,
+    companyId,
+    date,
+    state: normalizePlanningPublicationState(workspace?.state),
+    publishedWorkPlanId: publishedWorkPlanId || null,
+    publishedAt: normalizeDateTime(workspace?.publishedAt),
+    createdAt: normalizeDateTime(workspace?.createdAt, new Date().toISOString()),
+    updatedAt: normalizeDateTime(workspace?.updatedAt, workspace?.createdAt || new Date().toISOString()),
   }
 }
 
@@ -741,6 +800,38 @@ function buildWorkAssignments(assignments, usersByUsername, usersByPersonId, peo
         manualHourlyCost: assignment?.manualHourlyCost === true,
         notes: String(assignment?.notes || '').trim() || null,
         hasWorkAccess: assignment?.hasWorkAccess === true,
+        planningVisible: assignment?.planningVisible !== false,
+      }
+    })
+    .filter(Boolean)
+}
+
+function buildPlanningWorkspaceAssignments(assignments, planningWorkspacesById, worksById, peopleById) {
+  return assignments
+    .map(assignment => {
+      const id = normalizePositiveInt(assignment?.id)
+      const workspaceId = normalizePositiveInt(assignment?.workspaceId)
+      const workId = normalizePositiveInt(assignment?.workId)
+      const personId = normalizePositiveInt(assignment?.personId)
+      const workspace = workspaceId ? planningWorkspacesById.get(workspaceId) : null
+      const work = workId ? worksById.get(workId) : null
+      const person = personId ? peopleById.get(personId) : null
+
+      if (!id || !workspace || !work || !person) {
+        return null
+      }
+
+      return {
+        id,
+        workspaceId,
+        workId,
+        personId,
+        hourlyCost: normalizeDecimal(assignment?.hourlyCost),
+        manualHourlyCost: assignment?.manualHourlyCost === true,
+        notes: normalizeOptionalText(assignment?.notes),
+        hasWorkAccess: assignment?.hasWorkAccess === true,
+        createdAt: normalizeDateTime(assignment?.createdAt, new Date().toISOString()),
+        updatedAt: normalizeDateTime(assignment?.updatedAt, assignment?.createdAt || new Date().toISOString()),
       }
     })
     .filter(Boolean)

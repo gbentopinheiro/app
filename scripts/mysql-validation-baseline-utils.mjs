@@ -24,6 +24,8 @@ export async function getMysqlCountSnapshot(prisma) {
     workRoleHourlyCosts: await prisma.workRoleHourlyCost.count(),
     workPersonHourlyCosts: await prisma.workPersonHourlyCost.count(),
     workPlans: await prisma.workPlan.count(),
+    planningWorkspaces: await prisma.planningWorkspace.count(),
+    planningWorkspaceAssignments: await prisma.planningWorkspaceAssignment.count(),
     users: await prisma.user.count(),
     workAssignments: await prisma.workAssignment.count(),
     dailyWorkNotes: await prisma.dailyWorkNote.count(),

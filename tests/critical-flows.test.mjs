@@ -81,6 +81,14 @@ function buildFixtureData() {
         monthlyPrice: 0,
         role: 'carpinteiro',
       },
+      {
+        id: 4,
+        companyId: 1,
+        name: 'Ferrajeiro Teste',
+        price: 13,
+        monthlyPrice: 0,
+        role: 'ferrajeiro',
+      },
     ],
     'works.json': [
       {
@@ -103,6 +111,8 @@ function buildFixtureData() {
     ],
     'work-plans.json': [],
     'work-assignments.json': [],
+    'planning-workspaces.json': [],
+    'planning-workspace-assignments.json': [],
     'daily-work-notes.json': [],
     'feature-flags.json': {
       activityHistory: true,
@@ -154,7 +164,6 @@ function seedFixtureData() {
 seedFixtureData()
 
 const { getAccessIdentityByPersonId, getAccessIdentityByUsername } = await import('../lib/access-identities.js')
-const { createClientData } = await import('../lib/clients.js')
 const { canApproveHours, createSessionToken, getDefaultPathForRole, readSessionToken } = await import('../lib/auth.js')
 const {
   getUnauthorizedRedirectPath,
@@ -184,84 +193,47 @@ const {
   updateWorkAssignment,
 } = await import('../lib/work-assignments.js')
 const { getAllWorkPlans, getWorkPlanByDate } = await import('../lib/work-plans.js')
-const { createWorkAssignmentService } = await import('../server/services/work-assignments-service.js')
 const {
-  updateWorkAssignmentService,
-  deleteWorkAssignmentService,
+  approveWorkAssignmentService,
+  getWorkAssignmentsListService,
+  submitWorkAssignmentService,
 } = await import('../server/services/work-assignments-service.js')
-const { createWorkPlanService } = await import('../server/services/work-plans-service.js')
+const {
+  createPlanningDraftAssignmentService,
+  deletePlanningDraftAssignmentService,
+  getPlanningWorkspaceViewService,
+  initializePlanningWorkspaceDraftService,
+  publishPlanningWorkspaceService,
+  setPlanningWorkspaceToDraftService,
+  updatePlanningDraftAssignmentService,
+} = await import('../server/services/planning-publication-service.js')
 const { getAllWorks } = await import('../lib/works.js')
-const { createWorkData } = await import('../lib/works.js')
-
-const PLANNING_CUTOFF_BYPASS_ENV_KEYS = [
-  'PLANNING_CUTOFF_BYPASS_CLIENT_IDS',
-  'PLANNING_CUTOFF_BYPASS_UNTIL',
-  'PLANNING_CUTOFF_BYPASS_WORK_PLAN_CREATE_UNTIL',
-]
 const ADMIN_SESSION = {
   role: 'admin',
   accountType: 'admin',
   accessProfile: 'admin',
+  name: 'Administrador Teste',
 }
-const LOCKED_DAILY_PLAN_DATE = '2000-01-01'
-const FUTURE_BYPASS_UNTIL = '2999-12-31T23:59:59+00:00'
-const EXPIRED_BYPASS_UNTIL = '2000-01-01T00:00:00+00:00'
+const CHEF_SESSION = {
+  role: 'chef_primeira',
+  accountType: 'operational',
+  accessProfile: 'chef',
+  workIds: [1],
+  name: 'Chefe Teste',
+}
+const PLANNING_WORKFLOW_DATE = '2030-02-10'
+const REPUBLISH_WORKFLOW_DATE = '2030-02-11'
 
 beforeEach(() => {
   seedFixtureData()
 })
 
-async function withPlanningCutoffBypassEnv(overrides, callback) {
-  const snapshot = Object.fromEntries(
-    PLANNING_CUTOFF_BYPASS_ENV_KEYS.map(key => [key, process.env[key]]),
+function createSearchParams(params = {}) {
+  return new URLSearchParams(
+    Object.entries(params)
+      .filter(([, value]) => value !== undefined && value !== null && value !== '')
+      .map(([key, value]) => [key, String(value)]),
   )
-
-  try {
-    PLANNING_CUTOFF_BYPASS_ENV_KEYS.forEach(key => {
-      if (Object.prototype.hasOwnProperty.call(overrides, key)) {
-        const value = overrides[key]
-
-        if (value === undefined) {
-          delete process.env[key]
-          return
-        }
-
-        process.env[key] = String(value)
-        return
-      }
-
-      delete process.env[key]
-    })
-
-    return await callback()
-  } finally {
-    PLANNING_CUTOFF_BYPASS_ENV_KEYS.forEach(key => {
-      if (snapshot[key] === undefined) {
-        delete process.env[key]
-        return
-      }
-
-      process.env[key] = snapshot[key]
-    })
-  }
-}
-
-async function createWorkForClient(clientName, workName) {
-  const client = await createClientData({
-    companyId: 1,
-    name: clientName,
-  })
-
-  const work = await createWorkData({
-    companyId: 1,
-    name: workName,
-    clientId: client.id,
-    location: '',
-    status: 'planned',
-    defaultHourlyCost: 12,
-  })
-
-  return { client, work }
 }
 
 function createProtectedPayload(payload) {
@@ -457,305 +429,201 @@ test('chefes podem ser guardados sem acesso a app e editar pode remover o acesso
   assert.equal(getAccessIdentityByPersonId(2), null)
 })
 
-test('cliente normal continua bloqueado mesmo com bypass ativo para outro cliente', async () => {
-  const { client: bypassClient } = await createWorkForClient('Cliente bypass', 'Obra bypass')
-
-  await withPlanningCutoffBypassEnv(
-    {
-      PLANNING_CUTOFF_BYPASS_CLIENT_IDS: String(bypassClient.id),
-      PLANNING_CUTOFF_BYPASS_UNTIL: FUTURE_BYPASS_UNTIL,
-    },
-    async () => {
-      await assert.rejects(
-        createWorkAssignmentService(ADMIN_SESSION, {
-          workId: 1,
-          personId: 3,
-          date: LOCKED_DAILY_PLAN_DATE,
-          hours: 8,
-        }),
-        error => {
-          assert.equal(error?.status, 403)
-          assert.match(String(error?.message || ''), /Depois das 08:00/)
-          return true
-        },
-      )
-    },
-  )
-})
-
-test('cliente na lista passa antes do prazo configurado', async () => {
-  const { client, work } = await createWorkForClient('Cliente liberado', 'Obra liberada')
-
-  await withPlanningCutoffBypassEnv(
-    {
-      PLANNING_CUTOFF_BYPASS_CLIENT_IDS: String(client.id),
-      PLANNING_CUTOFF_BYPASS_UNTIL: FUTURE_BYPASS_UNTIL,
-    },
-    async () => {
-      const assignment = await createWorkAssignmentService(ADMIN_SESSION, {
-        workId: work.id,
-        personId: 3,
-        date: LOCKED_DAILY_PLAN_DATE,
-        hours: 8,
-      })
-
-      assert.equal(assignment.workId, work.id)
-      assert.equal(assignment.personId, 3)
-    },
-  )
-})
-
-test('cliente na lista volta a bloquear depois do prazo', async () => {
-  const { client, work } = await createWorkForClient('Cliente expirado', 'Obra expirada')
-
-  await withPlanningCutoffBypassEnv(
-    {
-      PLANNING_CUTOFF_BYPASS_CLIENT_IDS: String(client.id),
-      PLANNING_CUTOFF_BYPASS_UNTIL: EXPIRED_BYPASS_UNTIL,
-    },
-    async () => {
-      await assert.rejects(
-        createWorkAssignmentService(ADMIN_SESSION, {
-          workId: work.id,
-          personId: 3,
-          date: LOCKED_DAILY_PLAN_DATE,
-          hours: 8,
-        }),
-        error => {
-          assert.equal(error?.status, 403)
-          assert.match(String(error?.message || ''), /Depois das 08:00/)
-          return true
-        },
-      )
-    },
-  )
-})
-
-test('variavel vazia mantem comportamento atual', async () => {
-  const { work } = await createWorkForClient('Cliente sem lista', 'Obra sem lista')
-
-  await withPlanningCutoffBypassEnv(
-    {
-      PLANNING_CUTOFF_BYPASS_CLIENT_IDS: '',
-      PLANNING_CUTOFF_BYPASS_UNTIL: FUTURE_BYPASS_UNTIL,
-    },
-    async () => {
-      await assert.rejects(
-        createWorkAssignmentService(ADMIN_SESSION, {
-          workId: work.id,
-          personId: 3,
-          date: LOCKED_DAILY_PLAN_DATE,
-          hours: 8,
-        }),
-        error => {
-          assert.equal(error?.status, 403)
-          assert.match(String(error?.message || ''), /Depois das 08:00/)
-          return true
-        },
-      )
-    },
-  )
-})
-
-test('criar novo plano diario continua bloqueado por defeito depois das 08:00', async () => {
-  await withPlanningCutoffBypassEnv({}, async () => {
-    await assert.rejects(
-      createWorkPlanService(ADMIN_SESSION, {
-        date: LOCKED_DAILY_PLAN_DATE,
-      }),
-      error => {
-        assert.equal(error?.status, 403)
-        assert.match(String(error?.message || ''), /Depois das 08:00/)
-        return true
-      },
-    )
+test('admin edita draft sem publicar e a versao oficial continua vazia', async () => {
+  const { workspace } = await initializePlanningWorkspaceDraftService(ADMIN_SESSION, {
+    date: PLANNING_WORKFLOW_DATE,
   })
-})
 
-test('criar novo plano diario passa antes do prazo configurado', async () => {
-  await withPlanningCutoffBypassEnv(
-    {
-      PLANNING_CUTOFF_BYPASS_WORK_PLAN_CREATE_UNTIL: FUTURE_BYPASS_UNTIL,
-    },
-    async () => {
-      const workPlan = await createWorkPlanService(ADMIN_SESSION, {
-        date: LOCKED_DAILY_PLAN_DATE,
-      })
-
-      assert.equal(workPlan.date, LOCKED_DAILY_PLAN_DATE)
-      assert.equal(workPlan.companyId, 1)
-      assert.equal(getWorkPlanByDate(LOCKED_DAILY_PLAN_DATE, 1)?.id, workPlan.id)
-    },
-  )
-})
-
-test('criar editar e remover afetacoes passa com bypass temporario ativo', async () => {
-  await withPlanningCutoffBypassEnv(
-    {
-      PLANNING_CUTOFF_BYPASS_WORK_PLAN_CREATE_UNTIL: FUTURE_BYPASS_UNTIL,
-    },
-    async () => {
-      const assignment = await createWorkAssignmentService(ADMIN_SESSION, {
-        workId: 1,
-        personId: 3,
-        date: LOCKED_DAILY_PLAN_DATE,
-        hours: 8,
-        notes: 'Criado com bypass',
-      })
-
-      assert.equal(assignment.workId, 1)
-      assert.equal(assignment.personId, 3)
-
-      const updatedAssignment = await updateWorkAssignmentService(ADMIN_SESSION, assignment.id, {
-        notes: 'Atualizado com bypass',
-      })
-
-      assert.equal(updatedAssignment.id, assignment.id)
-      assert.equal(updatedAssignment.notes, 'Atualizado com bypass')
-
-      const deleteResult = await deleteWorkAssignmentService(ADMIN_SESSION, assignment.id)
-
-      assert.equal(deleteResult.message, 'Afetacao removida com sucesso')
-      assert.equal(getAllWorkAssignments({ date: LOCKED_DAILY_PLAN_DATE }).length, 0)
-    },
-  )
-})
-
-test('criar novo plano diario volta a bloquear depois do prazo', async () => {
-  await withPlanningCutoffBypassEnv(
-    {
-      PLANNING_CUTOFF_BYPASS_WORK_PLAN_CREATE_UNTIL: EXPIRED_BYPASS_UNTIL,
-    },
-    async () => {
-      await assert.rejects(
-        createWorkPlanService(ADMIN_SESSION, {
-          date: LOCKED_DAILY_PLAN_DATE,
-        }),
-        error => {
-          assert.equal(error?.status, 403)
-          assert.match(String(error?.message || ''), /Depois das 08:00/)
-          return true
-        },
-      )
-    },
-  )
-})
-
-test('variavel vazia para criar plano diario mantem o bloqueio atual', async () => {
-  await withPlanningCutoffBypassEnv(
-    {
-      PLANNING_CUTOFF_BYPASS_WORK_PLAN_CREATE_UNTIL: '',
-    },
-    async () => {
-      await assert.rejects(
-        createWorkPlanService(ADMIN_SESSION, {
-          date: LOCKED_DAILY_PLAN_DATE,
-        }),
-        error => {
-          assert.equal(error?.status, 403)
-          assert.match(String(error?.message || ''), /Depois das 08:00/)
-          return true
-        },
-      )
-    },
-  )
-})
-
-test('afetacoes continuam bloqueadas quando o bypass esta ausente', async () => {
-  const lockedAssignment = createWorkAssignment({
-    date: LOCKED_DAILY_PLAN_DATE,
+  const createdAssignment = await createPlanningDraftAssignmentService(ADMIN_SESSION, {
+    workspaceId: workspace.id,
     workId: 1,
     personId: 3,
-    hours: 8,
-    notes: 'Afetacao bloqueada sem bypass',
+    notes: 'Primeiro draft',
   })
 
-  await withPlanningCutoffBypassEnv({}, async () => {
-    await assert.rejects(
-      createWorkAssignmentService(ADMIN_SESSION, {
-        workId: 1,
-        personId: 3,
-        date: LOCKED_DAILY_PLAN_DATE,
-        hours: 8,
-      }),
-      error => {
-        assert.equal(error?.status, 403)
-        assert.match(String(error?.message || ''), /Depois das 08:00/)
-        return true
-      },
-    )
-
-    await assert.rejects(
-      updateWorkAssignmentService(ADMIN_SESSION, lockedAssignment.id, {
-        notes: 'Nao devia atualizar',
-      }),
-      error => {
-        assert.equal(error?.status, 403)
-        assert.match(String(error?.message || ''), /Depois das 08:00/)
-        return true
-      },
-    )
-
-    await assert.rejects(
-      deleteWorkAssignmentService(ADMIN_SESSION, lockedAssignment.id),
-      error => {
-        assert.equal(error?.status, 403)
-        assert.match(String(error?.message || ''), /Depois das 08:00/)
-        return true
-      },
-    )
-  })
-})
-
-test('afetacoes voltam a bloquear quando o bypass expira', async () => {
-  const lockedAssignment = createWorkAssignment({
-    date: LOCKED_DAILY_PLAN_DATE,
-    workId: 1,
-    personId: 3,
-    hours: 8,
-    notes: 'Afetacao bloqueada com bypass expirado',
-  })
-
-  await withPlanningCutoffBypassEnv(
+  const updatedAssignment = await updatePlanningDraftAssignmentService(
+    ADMIN_SESSION,
+    createdAssignment.id,
     {
-      PLANNING_CUTOFF_BYPASS_WORK_PLAN_CREATE_UNTIL: EXPIRED_BYPASS_UNTIL,
-    },
-    async () => {
-      await assert.rejects(
-        createWorkAssignmentService(ADMIN_SESSION, {
-          workId: 1,
-          personId: 3,
-          date: LOCKED_DAILY_PLAN_DATE,
-          hours: 8,
-        }),
-        error => {
-          assert.equal(error?.status, 403)
-          assert.match(String(error?.message || ''), /Depois das 08:00/)
-          return true
-        },
-      )
-
-      await assert.rejects(
-        updateWorkAssignmentService(ADMIN_SESSION, lockedAssignment.id, {
-          notes: 'Nao devia atualizar com bypass expirado',
-        }),
-        error => {
-          assert.equal(error?.status, 403)
-          assert.match(String(error?.message || ''), /Depois das 08:00/)
-          return true
-        },
-      )
-
-      await assert.rejects(
-        deleteWorkAssignmentService(ADMIN_SESSION, lockedAssignment.id),
-        error => {
-          assert.equal(error?.status, 403)
-          assert.match(String(error?.message || ''), /Depois das 08:00/)
-          return true
-        },
-      )
+      notes: 'Draft revisto',
     },
   )
+  const workspaceView = await getPlanningWorkspaceViewService(
+    ADMIN_SESSION,
+    createSearchParams({ date: PLANNING_WORKFLOW_DATE }),
+  )
+
+  assert.equal(updatedAssignment.notes, 'Draft revisto')
+  assert.equal(workspaceView.workspace.state, 'draft')
+  assert.equal(workspaceView.items.length, 1)
+  assert.equal(workspaceView.items[0].notes, 'Draft revisto')
+  assert.equal(getAllWorkAssignments({ date: PLANNING_WORKFLOW_DATE }).length, 0)
+})
+
+test('draft fica invisivel para chefes enquanto nao for publicado', async () => {
+  const { workspace } = await initializePlanningWorkspaceDraftService(ADMIN_SESSION, {
+    date: PLANNING_WORKFLOW_DATE,
+  })
+
+  await createPlanningDraftAssignmentService(ADMIN_SESSION, {
+    workspaceId: workspace.id,
+    workId: 1,
+    personId: 3,
+    notes: 'So em draft',
+  })
+
+  const chefAssignments = await getWorkAssignmentsListService(
+    CHEF_SESSION,
+    createSearchParams({ date: PLANNING_WORKFLOW_DATE }),
+  )
+
+  assert.deepEqual(chefAssignments, [])
+})
+
+test('publicar torna o planeamento visivel para chefes', async () => {
+  const { workspace } = await initializePlanningWorkspaceDraftService(ADMIN_SESSION, {
+    date: PLANNING_WORKFLOW_DATE,
+  })
+
+  await createPlanningDraftAssignmentService(ADMIN_SESSION, {
+    workspaceId: workspace.id,
+    workId: 1,
+    personId: 3,
+    notes: 'Planeamento publicado',
+  })
+
+  const publishedWorkspace = await publishPlanningWorkspaceService(ADMIN_SESSION, workspace.id)
+  const workPlan = getWorkPlanByDate(PLANNING_WORKFLOW_DATE, 1)
+  const chefAssignments = await getWorkAssignmentsListService(
+    CHEF_SESSION,
+    createSearchParams({ date: PLANNING_WORKFLOW_DATE }),
+  )
+
+  assert.equal(publishedWorkspace.state, 'published')
+  assert.ok(workPlan)
+  assert.equal(chefAssignments.length, 1)
+  assert.equal(chefAssignments[0].personId, 3)
+  assert.equal(chefAssignments[0].notes, 'Planeamento publicado')
+})
+
+test('Edit devolve o planeamento a draft sem esconder a ultima versao publicada', async () => {
+  const { workspace } = await initializePlanningWorkspaceDraftService(ADMIN_SESSION, {
+    date: PLANNING_WORKFLOW_DATE,
+  })
+
+  await createPlanningDraftAssignmentService(ADMIN_SESSION, {
+    workspaceId: workspace.id,
+    workId: 1,
+    personId: 3,
+    notes: 'Publicado antes do edit',
+  })
+
+  await publishPlanningWorkspaceService(ADMIN_SESSION, workspace.id)
+  const draftWorkspace = await setPlanningWorkspaceToDraftService(ADMIN_SESSION, workspace.id)
+  const chefAssignments = await getWorkAssignmentsListService(
+    CHEF_SESSION,
+    createSearchParams({ date: PLANNING_WORKFLOW_DATE }),
+  )
+
+  assert.equal(draftWorkspace.state, 'draft')
+  assert.equal(chefAssignments.length, 1)
+  assert.equal(chefAssignments[0].notes, 'Publicado antes do edit')
+})
+
+test('ultima versao publicada mantem-se visivel ate nova publicacao', async () => {
+  const { workspace } = await initializePlanningWorkspaceDraftService(ADMIN_SESSION, {
+    date: REPUBLISH_WORKFLOW_DATE,
+  })
+
+  const firstDraftAssignment = await createPlanningDraftAssignmentService(ADMIN_SESSION, {
+    workspaceId: workspace.id,
+    workId: 1,
+    personId: 3,
+    notes: 'Equipa publicada',
+  })
+
+  await publishPlanningWorkspaceService(ADMIN_SESSION, workspace.id)
+  await setPlanningWorkspaceToDraftService(ADMIN_SESSION, workspace.id)
+  await deletePlanningDraftAssignmentService(ADMIN_SESSION, firstDraftAssignment.id)
+  await createPlanningDraftAssignmentService(ADMIN_SESSION, {
+    workspaceId: workspace.id,
+    workId: 1,
+    personId: 4,
+    notes: 'Nova equipa em draft',
+  })
+
+  const chefAssignmentsBeforeRepublish = await getWorkAssignmentsListService(
+    CHEF_SESSION,
+    createSearchParams({ date: REPUBLISH_WORKFLOW_DATE }),
+  )
+
+  await publishPlanningWorkspaceService(ADMIN_SESSION, workspace.id)
+
+  const chefAssignmentsAfterRepublish = await getWorkAssignmentsListService(
+    CHEF_SESSION,
+    createSearchParams({ date: REPUBLISH_WORKFLOW_DATE }),
+  )
+  const officialAssignments = getAllWorkAssignments({ date: REPUBLISH_WORKFLOW_DATE })
+  const hiddenPreviousAssignment = officialAssignments.find(assignment => assignment.personId === 3)
+  const visibleRepublishedAssignment = officialAssignments.find(assignment => assignment.personId === 4)
+
+  assert.equal(chefAssignmentsBeforeRepublish.length, 1)
+  assert.equal(chefAssignmentsBeforeRepublish[0].personId, 3)
+  assert.equal(chefAssignmentsAfterRepublish.length, 1)
+  assert.equal(chefAssignmentsAfterRepublish[0].personId, 4)
+  assert.equal(officialAssignments.length, 2)
+  assert.equal(hiddenPreviousAssignment?.planningVisible, false)
+  assert.equal(visibleRepublishedAssignment?.planningVisible, true)
+})
+
+test('workflow de submissao continua funcional com planeamento publicado', async () => {
+  const { workspace } = await initializePlanningWorkspaceDraftService(ADMIN_SESSION, {
+    date: PLANNING_WORKFLOW_DATE,
+  })
+
+  await createPlanningDraftAssignmentService(ADMIN_SESSION, {
+    workspaceId: workspace.id,
+    workId: 1,
+    personId: 3,
+    notes: 'Submissao valida',
+  })
+  await publishPlanningWorkspaceService(ADMIN_SESSION, workspace.id)
+
+  const publishedAssignment = getAllWorkAssignments({ date: PLANNING_WORKFLOW_DATE }).find(
+    assignment => assignment.personId === 3 && assignment.planningVisible !== false,
+  )
+  const submittedAssignment = await submitWorkAssignmentService(CHEF_SESSION, publishedAssignment.id)
+
+  assert.equal(submittedAssignment.submitted, true)
+  assert.equal(submittedAssignment.submittedBy, 'Chefe Teste')
+  assert.equal(submittedAssignment.approvedHours, null)
+})
+
+test('workflow de aprovacao continua funcional com planeamento publicado', async () => {
+  const { workspace } = await initializePlanningWorkspaceDraftService(ADMIN_SESSION, {
+    date: PLANNING_WORKFLOW_DATE,
+  })
+
+  await createPlanningDraftAssignmentService(ADMIN_SESSION, {
+    workspaceId: workspace.id,
+    workId: 1,
+    personId: 3,
+    notes: 'Aprovacao valida',
+  })
+  await publishPlanningWorkspaceService(ADMIN_SESSION, workspace.id)
+
+  const publishedAssignment = getAllWorkAssignments({ date: PLANNING_WORKFLOW_DATE }).find(
+    assignment => assignment.personId === 3 && assignment.planningVisible !== false,
+  )
+
+  await submitWorkAssignmentService(CHEF_SESSION, publishedAssignment.id)
+  const approvedAssignment = await approveWorkAssignmentService(ADMIN_SESSION, publishedAssignment.id, {
+    approvedHours: 7,
+  })
+
+  assert.equal(approvedAssignment.approvedHours, 7)
+  assert.equal(approvedAssignment.adminApprovedBy, 'Administrador Teste')
+  assert.ok(approvedAssignment.adminApprovedAt)
 })
 
 test('propoe automaticamente o proximo numero de obra', () => {

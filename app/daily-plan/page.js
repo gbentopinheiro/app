@@ -6,13 +6,13 @@ import EditPencilIcon, { editPencilButtonStyle } from '../components/EditPencilI
 import TrashBinIcon, { trashBinButtonStyle } from '../components/TrashBinIcon'
 import { ViewportPage, ViewportScrollArea, ViewportShell } from '../components/ViewportLayout.js'
 import {
-  deleteWorkAssignment,
-  listWorkAssignments,
-  saveWorkAssignment,
-} from '../../frontend/controllers/work-assignments-controller.js'
-import { saveWorkPlan } from '../../frontend/controllers/work-plans-controller.js'
-import { getDailyPlanLockState } from '../../lib/daily-plan-lock.js'
-import { getDefaultHoursForDate } from '../../lib/default-hours.js'
+  deletePlanningDraftAssignment,
+  getPlanningWorkspaceView,
+  initializePlanningWorkspaceDraft,
+  publishPlanningWorkspace,
+  savePlanningDraftAssignment,
+  setPlanningWorkspaceToDraft,
+} from '../../frontend/controllers/planning-workspaces-controller.js'
 import { getEntityRoleLabel, getRoleLabel, isChefRole } from '../../lib/roles.js'
 
 const pageStyle = {
@@ -215,6 +215,18 @@ const compactActionButtonStyle = {
   textAlign: 'center',
 }
 
+const statusPillStyle = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  borderRadius: '999px',
+  padding: '8px 14px',
+  fontSize: '12px',
+  fontWeight: 900,
+  letterSpacing: '0.04em',
+  textTransform: 'uppercase',
+}
+
 const closeButtonStyle = {
   border: '1px solid var(--vp-border)',
   borderRadius: '999px',
@@ -376,14 +388,14 @@ function getManualHourlyCostSuggestions(work, person) {
 
 export default function DailyPlanPage() {
   const [selectedDate, setSelectedDate] = useState(today)
-  const [currentTime, setCurrentTime] = useState(() => new Date())
-  const [workPlans, setWorkPlans] = useState([])
-  const [selectedWorkPlan, setSelectedWorkPlan] = useState(null)
+  const [selectedPlanningWorkspace, setSelectedPlanningWorkspace] = useState(null)
   const [assignments, setAssignments] = useState([])
   const [defaults, setDefaults] = useState({ people: [], works: [] })
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
   const [creatingMode, setCreatingMode] = useState('')
+  const [publishing, setPublishing] = useState(false)
+  const [switchingToDraft, setSwitchingToDraft] = useState(false)
   const [savingAssignment, setSavingAssignment] = useState(false)
   const [showAddModal, setShowAddModal] = useState(false)
   const [showMessageModal, setShowMessageModal] = useState(false)
@@ -402,14 +414,6 @@ export default function DailyPlanPage() {
   useEffect(() => {
     loadDailyPlan(selectedDate)
   }, [selectedDate])
-
-  useEffect(() => {
-    const intervalId = window.setInterval(() => {
-      setCurrentTime(new Date())
-    }, 60000)
-
-    return () => window.clearInterval(intervalId)
-  }, [])
 
   const groupedAssignments = useMemo(() => {
     const groups = new Map()
@@ -444,7 +448,8 @@ export default function DailyPlanPage() {
       .sort((left, right) => Number(left.workNumber) - Number(right.workNumber))
   }, [assignments])
 
-  const hasWorkPlanForDate = Boolean(selectedWorkPlan)
+  const isDraftPlanning = selectedPlanningWorkspace?.state === 'draft'
+  const isPublishedPlanning = selectedPlanningWorkspace?.state === 'published'
   const activeWorks = useMemo(
     () => defaults.works.filter(work => work.status !== 'completed'),
     [defaults.works],
@@ -613,7 +618,7 @@ export default function DailyPlanPage() {
     [duplicateNonChefAssignments],
   )
   const generatedMessage = useMemo(() => {
-    if (!selectedWorkPlan || selectedMessageWorkIds.length === 0) return ''
+    if (!selectedPlanningWorkspace || selectedMessageWorkIds.length === 0) return ''
 
     const selectedGroups = groupedAssignments.filter(group => selectedMessageWorkIds.includes(String(group.workId)))
 
@@ -627,8 +632,8 @@ export default function DailyPlanPage() {
       return `${group.workName}\n${peopleLines}`
     })
 
-    return [`Plano do dia ${selectedWorkPlan.date}`, ...messageParts].join('\n\n')
-  }, [groupedAssignments, selectedMessageWorkIds, selectedWorkPlan])
+    return [`Plano do dia ${selectedPlanningWorkspace.date}`, ...messageParts].join('\n\n')
+  }, [groupedAssignments, selectedMessageWorkIds, selectedPlanningWorkspace])
 
   async function loadDailyPlan(date) {
     setLoading(true)
@@ -636,27 +641,21 @@ export default function DailyPlanPage() {
     setSuccess('')
 
     try {
-      const data = await listWorkAssignments(
+      const data = await getPlanningWorkspaceView(
         {
-          includeDefaults: true,
           date,
         },
         'Erro ao carregar plano diário',
       )
 
-      const nextDefaults = data.defaults || { people: [], works: [], workPlans: [] }
-      const nextWorkPlans = Array.isArray(nextDefaults.workPlans) ? nextDefaults.workPlans : []
-      const nextWorkPlan = nextWorkPlans.find(item => item.date === date) || null
-
-      setWorkPlans(nextWorkPlans)
+      const nextDefaults = data.defaults || { people: [], works: [] }
       setDefaults(nextDefaults)
-      setSelectedWorkPlan(nextWorkPlan)
+      setSelectedPlanningWorkspace(data.workspace || null)
       setAssignments(Array.isArray(data.items) ? data.items : [])
     } catch (err) {
       setError(err.message)
-      setWorkPlans([])
-      setDefaults({ people: [], works: [], workPlans: [] })
-      setSelectedWorkPlan(null)
+      setDefaults({ people: [], works: [] })
+      setSelectedPlanningWorkspace(null)
       setAssignments([])
     } finally {
       setLoading(false)
@@ -670,8 +669,7 @@ export default function DailyPlanPage() {
     setSuccess('')
 
     try {
-      const data = await saveWorkPlan(
-        null,
+      const data = await initializePlanningWorkspaceDraft(
         {
           date: selectedDate,
           clonePreviousDay,
@@ -681,12 +679,12 @@ export default function DailyPlanPage() {
 
       setSuccess(
         clonePreviousDay
-          ? data.reusedWorkPlan
-            ? `Plano de ${data.date} atualizado com ${data.clonedAssignments} afetações copiadas de ${data.clonedFromDate}.`
-            : `Plano criado para ${data.date} com ${data.clonedAssignments} afetações copiadas de ${data.clonedFromDate}.`
-          : data.reusedWorkPlan
-            ? `Plano de ${data.date} reiniciado${data.clearedAssignments ? ` e limpo (${data.clearedAssignments} afetações removidas)` : ''}.`
-            : `Plano criado para ${data.date}.`
+          ? data.reusedWorkspace
+            ? `Draft de ${data.workspace?.date || selectedDate} atualizado com ${data.clonedAssignments} afetações copiadas de ${data.clonedFromDate}.`
+            : `Draft criado para ${data.workspace?.date || selectedDate} com ${data.clonedAssignments} afetações copiadas de ${data.clonedFromDate}.`
+          : data.reusedWorkspace
+            ? `Draft de ${data.workspace?.date || selectedDate} reiniciado${data.clearedAssignments ? ` e limpo (${data.clearedAssignments} afetações removidas)` : ''}.`
+            : `Draft criado para ${data.workspace?.date || selectedDate}.`
       )
       await loadDailyPlan(selectedDate)
     } catch (err) {
@@ -697,8 +695,52 @@ export default function DailyPlanPage() {
     }
   }
 
+  async function handlePublishPlanning() {
+    if (!selectedPlanningWorkspace || !isDraftPlanning) return
+
+    setPublishing(true)
+    setError('')
+    setSuccess('')
+
+    try {
+      await publishPlanningWorkspace(
+        selectedPlanningWorkspace.id,
+        'Erro ao publicar planeamento',
+      )
+      setSuccess('Planeamento publicado com sucesso. Os chefes já veem esta versão.')
+      await loadDailyPlan(selectedDate)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setPublishing(false)
+    }
+  }
+
+  async function handleEditPublishedPlanning() {
+    if (!selectedPlanningWorkspace || !isPublishedPlanning) return
+
+    setSwitchingToDraft(true)
+    setError('')
+    setSuccess('')
+
+    try {
+      await setPlanningWorkspaceToDraft(
+        selectedPlanningWorkspace.id,
+        'Erro ao voltar o planeamento para draft',
+      )
+      setSuccess(
+        'Planeamento voltou a draft. Os chefes continuam a ver a última versão publicada até confirmares novamente.',
+      )
+      await loadDailyPlan(selectedDate)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setSwitchingToDraft(false)
+    }
+  }
+
   function openAddModal() {
-    if (!selectedWorkPlan) return
+    if (!selectedPlanningWorkspace || !isDraftPlanning) return
     setAssignmentForm(emptyAssignmentForm)
     setFormErrors({})
     setError('')
@@ -729,7 +771,7 @@ export default function DailyPlanPage() {
   }
 
   function openMessageModal() {
-    if (!selectedWorkPlan || groupedAssignments.length === 0) return
+    if (!selectedPlanningWorkspace || groupedAssignments.length === 0) return
 
     setSelectedMessageWorkIds(groupedAssignments.map(group => String(group.workId)))
     setMessageSelectionError('')
@@ -839,10 +881,6 @@ export default function DailyPlanPage() {
     return Object.keys(nextErrors).length === 0
   }
 
-  function getDefaultHours() {
-    return getDefaultHoursForDate(selectedWorkPlan?.date)
-  }
-
   function handleMessageWorkToggle(workId) {
     const normalizedWorkId = String(workId)
 
@@ -895,7 +933,7 @@ export default function DailyPlanPage() {
   async function handleCreateAssignment(event) {
     event.preventDefault()
 
-    if (!selectedWorkPlan || !validateAssignmentForm()) {
+    if (!selectedPlanningWorkspace || !isDraftPlanning || !validateAssignmentForm()) {
       return
     }
 
@@ -906,7 +944,6 @@ export default function DailyPlanPage() {
     try {
       const payload = assignmentForm.id
         ? {
-            workPlanId: selectedWorkPlan.id,
             workId: Number(assignmentForm.workId),
             personId: Number(assignmentForm.personId),
             manualHourlyCost: assignmentForm.manualHourlyCost === true,
@@ -915,26 +952,25 @@ export default function DailyPlanPage() {
             hasWorkAccess: selectedPerson && isChefRole(selectedPerson.role) ? assignmentForm.hasWorkAccess === true : false,
           }
         : {
-            workPlanId: selectedWorkPlan.id,
+            workspaceId: selectedPlanningWorkspace.id,
             workId: Number(assignmentForm.workId),
             personId: Number(assignmentForm.personId),
-            hours: getDefaultHours(),
             manualHourlyCost: assignmentForm.manualHourlyCost === true,
             hourlyCost: assignmentForm.manualHourlyCost ? selectedHourlyCost : undefined,
             notes: assignmentForm.notes,
             hasWorkAccess: selectedPerson && isChefRole(selectedPerson.role) ? assignmentForm.hasWorkAccess === true : false,
           }
 
-      const data = await saveWorkAssignment(
+      const data = await savePlanningDraftAssignment(
         assignmentForm.id,
         payload,
-        'Erro ao criar afetação',
+        'Erro ao guardar afetação no draft',
       )
 
       setSuccess(
         assignmentForm.id
-          ? `Afetação atualizada para ${data.person?.name || 'pessoa'}.`
-          : `Afetação criada para ${data.person?.name || 'pessoa'}.`
+          ? `Afetação do draft atualizada para ${data.person?.name || 'pessoa'}.`
+          : `Afetação criada no draft para ${data.person?.name || 'pessoa'}.`
       )
       closeAddModal()
       await loadDailyPlan(selectedDate)
@@ -946,8 +982,10 @@ export default function DailyPlanPage() {
   }
 
   async function handleDeleteAssignment(assignment) {
+    if (!isDraftPlanning) return
+
     const confirmed = window.confirm(
-      `Pretendes realmente eliminar a afetação de ${assignment.person?.name || 'esta pessoa'} do plano ativo?`
+      `Pretendes realmente eliminar a afetação de ${assignment.person?.name || 'esta pessoa'} do draft atual?`
     )
 
     if (!confirmed) return
@@ -956,9 +994,9 @@ export default function DailyPlanPage() {
     setSuccess('')
 
     try {
-      await deleteWorkAssignment(assignment.id, 'Erro ao eliminar afetação')
+      await deletePlanningDraftAssignment(assignment.id, 'Erro ao eliminar afetação do draft')
 
-      setSuccess('Afetação eliminada com sucesso.')
+      setSuccess('Afetação removida do draft com sucesso.')
       await loadDailyPlan(selectedDate)
     } catch (err) {
       setError(err.message)
@@ -966,6 +1004,8 @@ export default function DailyPlanPage() {
   }
 
   function handleAssignmentDragStart(assignment) {
+    if (!isDraftPlanning || savingAssignment) return
+
     setDraggedAssignmentId(String(assignment.id))
     setDraggedSourceWorkId(String(assignment.workId))
     setDropTargetWorkId(null)
@@ -1004,7 +1044,7 @@ export default function DailyPlanPage() {
     setDraggedSourceWorkId(null)
     setDropTargetWorkId(null)
 
-    if (!selectedWorkPlan || !assignment || !targetWork || String(assignment.workId) === String(targetWorkId)) {
+    if (!selectedPlanningWorkspace || !isDraftPlanning || !assignment || !targetWork || String(assignment.workId) === String(targetWorkId)) {
       return
     }
 
@@ -1013,17 +1053,17 @@ export default function DailyPlanPage() {
     setSuccess('')
 
     try {
-      await saveWorkAssignment(
+      await savePlanningDraftAssignment(
         assignment.id,
         {
-          workPlanId: selectedWorkPlan.id,
           workId: Number(targetWorkId),
           personId: Number(assignment.personId),
           manualHourlyCost: false,
           hourlyCost: getWorkHourlyCostForPerson(targetWork, targetPerson, assignment.hourlyCost),
           notes: assignment.notes || '',
+          hasWorkAccess: assignment.hasWorkAccess === true,
         },
-        'Erro ao mover afetação',
+        'Erro ao mover afetação no draft',
       )
 
       setSuccess(`${assignment.person?.name || 'Pessoa'} movido(a) para a obra #${targetWork.number} - ${targetWork.name}.`)
@@ -1059,11 +1099,7 @@ export default function DailyPlanPage() {
   const totalUnassignedPeople = unassignedPeople.length
   const totalWorks = groupedAssignments.length
   const totalUnplannedWorks = unplannedWorks.length
-  const dailyPlanLockState = useMemo(
-    () => getDailyPlanLockState(selectedDate, currentTime),
-    [currentTime, selectedDate],
-  )
-  const isDailyPlanLockedForDate = dailyPlanLockState.locked
+  const isPlanActionBusy = creating || publishing || switchingToDraft
 
   return (
     <ViewportPage lockViewport style={pageStyle}>
@@ -1082,9 +1118,9 @@ export default function DailyPlanPage() {
               <button
                 type="button"
                 onClick={() => handleCreateWorkPlan(false)}
-                disabled={creating}
+                disabled={isPlanActionBusy}
                 style={
-                  creating
+                  isPlanActionBusy
                     ? { ...disabledButtonStyle, ...compactActionButtonStyle }
                     : { ...primaryButtonStyle, ...compactActionButtonStyle }
                 }
@@ -1094,9 +1130,9 @@ export default function DailyPlanPage() {
               <button
                 type="button"
                 onClick={() => handleCreateWorkPlan(true)}
-                disabled={creating}
+                disabled={isPlanActionBusy}
                 style={
-                  creating
+                  isPlanActionBusy
                     ? { ...disabledButtonStyle, ...compactActionButtonStyle }
                     : { ...secondaryButtonStyle, ...compactActionButtonStyle }
                 }
@@ -1155,38 +1191,89 @@ export default function DailyPlanPage() {
           </button>
         </section>
 
-        {(error || success || loading || (!selectedWorkPlan && !error && !loading)) && (
+        {(error || success || loading || (!selectedPlanningWorkspace && !error && !loading)) && (
           <section style={panelStyle}>
             {error && <p style={{ margin: 0, color: '#b42318' }}>{error}</p>}
             {success && <p style={{ margin: 0, color: '#1f7a45' }}>{success}</p>}
             {loading && <p style={{ margin: 0 }}>A carregar plano diário...</p>}
-            {!loading && isDailyPlanLockedForDate && (
-              <p style={{ margin: error || success ? '12px 0 0' : 0, color: '#b45309' }}>
-                Depois das 08:00, por regra, já não é possível alterar o plano diário deste dia.
-                Se existir uma exceção temporária configurada no servidor, Criar novo, Copiar anterior
-                e as operações sobre afetações continuam disponíveis até ao prazo definido.
-              </p>
-            )}
-            {!selectedWorkPlan && !error && !loading && (
+            {!selectedPlanningWorkspace && !error && !loading && (
               <p style={{ margin: 0, color: 'var(--vp-text-muted)' }}>
-                Ainda não existe plano para {selectedDate}. Usa Criar novo ou Copiar anterior.
+                Ainda não existe planeamento para {selectedDate}. Usa Criar novo ou Copiar anterior para preparar um draft.
               </p>
             )}
           </section>
         )}
 
-        {!loading && selectedWorkPlan && (
+        {!loading && selectedPlanningWorkspace && (
           <section style={panelStyle}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '20px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap', width: '100%' }}>
-                <h2 style={{ margin: 0, fontWeight: 900 }}>Plano do dia</h2>
-                <button
-                  type="button"
-                  onClick={openAddModal}
-                  style={{ ...primaryButtonStyle, ...compactActionButtonStyle }}
-                >
-                  Adicionar
-                </button>
+                <div style={{ display: 'grid', gap: '8px' }}>
+                  <h2 style={{ margin: 0, fontWeight: 900 }}>Plano do dia</h2>
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <span
+                      style={{
+                        ...statusPillStyle,
+                        background: isDraftPlanning ? 'rgba(245, 158, 11, 0.18)' : 'rgba(31, 122, 69, 0.16)',
+                        color: isDraftPlanning ? '#b45309' : '#1f7a45',
+                        border: `1px solid ${isDraftPlanning ? 'rgba(245, 158, 11, 0.32)' : 'rgba(31, 122, 69, 0.28)'}`,
+                      }}
+                    >
+                      {isDraftPlanning ? 'Draft' : 'Published'}
+                    </span>
+                    <span style={{ color: 'var(--vp-text-muted)', fontSize: '13px', fontWeight: 700 }}>
+                      {isDraftPlanning
+                        ? selectedPlanningWorkspace.publishedWorkPlanId
+                          ? 'Os chefes continuam a ver a última versão publicada até confirmares novamente.'
+                          : 'Enquanto estiver em draft, os chefes ainda não veem este planeamento.'
+                        : 'Os chefes já estão a ver esta versão publicada.'}
+                    </span>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+                  {isDraftPlanning ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={openAddModal}
+                        disabled={savingAssignment || publishing}
+                        style={
+                          savingAssignment || publishing
+                            ? { ...disabledButtonStyle, ...compactActionButtonStyle }
+                            : { ...primaryButtonStyle, ...compactActionButtonStyle }
+                        }
+                      >
+                        Adicionar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handlePublishPlanning}
+                        disabled={publishing || savingAssignment}
+                        style={
+                          publishing || savingAssignment
+                            ? { ...disabledButtonStyle, ...compactActionButtonStyle }
+                            : { ...secondaryButtonStyle, ...compactActionButtonStyle }
+                        }
+                      >
+                        {publishing ? 'A publicar...' : 'Confirm / Publish'}
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleEditPublishedPlanning}
+                      disabled={switchingToDraft}
+                      style={
+                        switchingToDraft
+                          ? { ...disabledButtonStyle, ...compactActionButtonStyle }
+                          : { ...secondaryButtonStyle, ...compactActionButtonStyle }
+                      }
+                    >
+                      {switchingToDraft ? 'A voltar...' : 'Edit'}
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
             {duplicateNonChefAssignments.length > 0 && (
@@ -1223,19 +1310,23 @@ export default function DailyPlanPage() {
                   return (
                   <article
                     key={group.workId}
-                    onDragOver={(event) => handleWorkDragOver(event, group.workId)}
-                    onDragLeave={() => handleWorkDragLeave(group.workId)}
-                    onDrop={(event) => handleWorkDrop(event, group.workId)}
+                    onDragOver={isDraftPlanning ? (event) => handleWorkDragOver(event, group.workId) : undefined}
+                    onDragLeave={isDraftPlanning ? () => handleWorkDragLeave(group.workId) : undefined}
+                    onDrop={isDraftPlanning ? (event) => handleWorkDrop(event, group.workId) : undefined}
                     style={{
                       ...workCardStyle,
                       border:
-                        dropTargetWorkId === String(group.workId) ||
-                        (draggedSourceWorkId === String(group.workId) && !dropTargetWorkId)
+                        isDraftPlanning && (
+                          dropTargetWorkId === String(group.workId) ||
+                          (draggedSourceWorkId === String(group.workId) && !dropTargetWorkId)
+                        )
                           ? '2px dashed var(--vp-accent)'
                           : workCardStyle.border,
                       background:
-                        dropTargetWorkId === String(group.workId) ||
-                        (draggedSourceWorkId === String(group.workId) && !dropTargetWorkId)
+                        isDraftPlanning && (
+                          dropTargetWorkId === String(group.workId) ||
+                          (draggedSourceWorkId === String(group.workId) && !dropTargetWorkId)
+                        )
                           ? 'var(--vp-highlight)'
                           : workCardStyle.background,
                     }}
@@ -1258,15 +1349,15 @@ export default function DailyPlanPage() {
                         return (
                         <div
                           key={assignment.id}
-                          draggable={!savingAssignment}
-                          onDragStart={() => handleAssignmentDragStart(assignment)}
-                          onDragEnd={handleAssignmentDragEnd}
+                          draggable={isDraftPlanning && !savingAssignment}
+                          onDragStart={isDraftPlanning ? () => handleAssignmentDragStart(assignment) : undefined}
+                          onDragEnd={isDraftPlanning ? handleAssignmentDragEnd : undefined}
                           style={{
                             border: '1px solid var(--vp-border)',
                             borderRadius: '14px',
                             padding: '14px',
                             background: 'var(--vp-surface-muted)',
-                            cursor: savingAssignment ? 'default' : 'grab',
+                            cursor: isDraftPlanning && !savingAssignment ? 'grab' : 'default',
                             opacity: draggedAssignmentId === String(assignment.id) ? 0.55 : 1,
                           }}
                         >
@@ -1293,26 +1384,28 @@ export default function DailyPlanPage() {
                                 </p>
                               )}
                             </div>
-                            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                              <button
-                                type="button"
-                                onClick={() => openEditModal(assignment)}
-                                style={editPencilButtonStyle}
-                                title="Editar afetação"
-                                aria-label="Editar afetação"
-                              >
-                                <EditPencilIcon />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteAssignment(assignment)}
-                                style={trashBinButtonStyle}
-                                title="Eliminar afetação"
-                                aria-label="Eliminar afetação"
-                              >
-                                <TrashBinIcon />
-                              </button>
-                            </div>
+                            {isDraftPlanning && (
+                              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                <button
+                                  type="button"
+                                  onClick={() => openEditModal(assignment)}
+                                  style={editPencilButtonStyle}
+                                  title="Editar afetação"
+                                  aria-label="Editar afetação"
+                                >
+                                  <EditPencilIcon />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteAssignment(assignment)}
+                                  style={trashBinButtonStyle}
+                                  title="Eliminar afetação"
+                                  aria-label="Eliminar afetação"
+                                >
+                                  <TrashBinIcon />
+                                </button>
+                              </div>
+                            )}
                           </div>
                           {assignment.notes && (
                             <p style={{ margin: '6px 0 0', color: 'var(--vp-text-soft)' }}>{assignment.notes}</p>
@@ -1325,7 +1418,7 @@ export default function DailyPlanPage() {
               </div>
             )}
 
-            {unplannedWorks.length > 0 && (
+            {isDraftPlanning && unplannedWorks.length > 0 && (
               <div style={{ display: 'grid', gap: '14px', marginTop: '22px' }}>
                 <div>
                   <h3 style={{ margin: 0, fontSize: '20px', fontWeight: 900 }}>Obras disponíveis para receber pessoas</h3>
@@ -1437,7 +1530,7 @@ export default function DailyPlanPage() {
         </div>
       )}
 
-      {showAddModal && selectedWorkPlan && (
+      {showAddModal && selectedPlanningWorkspace && isDraftPlanning && (
         <div style={modalBackdropStyle} onClick={closeAddModal}>
           <section className="vp-modal-card" style={modalCardStyle} onClick={(event) => event.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center' }}>
@@ -1667,7 +1760,7 @@ export default function DailyPlanPage() {
         </div>
       )}
 
-      {showMessageModal && selectedWorkPlan && (
+      {showMessageModal && selectedPlanningWorkspace && (
         <div style={modalBackdropStyle} onClick={closeMessageModal}>
           <section className="vp-modal-card" style={modalCardStyle} onClick={(event) => event.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center' }}>

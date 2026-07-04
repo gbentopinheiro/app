@@ -27,6 +27,8 @@ async function main() {
     prisma.loginAttempt.deleteMany(),
     prisma.loginEvent.deleteMany(),
     prisma.dailyWorkNote.deleteMany(),
+    prisma.planningWorkspaceAssignment.deleteMany(),
+    prisma.planningWorkspace.deleteMany(),
     prisma.workAssignment.deleteMany(),
     prisma.workPersonHourlyCost.deleteMany(),
     prisma.workRoleHourlyCost.deleteMany(),
@@ -47,8 +49,14 @@ async function main() {
   await prisma.workRoleHourlyCost.createMany({ data: target.workRoleHourlyCosts })
   await prisma.workPersonHourlyCost.createMany({ data: target.workPersonHourlyCosts })
   await prisma.workPlan.createMany({ data: target.workPlans.map(prepareWorkPlanForImport) })
+  await prisma.planningWorkspace.createMany({
+    data: target.planningWorkspaces.map(preparePlanningWorkspaceForImport),
+  })
   await prisma.user.createMany({ data: target.users })
   await prisma.workAssignment.createMany({ data: target.workAssignments })
+  await prisma.planningWorkspaceAssignment.createMany({
+    data: target.planningWorkspaceAssignments.map(preparePlanningWorkspaceAssignmentForImport),
+  })
   await prisma.dailyWorkNote.createMany({ data: target.dailyWorkNotes.map(prepareDailyWorkNoteForImport) })
   await prisma.loginEvent.createMany({ data: target.loginEvents })
   await prisma.loginAttempt.createMany({ data: target.loginAttempts.map(prepareLoginAttemptForImport) })
@@ -80,7 +88,9 @@ async function loadSnapshot() {
       Array.isArray(snapshot?.target?.calendarNotificationStates) &&
       Array.isArray(snapshot?.target?.loginAttempts) &&
       Array.isArray(snapshot?.target?.auditTrailEvents) &&
-      Array.isArray(snapshot?.target?.featureFlags)
+      Array.isArray(snapshot?.target?.featureFlags) &&
+      Array.isArray(snapshot?.target?.planningWorkspaces) &&
+      Array.isArray(snapshot?.target?.planningWorkspaceAssignments)
     ) {
       return snapshot
     }
@@ -117,6 +127,24 @@ function prepareWorkPlanForImport(workPlan) {
   return {
     ...workPlan,
     date: toDateOnly(workPlan.date),
+  }
+}
+
+function preparePlanningWorkspaceForImport(workspace) {
+  return {
+    ...workspace,
+    date: toDateOnly(workspace.date),
+    publishedAt: workspace.publishedAt ? new Date(workspace.publishedAt) : null,
+    createdAt: workspace.createdAt ? new Date(workspace.createdAt) : new Date(),
+    updatedAt: workspace.updatedAt ? new Date(workspace.updatedAt) : new Date(),
+  }
+}
+
+function preparePlanningWorkspaceAssignmentForImport(assignment) {
+  return {
+    ...assignment,
+    createdAt: assignment.createdAt ? new Date(assignment.createdAt) : new Date(),
+    updatedAt: assignment.updatedAt ? new Date(assignment.updatedAt) : new Date(),
   }
 }
 
