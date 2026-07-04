@@ -1012,8 +1012,14 @@ export default function DailyPlanPage() {
     }
   }
 
-  function handleAssignmentDragStart(assignment) {
+  function handleAssignmentDragStart(event, assignment) {
     if (!isDraftPlanning || savingAssignment) return
+
+    if (event?.dataTransfer) {
+      event.dataTransfer.effectAllowed = 'move'
+      event.dataTransfer.dropEffect = 'move'
+      event.dataTransfer.setData('text/plain', String(assignment.id))
+    }
 
     setDraggedAssignmentId(String(assignment.id))
     setDraggedSourceWorkId(String(assignment.workId))
@@ -1030,6 +1036,9 @@ export default function DailyPlanPage() {
 
   function handleWorkDragOver(event, workId) {
     event.preventDefault()
+    if (event?.dataTransfer) {
+      event.dataTransfer.dropEffect = 'move'
+    }
     if (!draggedAssignmentId) return
     if (String(workId) === String(draggedSourceWorkId)) {
       setDropTargetWorkId(null)
@@ -1322,6 +1331,10 @@ export default function DailyPlanPage() {
                           dropTargetWorkId === String(group.workId) ||
                           (draggedSourceWorkId === String(group.workId) && !dropTargetWorkId)
                         )
+                        const canReceiveDraggedAssignment =
+                          isDraftPlanning &&
+                          Boolean(draggedAssignmentId) &&
+                          String(group.workId) !== String(draggedSourceWorkId)
 
                         return (
                           <SurfaceCard
@@ -1333,97 +1346,111 @@ export default function DailyPlanPage() {
                             onDrop={isDraftPlanning ? (event) => handleWorkDrop(event, group.workId) : undefined}
                             style={{
                               '--vp-card-gap': '12px',
+                              position: 'relative',
                               padding: '16px',
                               border: isDropActive ? '2px dashed var(--vp-accent)' : '1px solid var(--vp-border)',
                               background: isDropActive ? 'var(--vp-highlight)' : 'var(--vp-surface)',
                             }}
                           >
-                            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
-                              <div>
-                                <h3 style={{ margin: 0, fontSize: '19px', fontWeight: 900 }}>{group.workName}</h3>
-                                <p style={{ margin: '4px 0 0', color: 'var(--vp-text-muted)' }}>
-                                  {group.assignments.length} afetações
-                                </p>
+                            {canReceiveDraggedAssignment && (
+                              <div
+                                className="vp-planning-work-drop-layer"
+                                onDragEnter={(event) => handleWorkDragOver(event, group.workId)}
+                                onDragOver={(event) => handleWorkDragOver(event, group.workId)}
+                                onDrop={(event) => handleWorkDrop(event, group.workId)}
+                                aria-hidden="true"
+                              />
+                            )}
+
+                            <div style={{ position: 'relative', zIndex: 1, display: 'grid', gap: '12px' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+                                <div>
+                                  <h3 style={{ margin: 0, fontSize: '19px', fontWeight: 900 }}>{group.workName}</h3>
+                                  <p style={{ margin: '4px 0 0', color: 'var(--vp-text-muted)' }}>
+                                    {group.assignments.length} afetações
+                                  </p>
+                                </div>
                               </div>
-                            </div>
 
-                            <div style={{ display: 'grid', gap: '8px' }}>
-                              {group.assignments.map(assignment => {
-                                const isChefAssignment = isChefRole(assignment.person?.role)
-                                const hasChefWorkAccess = isChefAssignment && String(assignment.id) === chefAccessAssignmentId
-                                const showChefAccessIndicator = totalChefAssignments > 1 && hasChefWorkAccess
+                              <div style={{ display: 'grid', gap: '8px' }}>
+                                {group.assignments.map(assignment => {
+                                  const isChefAssignment = isChefRole(assignment.person?.role)
+                                  const hasChefWorkAccess = isChefAssignment && String(assignment.id) === chefAccessAssignmentId
+                                  const showChefAccessIndicator = totalChefAssignments > 1 && hasChefWorkAccess
 
-                                return (
-                                  <div
-                                    key={assignment.id}
-                                    draggable={isDraftPlanning && !savingAssignment}
-                                    onDragStart={isDraftPlanning ? () => handleAssignmentDragStart(assignment) : undefined}
-                                    onDragEnd={isDraftPlanning ? handleAssignmentDragEnd : undefined}
-                                    style={{
-                                      border: '1px solid var(--vp-border)',
-                                      borderRadius: '14px',
-                                      padding: '10px 12px',
-                                      background: 'var(--vp-surface-muted)',
-                                      cursor: isDraftPlanning && !savingAssignment ? 'grab' : 'default',
-                                      opacity: draggedAssignmentId === String(assignment.id) ? 0.55 : 1,
-                                      display: 'grid',
-                                      gap: '6px',
-                                    }}
-                                  >
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
-                                      <div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                                          {showChefAccessIndicator ? (
-                                            <span
-                                              style={chefAccessStarButtonStyle(true)}
-                                              title="Chefe com acesso a esta obra"
-                                              aria-label="Chefe com acesso a esta obra"
-                                            >
-                                              ★
-                                            </span>
-                                          ) : null}
-                                          <strong style={{ fontWeight: 900 }}>
-                                            {getPersonDisplayName(assignment.person, assignment.personId)}
-                                          </strong>
-                                        </div>
-                                        <p style={{ margin: '4px 0 0', color: 'var(--vp-text-muted)', fontSize: '13px', fontWeight: 700 }}>
-                                          {getEntityRoleLabel(assignment.person)}
-                                        </p>
-                                        {duplicateNonChefPersonIds.has(String(assignment.personId)) && (
-                                          <p style={{ margin: '4px 0 0', color: '#b45309', fontSize: '13px', fontWeight: 700 }}>
-                                            Afetado(a) noutra obra neste dia.
+                                  return (
+                                    <div
+                                      key={assignment.id}
+                                      draggable={isDraftPlanning && !savingAssignment}
+                                      onDragStart={isDraftPlanning ? (event) => handleAssignmentDragStart(event, assignment) : undefined}
+                                      onDragEnd={isDraftPlanning ? handleAssignmentDragEnd : undefined}
+                                      style={{
+                                        border: '1px solid var(--vp-border)',
+                                        borderRadius: '14px',
+                                        padding: '10px 12px',
+                                        background: 'var(--vp-surface-muted)',
+                                        cursor: isDraftPlanning && !savingAssignment ? 'grab' : 'default',
+                                        opacity: draggedAssignmentId === String(assignment.id) ? 0.55 : 1,
+                                        display: 'grid',
+                                        gap: '6px',
+                                        userSelect: 'none',
+                                      }}
+                                    >
+                                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                                        <div>
+                                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                            {showChefAccessIndicator ? (
+                                              <span
+                                                style={chefAccessStarButtonStyle(true)}
+                                                title="Chefe com acesso a esta obra"
+                                                aria-label="Chefe com acesso a esta obra"
+                                              >
+                                                ★
+                                              </span>
+                                            ) : null}
+                                            <strong style={{ fontWeight: 900 }}>
+                                              {getPersonDisplayName(assignment.person, assignment.personId)}
+                                            </strong>
+                                          </div>
+                                          <p style={{ margin: '4px 0 0', color: 'var(--vp-text-muted)', fontSize: '13px', fontWeight: 700 }}>
+                                            {getEntityRoleLabel(assignment.person)}
                                           </p>
+                                          {duplicateNonChefPersonIds.has(String(assignment.personId)) && (
+                                            <p style={{ margin: '4px 0 0', color: '#b45309', fontSize: '13px', fontWeight: 700 }}>
+                                              Afetado(a) noutra obra neste dia.
+                                            </p>
+                                          )}
+                                        </div>
+                                        {isDraftPlanning && (
+                                          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                            <button
+                                              type="button"
+                                              onClick={() => openEditModal(assignment)}
+                                              style={editPencilButtonStyle}
+                                              title="Editar afetação"
+                                              aria-label="Editar afetação"
+                                            >
+                                              <EditPencilIcon />
+                                            </button>
+                                            <button
+                                              type="button"
+                                              onClick={() => handleDeleteAssignment(assignment)}
+                                              style={trashBinButtonStyle}
+                                              title="Eliminar afetação"
+                                              aria-label="Eliminar afetação"
+                                            >
+                                              <TrashBinIcon />
+                                            </button>
+                                          </div>
                                         )}
                                       </div>
-                                      {isDraftPlanning && (
-                                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                                          <button
-                                            type="button"
-                                            onClick={() => openEditModal(assignment)}
-                                            style={editPencilButtonStyle}
-                                            title="Editar afetação"
-                                            aria-label="Editar afetação"
-                                          >
-                                            <EditPencilIcon />
-                                          </button>
-                                          <button
-                                            type="button"
-                                            onClick={() => handleDeleteAssignment(assignment)}
-                                            style={trashBinButtonStyle}
-                                            title="Eliminar afetação"
-                                            aria-label="Eliminar afetação"
-                                          >
-                                            <TrashBinIcon />
-                                          </button>
-                                        </div>
+                                      {assignment.notes && (
+                                        <p style={{ margin: 0, color: 'var(--vp-text-soft)' }}>{assignment.notes}</p>
                                       )}
                                     </div>
-                                    {assignment.notes && (
-                                      <p style={{ margin: 0, color: 'var(--vp-text-soft)' }}>{assignment.notes}</p>
-                                    )}
-                                  </div>
-                                )
-                              })}
+                                  )
+                                })}
+                              </div>
                             </div>
                           </SurfaceCard>
                         )

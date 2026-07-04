@@ -244,6 +244,14 @@ body > * {
   gap: 16px;
 }
 
+.vp-planning-work-drop-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border-radius: inherit;
+  background: transparent;
+}
+
 .vp-planning-secondary-action-bar {
   margin-top: auto;
   padding-top: 4px;
