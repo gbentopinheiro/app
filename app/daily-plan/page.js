@@ -680,11 +680,11 @@ export default function DailyPlanPage() {
       setSuccess(
         clonePreviousDay
           ? data.reusedWorkspace
-            ? `Draft de ${data.workspace?.date || selectedDate} atualizado com ${data.clonedAssignments} afetações copiadas de ${data.clonedFromDate}.`
-            : `Draft criado para ${data.workspace?.date || selectedDate} com ${data.clonedAssignments} afetações copiadas de ${data.clonedFromDate}.`
+            ? `Rascunho de ${data.workspace?.date || selectedDate} atualizado com ${data.clonedAssignments} afetações copiadas de ${data.clonedFromDate}.`
+            : `Rascunho criado para ${data.workspace?.date || selectedDate} com ${data.clonedAssignments} afetações copiadas de ${data.clonedFromDate}.`
           : data.reusedWorkspace
-            ? `Draft de ${data.workspace?.date || selectedDate} reiniciado${data.clearedAssignments ? ` e limpo (${data.clearedAssignments} afetações removidas)` : ''}.`
-            : `Draft criado para ${data.workspace?.date || selectedDate}.`
+            ? `Rascunho de ${data.workspace?.date || selectedDate} reiniciado${data.clearedAssignments ? ` e limpo (${data.clearedAssignments} afetações removidas)` : ''}.`
+            : `Rascunho criado para ${data.workspace?.date || selectedDate}.`
       )
       await loadDailyPlan(selectedDate)
     } catch (err) {
@@ -726,10 +726,10 @@ export default function DailyPlanPage() {
     try {
       await setPlanningWorkspaceToDraft(
         selectedPlanningWorkspace.id,
-        'Erro ao voltar o planeamento para draft',
+        'Erro ao voltar o planeamento para rascunho',
       )
       setSuccess(
-        'Planeamento voltou a draft. Os chefes continuam a ver a última versão publicada até confirmares novamente.',
+        'Planeamento voltou a rascunho. Os chefes continuam a ver a última versão publicada até publicares novamente.',
       )
       await loadDailyPlan(selectedDate)
     } catch (err) {
@@ -964,13 +964,13 @@ export default function DailyPlanPage() {
       const data = await savePlanningDraftAssignment(
         assignmentForm.id,
         payload,
-        'Erro ao guardar afetação no draft',
+        'Erro ao guardar afetação no rascunho',
       )
 
       setSuccess(
         assignmentForm.id
-          ? `Afetação do draft atualizada para ${data.person?.name || 'pessoa'}.`
-          : `Afetação criada no draft para ${data.person?.name || 'pessoa'}.`
+          ? `Afetação do rascunho atualizada para ${data.person?.name || 'pessoa'}.`
+          : `Afetação criada no rascunho para ${data.person?.name || 'pessoa'}.`
       )
       closeAddModal()
       await loadDailyPlan(selectedDate)
@@ -985,7 +985,7 @@ export default function DailyPlanPage() {
     if (!isDraftPlanning) return
 
     const confirmed = window.confirm(
-      `Pretendes realmente eliminar a afetação de ${assignment.person?.name || 'esta pessoa'} do draft atual?`
+      `Pretendes realmente eliminar a afetação de ${assignment.person?.name || 'esta pessoa'} do rascunho atual?`
     )
 
     if (!confirmed) return
@@ -994,9 +994,9 @@ export default function DailyPlanPage() {
     setSuccess('')
 
     try {
-      await deletePlanningDraftAssignment(assignment.id, 'Erro ao eliminar afetação do draft')
+      await deletePlanningDraftAssignment(assignment.id, 'Erro ao eliminar afetação do rascunho')
 
-      setSuccess('Afetação removida do draft com sucesso.')
+      setSuccess('Afetação removida do rascunho com sucesso.')
       await loadDailyPlan(selectedDate)
     } catch (err) {
       setError(err.message)
@@ -1063,7 +1063,7 @@ export default function DailyPlanPage() {
           notes: assignment.notes || '',
           hasWorkAccess: assignment.hasWorkAccess === true,
         },
-        'Erro ao mover afetação no draft',
+        'Erro ao mover afetação no rascunho',
       )
 
       setSuccess(`${assignment.person?.name || 'Pessoa'} movido(a) para a obra #${targetWork.number} - ${targetWork.name}.`)
@@ -1198,7 +1198,7 @@ export default function DailyPlanPage() {
             {loading && <p style={{ margin: 0 }}>A carregar plano diário...</p>}
             {!selectedPlanningWorkspace && !error && !loading && (
               <p style={{ margin: 0, color: 'var(--vp-text-muted)' }}>
-                Ainda não existe planeamento para {selectedDate}. Usa Criar novo ou Copiar anterior para preparar um draft.
+                Ainda não existe planeamento para {selectedDate}. Usa Criar novo ou Copiar anterior para preparar um rascunho.
               </p>
             )}
           </section>
@@ -1219,15 +1219,15 @@ export default function DailyPlanPage() {
                         border: `1px solid ${isDraftPlanning ? 'rgba(245, 158, 11, 0.32)' : 'rgba(31, 122, 69, 0.28)'}`,
                       }}
                     >
-                      {isDraftPlanning ? 'Draft' : 'Published'}
+                      {isDraftPlanning ? 'Rascunho' : 'Publicada'}
                     </span>
-                    <span style={{ color: 'var(--vp-text-muted)', fontSize: '13px', fontWeight: 700 }}>
-                      {isDraftPlanning
-                        ? selectedPlanningWorkspace.publishedWorkPlanId
-                          ? 'Os chefes continuam a ver a última versão publicada até confirmares novamente.'
-                          : 'Enquanto estiver em draft, os chefes ainda não veem este planeamento.'
-                        : 'Os chefes já estão a ver esta versão publicada.'}
-                    </span>
+                    {isDraftPlanning ? (
+                      <span style={{ color: 'var(--vp-text-muted)', fontSize: '13px', fontWeight: 700 }}>
+                        {selectedPlanningWorkspace.publishedWorkPlanId
+                          ? 'Os chefes continuam a ver a última versão publicada até publicares novamente.'
+                          : 'Enquanto estiver em rascunho, os chefes ainda não veem este planeamento.'}
+                      </span>
+                    ) : null}
                   </div>
                 </div>
 
@@ -1256,7 +1256,7 @@ export default function DailyPlanPage() {
                             : { ...secondaryButtonStyle, ...compactActionButtonStyle }
                         }
                       >
-                        {publishing ? 'A publicar...' : 'Confirm / Publish'}
+                        {publishing ? 'A publicar...' : 'Publicar'}
                       </button>
                     </>
                   ) : (
@@ -1270,7 +1270,7 @@ export default function DailyPlanPage() {
                           : { ...secondaryButtonStyle, ...compactActionButtonStyle }
                       }
                     >
-                      {switchingToDraft ? 'A voltar...' : 'Edit'}
+                      {switchingToDraft ? 'A voltar...' : 'Editar'}
                     </button>
                   )}
                 </div>
