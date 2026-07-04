@@ -27,7 +27,7 @@ async function requestPlanningJson(path, options, fallbackMessage) {
 
 export async function getPlanningWorkspaceView(
   params = {},
-  fallbackMessage = 'Erro ao carregar o draft do planeamento',
+  fallbackMessage = 'Erro ao carregar o rascunho do planeamento',
 ) {
   return requestPlanningJson(
     `/api/planning-workspaces${buildQueryString(params)}`,
@@ -38,7 +38,7 @@ export async function getPlanningWorkspaceView(
 
 export async function initializePlanningWorkspaceDraft(
   payload,
-  fallbackMessage = 'Erro ao preparar o draft do planeamento',
+  fallbackMessage = 'Erro ao preparar o rascunho do planeamento',
 ) {
   return requestPlanningJson(
     '/api/planning-workspaces',
@@ -64,7 +64,7 @@ export async function publishPlanningWorkspace(
 
 export async function setPlanningWorkspaceToDraft(
   workspaceId,
-  fallbackMessage = 'Erro ao voltar o planeamento para draft',
+  fallbackMessage = 'Erro ao voltar o planeamento para rascunho',
 ) {
   return requestPlanningJson(
     `/api/planning-workspaces/${workspaceId}/edit`,
@@ -76,7 +76,7 @@ export async function setPlanningWorkspaceToDraft(
 export async function savePlanningDraftAssignment(
   assignmentId,
   payload,
-  fallbackMessage = 'Erro ao gravar afetacao no draft',
+  fallbackMessage = 'Erro ao gravar afetação no rascunho',
 ) {
   const hasAssignmentId = assignmentId !== null && assignmentId !== undefined && assignmentId !== ''
   const path = hasAssignmentId
@@ -97,7 +97,7 @@ export async function savePlanningDraftAssignment(
 
 export async function deletePlanningDraftAssignment(
   assignmentId,
-  fallbackMessage = 'Erro ao remover afetacao do draft',
+  fallbackMessage = 'Erro ao remover afetação do rascunho',
 ) {
   return requestPlanningJson(
     `/api/planning-workspace-assignments/${assignmentId}`,

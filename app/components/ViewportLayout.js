@@ -56,3 +56,83 @@ export function ViewportScrollArea({
     </Component>
   )
 }
+
+export function ContentFrame({
+  as: Component = 'div',
+  width = 'default',
+  children,
+  className = '',
+  style,
+}) {
+  return (
+    <Component
+      className={joinClassNames(
+        'vp-content-frame',
+        width ? `vp-content-frame--${width}` : '',
+        className,
+      )}
+      style={style}
+    >
+      {children}
+    </Component>
+  )
+}
+
+export function FlowStack({
+  as: Component = 'div',
+  gap = 'md',
+  children,
+  className = '',
+  style,
+}) {
+  return (
+    <Component
+      className={joinClassNames('vp-flow-stack', gap ? `vp-flow-stack--${gap}` : '', className)}
+      style={style}
+    >
+      {children}
+    </Component>
+  )
+}
+
+export function ResponsiveGrid({
+  as: Component = 'div',
+  preset = 'auto',
+  children,
+  className = '',
+  style,
+}) {
+  return (
+    <Component
+      className={joinClassNames('vp-grid', preset ? `vp-grid--${preset}` : '', className)}
+      style={style}
+    >
+      {children}
+    </Component>
+  )
+}
+
+export function SurfaceCard({
+  as: Component = 'section',
+  variant = 'panel',
+  interactive = false,
+  children,
+  className = '',
+  style,
+  ...props
+}) {
+  return (
+    <Component
+      className={joinClassNames(
+        'vp-surface-card',
+        variant ? `vp-surface-card--${variant}` : '',
+        interactive ? 'vp-surface-card--interactive' : '',
+        className,
+      )}
+      style={style}
+      {...props}
+    >
+      {children}
+    </Component>
+  )
+}

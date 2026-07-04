@@ -2,9 +2,18 @@
 
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
+import PlanningDatePopover from '../components/PlanningDatePopover'
 import EditPencilIcon, { editPencilButtonStyle } from '../components/EditPencilIcon'
 import TrashBinIcon, { trashBinButtonStyle } from '../components/TrashBinIcon'
-import { ViewportPage, ViewportScrollArea, ViewportShell } from '../components/ViewportLayout.js'
+import {
+  ContentFrame,
+  FlowStack,
+  ResponsiveGrid,
+  SurfaceCard,
+  ViewportPage,
+  ViewportScrollArea,
+  ViewportShell,
+} from '../components/ViewportLayout.js'
 import {
   deletePlanningDraftAssignment,
   getPlanningWorkspaceView,
@@ -13,11 +22,16 @@ import {
   savePlanningDraftAssignment,
   setPlanningWorkspaceToDraft,
 } from '../../frontend/controllers/planning-workspaces-controller.js'
+import {
+  getPersonDisplayName,
+  getWorkDisplayName,
+  getWorkDisplayReference,
+} from '../../lib/display-names.js'
 import { getEntityRoleLabel, getRoleLabel, isChefRole } from '../../lib/roles.js'
 
 const pageStyle = {
   minHeight: '100vh',
-  padding: '40px 24px 60px',
+  padding: '32px clamp(16px, 3vw, 32px) 56px',
   background: 'var(--vp-page-background)',
   color: 'var(--vp-text)',
   fontFamily: '"Avenir Next", "Segoe UI", "-apple-system", "BlinkMacSystemFont", sans-serif',
@@ -25,10 +39,9 @@ const pageStyle = {
 }
 
 const shellStyle = {
-  maxWidth: '1180px',
-  margin: '0 auto',
+  minWidth: 0,
   display: 'grid',
-  gap: '24px',
+  gap: '28px',
 }
 
 const heroStyle = {
@@ -37,21 +50,13 @@ const heroStyle = {
   background: 'var(--vp-module-hero)',
   border: '1px solid var(--vp-module-hero-border)',
   borderRadius: '32px',
-  padding: '28px',
+  padding: '20px clamp(18px, 2.4vw, 28px) 24px',
   boxShadow: 'var(--vp-hero-shadow-strong)',
   color: '#ffffff',
   '--vp-text-muted': 'var(--vp-hero-text-muted)',
   '--vp-text-soft': 'var(--vp-hero-text-soft)',
   '--vp-surface': 'var(--vp-hero-surface)',
   '--vp-border': 'var(--vp-hero-border)',
-}
-
-const panelStyle = {
-  background: 'var(--vp-surface-soft)',
-  border: '1px solid var(--vp-border)',
-  borderRadius: '24px',
-  padding: '24px',
-  boxShadow: 'var(--vp-shadow-panel)',
 }
 
 const modalBackdropStyle = {
@@ -80,8 +85,8 @@ const modalCardStyle = {
 const topBarStyle = {
   display: 'flex',
   justifyContent: 'space-between',
-  alignItems: 'flex-end',
-  gap: '16px',
+  alignItems: 'flex-start',
+  gap: '14px',
   flexWrap: 'wrap',
 }
 
@@ -90,56 +95,30 @@ const heroActionColumnStyle = {
   flexDirection: 'column',
   gap: '12px',
   alignItems: 'stretch',
-  flex: '0 0 148px',
-  minWidth: '148px',
-  maxWidth: '148px',
-}
-
-const statGridStyle = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
-  gap: '14px',
-  flex: 1,
-}
-
-const statCardStyle = {
-  borderRadius: '20px',
-  padding: '18px',
-  background: 'var(--vp-stat-surface)',
-  border: '1px solid var(--vp-stat-border)',
-  boxShadow: 'var(--vp-stat-shadow)',
-}
-
-const topSummaryCardStyle = {
-  ...statCardStyle,
-  minHeight: '98px',
-  boxSizing: 'border-box',
-  display: 'grid',
-  alignContent: 'start',
-}
-
-const topSummaryButtonCardStyle = {
-  ...topSummaryCardStyle,
-  width: '100%',
-  textAlign: 'left',
-  cursor: 'pointer',
+  width: 'min(100%, 164px)',
 }
 
 const topSummaryGridStyle = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))',
-  gap: '14px',
   alignItems: 'stretch',
-  marginTop: '-10px',
+  marginTop: '24px',
+  '--vp-grid-gap': '14px',
 }
 
 const topSummaryLabelStyle = {
   fontSize: '12px',
-  color: 'var(--vp-text-soft)',
+  color: '#425a76',
   textTransform: 'uppercase',
   fontWeight: 800,
   lineHeight: 1.2,
   minHeight: '29px',
+}
+
+const topSummaryValueStyle = {
+  marginTop: '8px',
+  fontSize: '32px',
+  lineHeight: 1,
+  fontWeight: 900,
+  color: '#0f223c',
 }
 
 const inputStyle = {
@@ -177,6 +156,7 @@ const primaryButtonStyle = {
   color: '#fff',
   fontWeight: 800,
   cursor: 'pointer',
+  transition: 'transform 160ms ease, filter 160ms ease, box-shadow 160ms ease',
 }
 
 const secondaryButtonStyle = {
@@ -187,22 +167,13 @@ const secondaryButtonStyle = {
   color: 'var(--vp-accent)',
   fontWeight: 800,
   cursor: 'pointer',
+  transition: 'transform 160ms ease, filter 160ms ease, background-color 160ms ease, box-shadow 160ms ease',
 }
 
 const disabledButtonStyle = {
   ...primaryButtonStyle,
   background: 'var(--vp-disabled)',
   cursor: 'not-allowed',
-}
-
-const pageActionButtonStyle = {
-  width: '100%',
-  minHeight: '42px',
-  padding: '10px 20px',
-  display: 'inline-flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  textAlign: 'center',
 }
 
 const compactActionButtonStyle = {
@@ -219,12 +190,21 @@ const statusPillStyle = {
   display: 'inline-flex',
   alignItems: 'center',
   justifyContent: 'center',
+  gap: '8px',
   borderRadius: '999px',
   padding: '8px 14px',
   fontSize: '12px',
   fontWeight: 900,
   letterSpacing: '0.04em',
   textTransform: 'uppercase',
+}
+
+const planningHeaderStyle = {
+  marginTop: '22px',
+  display: 'grid',
+  justifyItems: 'center',
+  gap: '6px',
+  textAlign: 'center',
 }
 
 const closeButtonStyle = {
@@ -253,15 +233,6 @@ const chefAccessStarButtonStyle = (selected, disabled = false) => ({
   cursor: disabled ? 'not-allowed' : 'pointer',
   opacity: disabled ? 0.45 : 1,
 })
-
-const workCardStyle = {
-  border: '1px solid var(--vp-border)',
-  borderRadius: '20px',
-  padding: '20px',
-  background: 'var(--vp-surface)',
-  display: 'grid',
-  gap: '8px',
-}
 
 const personListStyle = {
   margin: '20px 0 0',
@@ -296,14 +267,9 @@ const emptyAssignmentForm = {
   hasWorkAccess: false,
 }
 
-function openNativeDatePicker(event) {
-  try {
-    if (typeof event?.currentTarget?.showPicker === 'function') {
-      event.currentTarget.showPicker()
-    }
-  } catch (error) {
-    return
-  }
+function capitalizeLabel(value) {
+  if (!value) return ''
+  return value.charAt(0).toUpperCase() + value.slice(1)
 }
 
 function getWorkHourlyCostForPerson(work, person, fallbackCost = 0) {
@@ -428,7 +394,7 @@ export default function DailyPlanPage() {
         groups.set(key, {
           workId: assignment.work?.id || assignment.workId,
           workNumber: assignment.work?.number || '-',
-          workName: assignment.work?.name || `Obra ${assignment.workId}`,
+          workName: getWorkDisplayName(assignment.work, assignment.workId),
           assignments: [assignment],
         })
       }
@@ -438,8 +404,8 @@ export default function DailyPlanPage() {
       .map(group => ({
         ...group,
         assignments: [...group.assignments].sort((left, right) =>
-          String(left.person?.name || `Pessoa ${left.personId}`).localeCompare(
-            String(right.person?.name || `Pessoa ${right.personId}`),
+          String(getPersonDisplayName(left.person, left.personId)).localeCompare(
+            String(getPersonDisplayName(right.person, right.personId)),
             'pt-PT',
             { sensitivity: 'base' },
           ),
@@ -450,6 +416,47 @@ export default function DailyPlanPage() {
 
   const isDraftPlanning = selectedPlanningWorkspace?.state === 'draft'
   const isPublishedPlanning = selectedPlanningWorkspace?.state === 'published'
+  const formattedPlanningDate = useMemo(() => {
+    if (!selectedDate) return ''
+
+    const [year, month, day] = selectedDate.split('-').map(Number)
+
+    if (!year || !month || !day) {
+      return selectedDate
+    }
+
+    const date = new Date(year, month - 1, day, 12)
+    const weekday = capitalizeLabel(new Intl.DateTimeFormat('pt-PT', { weekday: 'long' }).format(date))
+    const monthLabel = capitalizeLabel(new Intl.DateTimeFormat('pt-PT', { month: 'long' }).format(date))
+
+    return `${weekday} · ${date.getDate()} ${monthLabel} ${date.getFullYear()}`
+  }, [selectedDate])
+  const planningStatusMeta = useMemo(() => {
+    if (isDraftPlanning) {
+      return {
+        label: 'Rascunho',
+        background: 'rgba(245, 158, 11, 0.16)',
+        color: '#9a6400',
+        border: 'rgba(245, 158, 11, 0.32)',
+      }
+    }
+
+    if (isPublishedPlanning) {
+      return {
+        label: 'Publicado',
+        background: 'rgba(31, 122, 69, 0.14)',
+        color: '#165f37',
+        border: 'rgba(31, 122, 69, 0.28)',
+      }
+    }
+
+    return {
+      label: loading ? 'A carregar' : 'Sem planeamento',
+      background: 'rgba(148, 163, 184, 0.24)',
+      color: '#30475f',
+      border: 'rgba(100, 116, 139, 0.36)',
+    }
+  }, [isDraftPlanning, isPublishedPlanning, loading])
   const activeWorks = useMemo(
     () => defaults.works.filter(work => work.status !== 'completed'),
     [defaults.works],
@@ -560,8 +567,8 @@ export default function DailyPlanPage() {
   const sortedPeople = useMemo(
     () =>
       [...defaults.people].sort((left, right) =>
-        String(left.name || `Pessoa ${left.id}`).localeCompare(
-          String(right.name || `Pessoa ${right.id}`),
+        String(getPersonDisplayName(left, left.id)).localeCompare(
+          String(getPersonDisplayName(right, right.id)),
           'pt-PT',
           { sensitivity: 'base' },
         ),
@@ -586,16 +593,19 @@ export default function DailyPlanPage() {
 
       const existing = peopleMap.get(personId) || {
         personId,
-        name: assignment.person?.name || `Pessoa ${assignment.personId}`,
+        name: getPersonDisplayName(assignment.person, assignment.personId),
         role: assignment.person?.role || '',
         works: new Map(),
       }
 
-      existing.name = assignment.person?.name || existing.name
+      existing.name = getPersonDisplayName(assignment.person, assignment.personId) || existing.name
       existing.role = assignment.person?.role || existing.role
       existing.works.set(
         String(assignment.workId),
-        assignment.work?.name || activeWorksById.get(String(assignment.workId))?.name || `Obra ${assignment.workId}`,
+        getWorkDisplayName(
+          assignment.work || activeWorksById.get(String(assignment.workId)),
+          assignment.workId,
+        ),
       )
       peopleMap.set(personId, existing)
     })
@@ -626,7 +636,7 @@ export default function DailyPlanPage() {
 
     const messageParts = selectedGroups.map(group => {
       const peopleLines = group.assignments
-        .map(assignment => `- ${assignment.person?.name || `Pessoa ${assignment.personId}`}`)
+        .map(assignment => `- ${getPersonDisplayName(assignment.person, assignment.personId)}`)
         .join('\n')
 
       return `${group.workName}\n${peopleLines}`
@@ -634,7 +644,6 @@ export default function DailyPlanPage() {
 
     return [`Plano do dia ${selectedPlanningWorkspace.date}`, ...messageParts].join('\n\n')
   }, [groupedAssignments, selectedMessageWorkIds, selectedPlanningWorkspace])
-
   async function loadDailyPlan(date) {
     setLoading(true)
     setError('')
@@ -969,8 +978,8 @@ export default function DailyPlanPage() {
 
       setSuccess(
         assignmentForm.id
-          ? `Afetação do rascunho atualizada para ${data.person?.name || 'pessoa'}.`
-          : `Afetação criada no rascunho para ${data.person?.name || 'pessoa'}.`
+          ? `Afetação do rascunho atualizada para ${getPersonDisplayName(data.person)}.`
+          : `Afetação criada no rascunho para ${getPersonDisplayName(data.person)}.`
       )
       closeAddModal()
       await loadDailyPlan(selectedDate)
@@ -985,7 +994,7 @@ export default function DailyPlanPage() {
     if (!isDraftPlanning) return
 
     const confirmed = window.confirm(
-      `Pretendes realmente eliminar a afetação de ${assignment.person?.name || 'esta pessoa'} do rascunho atual?`
+      `Pretendes realmente eliminar a afetação de ${getPersonDisplayName(assignment.person, assignment.personId)} do rascunho atual?`
     )
 
     if (!confirmed) return
@@ -1066,7 +1075,9 @@ export default function DailyPlanPage() {
         'Erro ao mover afetação no rascunho',
       )
 
-      setSuccess(`${assignment.person?.name || 'Pessoa'} movido(a) para a obra #${targetWork.number} - ${targetWork.name}.`)
+      setSuccess(
+        `${getPersonDisplayName(assignment.person, assignment.personId)} movido(a) para a obra ${getWorkDisplayReference(targetWork, targetWork.id)}.`,
+      )
       await loadDailyPlan(selectedDate)
     } catch (err) {
       setError(err.message)
@@ -1075,11 +1086,11 @@ export default function DailyPlanPage() {
     }
   }
 
-  const totalAssignments = assignments.length
   const assignedPersonIds = useMemo(
     () => new Set(assignments.map(assignment => String(assignment.personId))),
     [assignments],
   )
+  const totalAssignedPeople = assignedPersonIds.size
   const unassignedPeople = useMemo(
     () => defaults.people
       .filter(person => !assignedPersonIds.has(String(person.id)))
@@ -1097,377 +1108,382 @@ export default function DailyPlanPage() {
   }, [selectedUnassignedRole, unassignedPeople])
   const isInitialSummaryLoading = loading && defaults.people.length === 0 && defaults.works.length === 0 && assignments.length === 0
   const totalUnassignedPeople = unassignedPeople.length
-  const totalWorks = groupedAssignments.length
   const totalUnplannedWorks = unplannedWorks.length
   const isPlanActionBusy = creating || publishing || switchingToDraft
 
   return (
     <ViewportPage lockViewport style={pageStyle}>
       <ViewportShell fillHeight style={shellStyle}>
-        <section style={heroStyle}>
-          <div style={topBarStyle}>
-            <div>
-              <Link href="/" style={{ color: 'var(--vp-accent)', textDecoration: 'none', fontWeight: 700 }}>
-                Voltar ao menu
-              </Link>
-              <h1 style={{ margin: '10px 0 12px', fontSize: '44px', lineHeight: 1.05, fontWeight: 900 }}>
-                Plano diário
-              </h1>
+        <ContentFrame width="ultra">
+          <section style={heroStyle}>
+            <div style={topBarStyle}>
+              <div>
+                <Link href="/" style={{ color: 'var(--vp-accent)', textDecoration: 'none', fontWeight: 700 }}>
+                  Voltar ao menu
+                </Link>
+                <h1 style={{ margin: '10px 0 8px', fontSize: '44px', lineHeight: 1.05, fontWeight: 900 }}>
+                  Plano diário
+                </h1>
+              </div>
+              <div style={heroActionColumnStyle}>
+                <button
+                  className="vp-planning-action-button"
+                  type="button"
+                  onClick={() => handleCreateWorkPlan(false)}
+                  disabled={isPlanActionBusy}
+                  style={
+                    isPlanActionBusy
+                      ? { ...disabledButtonStyle, ...compactActionButtonStyle, width: '100%' }
+                      : { ...primaryButtonStyle, ...compactActionButtonStyle, width: '100%' }
+                  }
+                >
+                  {creating && creatingMode === 'new' ? 'A criar...' : 'Criar novo'}
+                </button>
+              </div>
             </div>
-            <div style={heroActionColumnStyle}>
-              <button
-                type="button"
-                onClick={() => handleCreateWorkPlan(false)}
-                disabled={isPlanActionBusy}
-                style={
-                  isPlanActionBusy
-                    ? { ...disabledButtonStyle, ...compactActionButtonStyle }
-                    : { ...primaryButtonStyle, ...compactActionButtonStyle }
-                }
-              >
-                {creating && creatingMode === 'new' ? 'A criar...' : 'Criar novo'}
-              </button>
-              <button
-                type="button"
-                onClick={() => handleCreateWorkPlan(true)}
-                disabled={isPlanActionBusy}
-                style={
-                  isPlanActionBusy
-                    ? { ...disabledButtonStyle, ...compactActionButtonStyle }
-                    : { ...secondaryButtonStyle, ...compactActionButtonStyle }
-                }
-              >
-                {creating && creatingMode === 'clone' ? 'A copiar...' : 'Copiar anterior'}
-              </button>
+            <div style={planningHeaderStyle}>
+              <PlanningDatePopover
+                value={selectedDate}
+                displayLabel={formattedPlanningDate}
+                onChange={setSelectedDate}
+              />
             </div>
-          </div>
-        </section>
-        <ViewportScrollArea style={{ '--vp-page-scroll-gap': '24px' }}>
-        <section className="vp-responsive-stat-grid" style={topSummaryGridStyle}>
-          <article style={topSummaryCardStyle}>
-            <div style={topSummaryLabelStyle}>Data</div>
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(event) => setSelectedDate(event.target.value)}
-              onClick={openNativeDatePicker}
-              style={{
-                ...inputStyle,
-                marginTop: '8px',
-                fontSize: '12px',
-                fontWeight: 700,
-                padding: '10px 8px',
-                width: '100%',
-                boxSizing: 'border-box',
-              }}
-            />
-          </article>
-          <article style={topSummaryCardStyle}>
-            <div style={topSummaryLabelStyle}>Obras planeadas</div>
-            <div style={{ marginTop: '8px', fontSize: '32px', fontWeight: 700 }}>{isInitialSummaryLoading ? '—' : totalWorks}</div>
-          </article>
-          <article style={topSummaryCardStyle}>
-            <div style={topSummaryLabelStyle}>Obras não planeadas</div>
-            <div style={{ marginTop: '8px', fontSize: '32px', fontWeight: 700 }}>{isInitialSummaryLoading ? '—' : totalUnplannedWorks}</div>
-          </article>
-          <article style={topSummaryCardStyle}>
-            <div style={topSummaryLabelStyle}>Pessoas afetadas</div>
-            <div style={{ marginTop: '8px', fontSize: '32px', fontWeight: 700 }}>{isInitialSummaryLoading ? '—' : totalAssignments}</div>
-          </article>
-          <button
-            type="button"
-            onClick={openUnassignedPeopleModal}
-            disabled={isInitialSummaryLoading || totalUnassignedPeople === 0}
-            style={{
-              ...(!isInitialSummaryLoading && totalUnassignedPeople > 0 ? topSummaryButtonCardStyle : topSummaryCardStyle),
-              border: '1px solid var(--vp-stat-border)',
-              textAlign: 'left',
-              color: 'inherit',
-              opacity: !isInitialSummaryLoading && totalUnassignedPeople > 0 ? 1 : 0.72,
-            }}
-          >
-            <div style={topSummaryLabelStyle}>Pessoas não afetadas</div>
-            <div style={{ marginTop: '8px', fontSize: '32px', fontWeight: 700 }}>{isInitialSummaryLoading ? '—' : totalUnassignedPeople}</div>
-          </button>
-        </section>
 
-        {(error || success || loading || (!selectedPlanningWorkspace && !error && !loading)) && (
-          <section style={panelStyle}>
-            {error && <p style={{ margin: 0, color: '#b42318' }}>{error}</p>}
-            {success && <p style={{ margin: 0, color: '#1f7a45' }}>{success}</p>}
-            {loading && <p style={{ margin: 0 }}>A carregar plano diário...</p>}
-            {!selectedPlanningWorkspace && !error && !loading && (
-              <p style={{ margin: 0, color: 'var(--vp-text-muted)' }}>
-                Ainda não existe planeamento para {selectedDate}. Usa Criar novo ou Copiar anterior para preparar um rascunho.
-              </p>
-            )}
-          </section>
-        )}
-
-        {!loading && selectedPlanningWorkspace && (
-          <section style={panelStyle}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '20px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap', width: '100%' }}>
-                <div style={{ display: 'grid', gap: '8px' }}>
-                  <h2 style={{ margin: 0, fontWeight: 900 }}>Plano do dia</h2>
-                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <ResponsiveGrid preset="summary" style={topSummaryGridStyle}>
+              <SurfaceCard as="article" variant="stat" style={{ '--vp-card-gap': '0px' }}>
+                <div style={topSummaryLabelStyle}>Estado</div>
+                <div style={{ marginTop: '10px' }}>
+                  <span
+                    style={{
+                      ...statusPillStyle,
+                      background: planningStatusMeta.background,
+                      color: planningStatusMeta.color,
+                      border: `1px solid ${planningStatusMeta.border}`,
+                    }}
+                  >
                     <span
+                      aria-hidden="true"
                       style={{
-                        ...statusPillStyle,
-                        background: isDraftPlanning ? 'rgba(245, 158, 11, 0.18)' : 'rgba(31, 122, 69, 0.16)',
-                        color: isDraftPlanning ? '#b45309' : '#1f7a45',
-                        border: `1px solid ${isDraftPlanning ? 'rgba(245, 158, 11, 0.32)' : 'rgba(31, 122, 69, 0.28)'}`,
+                        width: '8px',
+                        height: '8px',
+                        borderRadius: '999px',
+                        background: 'currentColor',
+                        display: 'inline-block',
+                        flexShrink: 0,
+                      }}
+                    />
+                    {planningStatusMeta.label}
+                  </span>
+                </div>
+              </SurfaceCard>
+              <SurfaceCard as="article" variant="stat" style={{ '--vp-card-gap': '0px' }}>
+                <div style={topSummaryLabelStyle}>Pessoas atribuídas</div>
+                <div style={topSummaryValueStyle}>
+                  {isInitialSummaryLoading ? '—' : totalAssignedPeople}
+                </div>
+              </SurfaceCard>
+              <SurfaceCard
+                as="button"
+                variant="stat"
+                interactive={!isInitialSummaryLoading && totalUnassignedPeople > 0}
+                className="vp-planning-action-button"
+                type="button"
+                onClick={openUnassignedPeopleModal}
+                disabled={isInitialSummaryLoading || totalUnassignedPeople === 0}
+                style={{
+                  '--vp-card-gap': '0px',
+                  width: '100%',
+                  textAlign: 'left',
+                  color: 'inherit',
+                  appearance: 'none',
+                  font: 'inherit',
+                  opacity: !isInitialSummaryLoading && totalUnassignedPeople > 0 ? 1 : 0.72,
+                }}
+              >
+                <div style={topSummaryLabelStyle}>Pessoas não atribuídas</div>
+                <div style={topSummaryValueStyle}>
+                  {isInitialSummaryLoading ? '—' : totalUnassignedPeople}
+                </div>
+              </SurfaceCard>
+              <SurfaceCard as="article" variant="stat" style={{ '--vp-card-gap': '0px' }}>
+                <div style={topSummaryLabelStyle}>Obras pendentes</div>
+                <div style={topSummaryValueStyle}>
+                  {isInitialSummaryLoading ? '—' : totalUnplannedWorks}
+                </div>
+              </SurfaceCard>
+            </ResponsiveGrid>
+          </section>
+        </ContentFrame>
+        <ViewportScrollArea style={{ '--vp-page-scroll-gap': '24px' }}>
+          <ContentFrame width="ultra">
+            <FlowStack gap="lg">
+              {(error || success || loading || (!selectedPlanningWorkspace && !error && !loading)) && (
+                <SurfaceCard as="section" variant="panel">
+                  {error && <p style={{ margin: 0, color: '#b42318' }}>{error}</p>}
+                  {success && <p style={{ margin: 0, color: '#1f7a45' }}>{success}</p>}
+                  {loading && <p style={{ margin: 0 }}>A carregar plano diário...</p>}
+                  {!selectedPlanningWorkspace && !error && !loading && (
+                    <p style={{ margin: 0, color: 'var(--vp-text-muted)' }}>
+                      Ainda não existe planeamento para este dia. Cria um novo plano para começar.
+                    </p>
+                  )}
+                </SurfaceCard>
+              )}
+
+              {!loading && selectedPlanningWorkspace && (
+                <SurfaceCard as="section" variant="panel" className="vp-planning-assignments-panel">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <h2 style={{ margin: 0, fontWeight: 900, fontSize: '22px' }}>Afetações do planeamento</h2>
+
+                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+                      {isDraftPlanning ? (
+                        <>
+                          <button
+                            className="vp-planning-action-button"
+                            type="button"
+                            onClick={openAddModal}
+                            disabled={savingAssignment || publishing}
+                            style={
+                              savingAssignment || publishing
+                                ? { ...disabledButtonStyle, ...compactActionButtonStyle }
+                                : { ...primaryButtonStyle, ...compactActionButtonStyle }
+                            }
+                          >
+                            Adicionar
+                          </button>
+                          <button
+                            className="vp-planning-action-button"
+                            type="button"
+                            onClick={handlePublishPlanning}
+                            disabled={publishing || savingAssignment}
+                            style={
+                              publishing || savingAssignment
+                                ? { ...disabledButtonStyle, ...compactActionButtonStyle }
+                                : { ...secondaryButtonStyle, ...compactActionButtonStyle }
+                            }
+                          >
+                            {publishing ? 'A publicar...' : 'Publicar'}
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          className="vp-planning-action-button"
+                          type="button"
+                          onClick={handleEditPublishedPlanning}
+                          disabled={switchingToDraft}
+                          style={
+                            switchingToDraft
+                              ? { ...disabledButtonStyle, ...compactActionButtonStyle }
+                              : { ...secondaryButtonStyle, ...compactActionButtonStyle }
+                          }
+                        >
+                          {switchingToDraft ? 'A voltar...' : 'Editar'}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {duplicateNonChefAssignments.length > 0 && (
+                    <div
+                      style={{
+                        padding: '16px 18px',
+                        borderRadius: '18px',
+                        border: '1px solid rgba(191, 106, 36, 0.34)',
+                        background: 'rgba(243, 220, 207, 0.78)',
+                        color: '#5b3417',
+                        display: 'grid',
+                        gap: '8px',
                       }}
                     >
-                      {isDraftPlanning ? 'Rascunho' : 'Publicada'}
-                    </span>
-                    {isDraftPlanning ? (
-                      <span style={{ color: 'var(--vp-text-muted)', fontSize: '13px', fontWeight: 700 }}>
-                        {selectedPlanningWorkspace.publishedWorkPlanId
-                          ? 'Os chefes continuam a ver a última versão publicada até publicares novamente.'
-                          : 'Enquanto estiver em rascunho, os chefes ainda não veem este planeamento.'}
-                      </span>
-                    ) : null}
-                  </div>
-                </div>
+                      <strong style={{ fontWeight: 900 }}>Atenção: pessoas afetadas em mais de uma obra</strong>
+                      {duplicateNonChefAssignments.map(person => (
+                        <span key={person.personId}>
+                          {person.name}: {person.workNames.join(', ')}
+                        </span>
+                      ))}
+                    </div>
+                  )}
 
-                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
-                  {isDraftPlanning ? (
-                    <>
-                      <button
-                        type="button"
-                        onClick={openAddModal}
-                        disabled={savingAssignment || publishing}
-                        style={
-                          savingAssignment || publishing
-                            ? { ...disabledButtonStyle, ...compactActionButtonStyle }
-                            : { ...primaryButtonStyle, ...compactActionButtonStyle }
-                        }
-                      >
-                        Adicionar
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handlePublishPlanning}
-                        disabled={publishing || savingAssignment}
-                        style={
-                          publishing || savingAssignment
-                            ? { ...disabledButtonStyle, ...compactActionButtonStyle }
-                            : { ...secondaryButtonStyle, ...compactActionButtonStyle }
-                        }
-                      >
-                        {publishing ? 'A publicar...' : 'Publicar'}
-                      </button>
-                    </>
-                  ) : (
+                  {groupedAssignments.length === 0 && (
+                    <p style={{ margin: 0 }}>Este plano ainda não tem afetações associadas.</p>
+                  )}
+
+                  {groupedAssignments.length > 0 && (
+                    <ResponsiveGrid
+                      style={{
+                        '--vp-grid-gap': '14px',
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 420px), 1fr))',
+                      }}
+                    >
+                      {groupedAssignments.map(group => {
+                        const chefAccessAssignmentId = getChefAccessAssignmentId(group.assignments)
+                        const totalChefAssignments = getChefAssignmentsForWork(group.assignments).length
+                        const isDropActive = isDraftPlanning && (
+                          dropTargetWorkId === String(group.workId) ||
+                          (draggedSourceWorkId === String(group.workId) && !dropTargetWorkId)
+                        )
+
+                        return (
+                          <SurfaceCard
+                            as="article"
+                            key={group.workId}
+                            variant="work"
+                            onDragOver={isDraftPlanning ? (event) => handleWorkDragOver(event, group.workId) : undefined}
+                            onDragLeave={isDraftPlanning ? () => handleWorkDragLeave(group.workId) : undefined}
+                            onDrop={isDraftPlanning ? (event) => handleWorkDrop(event, group.workId) : undefined}
+                            style={{
+                              '--vp-card-gap': '12px',
+                              padding: '16px',
+                              border: isDropActive ? '2px dashed var(--vp-accent)' : '1px solid var(--vp-border)',
+                              background: isDropActive ? 'var(--vp-highlight)' : 'var(--vp-surface)',
+                            }}
+                          >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+                              <div>
+                                <h3 style={{ margin: 0, fontSize: '19px', fontWeight: 900 }}>{group.workName}</h3>
+                                <p style={{ margin: '4px 0 0', color: 'var(--vp-text-muted)' }}>
+                                  {group.assignments.length} afetações
+                                </p>
+                              </div>
+                            </div>
+
+                            <div style={{ display: 'grid', gap: '8px' }}>
+                              {group.assignments.map(assignment => {
+                                const isChefAssignment = isChefRole(assignment.person?.role)
+                                const hasChefWorkAccess = isChefAssignment && String(assignment.id) === chefAccessAssignmentId
+                                const showChefAccessIndicator = totalChefAssignments > 1 && hasChefWorkAccess
+
+                                return (
+                                  <div
+                                    key={assignment.id}
+                                    draggable={isDraftPlanning && !savingAssignment}
+                                    onDragStart={isDraftPlanning ? () => handleAssignmentDragStart(assignment) : undefined}
+                                    onDragEnd={isDraftPlanning ? handleAssignmentDragEnd : undefined}
+                                    style={{
+                                      border: '1px solid var(--vp-border)',
+                                      borderRadius: '14px',
+                                      padding: '10px 12px',
+                                      background: 'var(--vp-surface-muted)',
+                                      cursor: isDraftPlanning && !savingAssignment ? 'grab' : 'default',
+                                      opacity: draggedAssignmentId === String(assignment.id) ? 0.55 : 1,
+                                      display: 'grid',
+                                      gap: '6px',
+                                    }}
+                                  >
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                                      <div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                          {showChefAccessIndicator ? (
+                                            <span
+                                              style={chefAccessStarButtonStyle(true)}
+                                              title="Chefe com acesso a esta obra"
+                                              aria-label="Chefe com acesso a esta obra"
+                                            >
+                                              ★
+                                            </span>
+                                          ) : null}
+                                          <strong style={{ fontWeight: 900 }}>
+                                            {getPersonDisplayName(assignment.person, assignment.personId)}
+                                          </strong>
+                                        </div>
+                                        <p style={{ margin: '4px 0 0', color: 'var(--vp-text-muted)', fontSize: '13px', fontWeight: 700 }}>
+                                          {getEntityRoleLabel(assignment.person)}
+                                        </p>
+                                        {duplicateNonChefPersonIds.has(String(assignment.personId)) && (
+                                          <p style={{ margin: '4px 0 0', color: '#b45309', fontSize: '13px', fontWeight: 700 }}>
+                                            Afetado(a) noutra obra neste dia.
+                                          </p>
+                                        )}
+                                      </div>
+                                      {isDraftPlanning && (
+                                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                          <button
+                                            type="button"
+                                            onClick={() => openEditModal(assignment)}
+                                            style={editPencilButtonStyle}
+                                            title="Editar afetação"
+                                            aria-label="Editar afetação"
+                                          >
+                                            <EditPencilIcon />
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => handleDeleteAssignment(assignment)}
+                                            style={trashBinButtonStyle}
+                                            title="Eliminar afetação"
+                                            aria-label="Eliminar afetação"
+                                          >
+                                            <TrashBinIcon />
+                                          </button>
+                                        </div>
+                                      )}
+                                    </div>
+                                    {assignment.notes && (
+                                      <p style={{ margin: 0, color: 'var(--vp-text-soft)' }}>{assignment.notes}</p>
+                                    )}
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          </SurfaceCard>
+                        )
+                      })}
+                    </ResponsiveGrid>
+                  )}
+
+                  {isDraftPlanning && unplannedWorks.length > 0 && (
+                    <FlowStack gap="sm" style={{ marginTop: '4px', '--vp-stack-gap': '10px' }}>
+                      <div>
+                        <h3 style={{ margin: 0, fontSize: '20px', fontWeight: 900 }}>Obras disponíveis para receber pessoas</h3>
+                        <p style={{ margin: '8px 0 0', color: 'var(--vp-text-muted)' }}>
+                          Também podes puxar um nome para uma obra que ainda não tenha afetações neste dia.
+                        </p>
+                      </div>
+
+                      <FlowStack gap="sm" style={{ '--vp-stack-gap': '10px' }}>
+                        {unplannedWorks.map(work => (
+                          <SurfaceCard
+                            as="article"
+                            key={work.id}
+                            variant="dropzone"
+                            onDragOver={(event) => handleWorkDragOver(event, work.id)}
+                            onDragLeave={() => handleWorkDragLeave(work.id)}
+                            onDrop={(event) => handleWorkDrop(event, work.id)}
+                            style={{
+                              padding: '14px 16px',
+                              border: dropTargetWorkId === String(work.id) ? '2px dashed var(--vp-accent)' : '1px dashed var(--vp-border)',
+                              background: dropTargetWorkId === String(work.id) ? 'var(--vp-highlight)' : 'var(--vp-surface)',
+                            }}
+                          >
+                            <strong>{getWorkDisplayReference(work, work.id)}</strong>
+                            <p style={{ margin: '6px 0 0', color: 'var(--vp-text-muted)', fontSize: '13px' }}>
+                              Larga aqui para mover uma pessoa para esta obra.
+                            </p>
+                          </SurfaceCard>
+                        ))}
+                      </FlowStack>
+                    </FlowStack>
+                  )}
+
+                  <div className="vp-planning-secondary-action-bar">
                     <button
+                      className="vp-planning-action-button"
                       type="button"
-                      onClick={handleEditPublishedPlanning}
-                      disabled={switchingToDraft}
+                      onClick={openMessageModal}
+                      disabled={groupedAssignments.length === 0}
                       style={
-                        switchingToDraft
+                        groupedAssignments.length === 0
                           ? { ...disabledButtonStyle, ...compactActionButtonStyle }
                           : { ...secondaryButtonStyle, ...compactActionButtonStyle }
                       }
                     >
-                      {switchingToDraft ? 'A voltar...' : 'Editar'}
+                      Importar mensagem
                     </button>
-                  )}
-                </div>
-              </div>
-            </div>
-            {duplicateNonChefAssignments.length > 0 && (
-              <div
-                style={{
-                  marginBottom: '20px',
-                  padding: '16px 18px',
-                  borderRadius: '18px',
-                  border: '1px solid rgba(191, 106, 36, 0.34)',
-                  background: 'rgba(243, 220, 207, 0.78)',
-                  color: '#5b3417',
-                  display: 'grid',
-                  gap: '8px',
-                }}
-              >
-                <strong style={{ fontWeight: 900 }}>Atenção: pessoas afetadas em mais de uma obra</strong>
-                {duplicateNonChefAssignments.map(person => (
-                  <span key={person.personId}>
-                    {person.name}: {person.workNames.join(', ')}
-                  </span>
-                ))}
-              </div>
-            )}
-            {groupedAssignments.length === 0 && (
-              <p>Este plano ainda não tem afetações associadas.</p>
-            )}
-
-            {groupedAssignments.length > 0 && (
-              <div style={{ display: 'grid', gap: '16px' }}>
-                {groupedAssignments.map(group => {
-                  const chefAccessAssignmentId = getChefAccessAssignmentId(group.assignments)
-                  const totalChefAssignments = getChefAssignmentsForWork(group.assignments).length
-
-                  return (
-                  <article
-                    key={group.workId}
-                    onDragOver={isDraftPlanning ? (event) => handleWorkDragOver(event, group.workId) : undefined}
-                    onDragLeave={isDraftPlanning ? () => handleWorkDragLeave(group.workId) : undefined}
-                    onDrop={isDraftPlanning ? (event) => handleWorkDrop(event, group.workId) : undefined}
-                    style={{
-                      ...workCardStyle,
-                      border:
-                        isDraftPlanning && (
-                          dropTargetWorkId === String(group.workId) ||
-                          (draggedSourceWorkId === String(group.workId) && !dropTargetWorkId)
-                        )
-                          ? '2px dashed var(--vp-accent)'
-                          : workCardStyle.border,
-                      background:
-                        isDraftPlanning && (
-                          dropTargetWorkId === String(group.workId) ||
-                          (draggedSourceWorkId === String(group.workId) && !dropTargetWorkId)
-                        )
-                          ? 'var(--vp-highlight)'
-                          : workCardStyle.background,
-                    }}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
-                      <div>
-                        <h3 style={{ margin: 0, fontSize: '22px', fontWeight: 900 }}>{group.workName}</h3>
-                        <p style={{ margin: '8px 0 0', color: 'var(--vp-text-muted)' }}>
-                          {group.assignments.length} afetações
-                        </p>
-                      </div>
-                    </div>
-
-                    <div style={{ display: 'grid', gap: '10px' }}>
-                      {group.assignments.map(assignment => {
-                        const isChefAssignment = isChefRole(assignment.person?.role)
-                        const hasChefWorkAccess = isChefAssignment && String(assignment.id) === chefAccessAssignmentId
-                        const showChefAccessIndicator = totalChefAssignments > 1 && hasChefWorkAccess
-
-                        return (
-                        <div
-                          key={assignment.id}
-                          draggable={isDraftPlanning && !savingAssignment}
-                          onDragStart={isDraftPlanning ? () => handleAssignmentDragStart(assignment) : undefined}
-                          onDragEnd={isDraftPlanning ? handleAssignmentDragEnd : undefined}
-                          style={{
-                            border: '1px solid var(--vp-border)',
-                            borderRadius: '14px',
-                            padding: '14px',
-                            background: 'var(--vp-surface-muted)',
-                            cursor: isDraftPlanning && !savingAssignment ? 'grab' : 'default',
-                            opacity: draggedAssignmentId === String(assignment.id) ? 0.55 : 1,
-                          }}
-                        >
-                          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
-                            <div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                                {showChefAccessIndicator ? (
-                                  <span
-                                    style={chefAccessStarButtonStyle(true)}
-                                    title="Chefe com acesso a esta obra"
-                                    aria-label="Chefe com acesso a esta obra"
-                                  >
-                                    ★
-                                  </span>
-                                ) : null}
-                                <strong style={{ fontWeight: 900 }}>{assignment.person?.name || `Pessoa ${assignment.personId}`}</strong>
-                              </div>
-                              <p style={{ margin: '6px 0 0', color: 'var(--vp-text-muted)', fontSize: '13px', fontWeight: 700 }}>
-                                {getEntityRoleLabel(assignment.person)}
-                              </p>
-                              {duplicateNonChefPersonIds.has(String(assignment.personId)) && (
-                                <p style={{ margin: '6px 0 0', color: '#b45309', fontSize: '13px', fontWeight: 700 }}>
-                                  Afetado(a) noutra obra neste dia.
-                                </p>
-                              )}
-                            </div>
-                            {isDraftPlanning && (
-                              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                                <button
-                                  type="button"
-                                  onClick={() => openEditModal(assignment)}
-                                  style={editPencilButtonStyle}
-                                  title="Editar afetação"
-                                  aria-label="Editar afetação"
-                                >
-                                  <EditPencilIcon />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleDeleteAssignment(assignment)}
-                                  style={trashBinButtonStyle}
-                                  title="Eliminar afetação"
-                                  aria-label="Eliminar afetação"
-                                >
-                                  <TrashBinIcon />
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                          {assignment.notes && (
-                            <p style={{ margin: '6px 0 0', color: 'var(--vp-text-soft)' }}>{assignment.notes}</p>
-                          )}
-                        </div>
-                      )})}
-                    </div>
-                  </article>
-                )})}
-              </div>
-            )}
-
-            {isDraftPlanning && unplannedWorks.length > 0 && (
-              <div style={{ display: 'grid', gap: '14px', marginTop: '22px' }}>
-                <div>
-                  <h3 style={{ margin: 0, fontSize: '20px', fontWeight: 900 }}>Obras disponíveis para receber pessoas</h3>
-                  <p style={{ margin: '8px 0 0', color: 'var(--vp-text-muted)' }}>
-                    Também podes puxar um nome para uma obra que ainda não tenha afetações neste dia.
-                  </p>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
-                  {unplannedWorks.map(work => (
-                    <article
-                      key={work.id}
-                      onDragOver={(event) => handleWorkDragOver(event, work.id)}
-                      onDragLeave={() => handleWorkDragLeave(work.id)}
-                      onDrop={(event) => handleWorkDrop(event, work.id)}
-                      style={{
-                        border: dropTargetWorkId === String(work.id) ? '2px dashed var(--vp-accent)' : '1px dashed var(--vp-border)',
-                        borderRadius: '18px',
-                        padding: '16px',
-                        background: dropTargetWorkId === String(work.id) ? 'var(--vp-highlight)' : 'var(--vp-surface)',
-                      }}
-                    >
-                      <strong>#{work.number} - {work.name}</strong>
-                      <p style={{ margin: '8px 0 0', color: 'var(--vp-text-muted)', fontSize: '13px' }}>
-                        Larga aqui para mover uma pessoa para esta obra.
-                      </p>
-                    </article>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '24px' }}>
-              <button
-                type="button"
-                onClick={openMessageModal}
-                disabled={groupedAssignments.length === 0}
-                style={
-                  groupedAssignments.length === 0
-                    ? { ...disabledButtonStyle, ...compactActionButtonStyle }
-                    : { ...secondaryButtonStyle, ...compactActionButtonStyle }
-                }
-              >
-                Importar mensagem
-              </button>
-            </div>
-
-          </section>
-        )}
+                  </div>
+                </SurfaceCard>
+              )}
+            </FlowStack>
+          </ContentFrame>
         </ViewportScrollArea>
       </ViewportShell>
 
@@ -1480,7 +1496,7 @@ export default function DailyPlanPage() {
                   Plano diário
                 </p>
                 <h2 style={{ margin: '10px 0 0', fontSize: '34px', lineHeight: 1.1 }}>
-                  Pessoas não afetadas
+                  Pessoas não atribuídas
                 </h2>
               </div>
               <button type="button" onClick={closeUnassignedPeopleModal} style={closeButtonStyle} aria-label="Fechar">
@@ -1510,17 +1526,17 @@ export default function DailyPlanPage() {
 
             {unassignedPeople.length === 0 ? (
               <p style={{ margin: '20px 0 0', color: 'var(--vp-text-muted)' }}>
-                Não há pessoas não afetadas para este dia.
+                Não há pessoas não atribuídas para este dia.
               </p>
             ) : filteredUnassignedPeople.length === 0 ? (
               <p style={{ margin: '20px 0 0', color: 'var(--vp-text-muted)' }}>
-                Não há pessoas não afetadas com esse tipo.
+                Não há pessoas não atribuídas com esse tipo.
               </p>
             ) : (
               <ul style={personListStyle}>
                 {filteredUnassignedPeople.map(person => (
                   <li key={person.id} style={personListItemStyle}>
-                    <strong>{person.name}</strong>
+                    <strong>{getPersonDisplayName(person, person.id)}</strong>
                     <span style={{ color: 'var(--vp-text-muted)' }}>{getEntityRoleLabel(person)}</span>
                   </li>
                 ))}
@@ -1538,7 +1554,7 @@ export default function DailyPlanPage() {
                 <h2 style={{ margin: 0 }}>{assignmentForm.id ? 'Editar afetação' : 'Adicionar afetação'}</h2>
                 {assignmentForm.id ? (
                   <p style={{ margin: '6px 0 0', color: 'var(--vp-text-muted)', fontSize: '13px', fontWeight: 700 }}>
-                    Assignment ID: {assignmentForm.id}
+                    ID da afetação: {assignmentForm.id}
                   </p>
                 ) : null}
               </div>
@@ -1548,14 +1564,14 @@ export default function DailyPlanPage() {
             </div>
 
             <form onSubmit={handleCreateAssignment} style={{ display: 'grid', gap: '14px', marginTop: '18px', overflow: 'hidden' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '14px' }}>
+              <ResponsiveGrid preset="modal-form" style={{ '--vp-grid-gap': '14px' }}>
                 <label style={labelStyle}>
                   Pessoa
                   <select name="personId" value={assignmentForm.personId} onChange={handleAssignmentChange} style={inputStyle}>
                     <option value="">Seleciona uma pessoa</option>
                     {sortedPeople.map(person => (
                       <option key={person.id} value={person.id}>
-                        {person.name} ({getEntityRoleLabel(person)})
+                        {getPersonDisplayName(person, person.id)} ({getEntityRoleLabel(person)})
                       </option>
                     ))}
                   </select>
@@ -1568,13 +1584,13 @@ export default function DailyPlanPage() {
                     <option value="">Seleciona uma obra</option>
                     {activeWorks.map(work => (
                       <option key={work.id} value={work.id}>
-                        #{work.number} - {work.name}
+                        {getWorkDisplayReference(work, work.id)}
                       </option>
                     ))}
                   </select>
                   {formErrors.workId && <span style={{ color: '#b42318', fontSize: '13px' }}>{formErrors.workId}</span>}
                 </label>
-              </div>
+              </ResponsiveGrid>
 
               {canChooseChefWorkAccessOnAdd && (
                 <div
@@ -1599,13 +1615,15 @@ export default function DailyPlanPage() {
                   {selectedWorkChefAssignments.length > 0 && (
                     <p style={{ margin: 0, color: 'var(--vp-text-muted)', fontSize: '13px' }}>
                       Chefes já nesta obra:{' '}
-                      {selectedWorkChefAssignments.map(assignment => assignment.person?.name || `Pessoa ${assignment.personId}`).join(', ')}.
+                      {selectedWorkChefAssignments
+                        .map(assignment => getPersonDisplayName(assignment.person, assignment.personId))
+                        .join(', ')}.
                     </p>
                   )}
 
                   <p style={{ margin: 0, color: 'var(--vp-text-muted)', fontSize: '13px' }}>
                     {shouldSuggestChefAccessOnAdd
-                      ? `Como estás a preparar mais um chefe para esta obra, por defeito o acesso vai ficar com ${selectedWorkAccessChef?.person?.name || 'o chefe que vinha dos dias anteriores'}.`
+                      ? `Como estás a preparar mais um chefe para esta obra, por defeito o acesso vai ficar com ${selectedWorkAccessChef?.person ? getPersonDisplayName(selectedWorkAccessChef.person, selectedWorkAccessChef.personId) : 'o chefe que vinha dos dias anteriores'}.`
                       : 'Se este chefe ficar com estrela, será ele a entrar nesta obra na aplicação.'}
                   </p>
 
@@ -1616,6 +1634,7 @@ export default function DailyPlanPage() {
                   ) : (
                     <div>
                       <button
+                        className="vp-planning-action-button"
                         type="button"
                         onClick={() => setAssignmentForm(current => ({ ...current, hasWorkAccess: true }))}
                         style={secondaryButtonStyle}
@@ -1662,6 +1681,7 @@ export default function DailyPlanPage() {
                   ) : (
                     <div>
                       <button
+                        className="vp-planning-action-button"
                         type="button"
                         onClick={() => setAssignmentForm(current => ({ ...current, hasWorkAccess: true }))}
                         style={secondaryButtonStyle}
@@ -1715,6 +1735,7 @@ export default function DailyPlanPage() {
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                             {manualHourlyCostSuggestions.map(suggestion => (
                               <button
+                                className="vp-planning-action-button"
                                 key={suggestion.key}
                                 type="button"
                                 onClick={() => applyManualHourlyCostSuggestion(suggestion.value)}
@@ -1751,7 +1772,7 @@ export default function DailyPlanPage() {
               </div>
 
               <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                <button type="submit" disabled={savingAssignment} style={primaryButtonStyle}>
+                <button className="vp-planning-action-button" type="submit" disabled={savingAssignment} style={primaryButtonStyle}>
                   {savingAssignment ? 'A gravar...' : assignmentForm.id ? 'Guardar alterações' : 'Criar afetação'}
                 </button>
               </div>
@@ -1771,10 +1792,10 @@ export default function DailyPlanPage() {
             </div>
 
             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '18px' }}>
-              <button type="button" onClick={selectAllMessageWorks} style={secondaryButtonStyle}>
+              <button className="vp-planning-action-button" type="button" onClick={selectAllMessageWorks} style={secondaryButtonStyle}>
                 Selecionar todas
               </button>
-              <button type="button" onClick={clearMessageWorks} style={secondaryButtonStyle}>
+              <button className="vp-planning-action-button" type="button" onClick={clearMessageWorks} style={secondaryButtonStyle}>
                 Limpar seleção
               </button>
             </div>
@@ -1806,7 +1827,9 @@ export default function DailyPlanPage() {
                     <div>
                       <strong>{group.workName}</strong>
                       <p style={{ margin: '6px 0 0', color: 'var(--vp-text-muted)' }}>
-                        {group.assignments.map(assignment => assignment.person?.name || `Pessoa ${assignment.personId}`).join(', ')}
+                        {group.assignments
+                          .map(assignment => getPersonDisplayName(assignment.person, assignment.personId))
+                          .join(', ')}
                       </p>
                     </div>
                   </label>
@@ -1829,7 +1852,7 @@ export default function DailyPlanPage() {
             )}
 
             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '18px' }}>
-              <button type="button" onClick={handleCopyMessage} style={primaryButtonStyle}>
+              <button className="vp-planning-action-button" type="button" onClick={handleCopyMessage} style={primaryButtonStyle}>
                 Copiar mensagem
               </button>
             </div>

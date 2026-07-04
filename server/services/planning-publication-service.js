@@ -20,13 +20,19 @@ function ensurePermission(session, permissionKey, message = 'Sem permissao para 
 function toPlanningMutationError(error, fallbackMessage) {
   const message = String(error?.message || fallbackMessage).trim() || fallbackMessage
   const status =
-    message.includes('nao encontrado') || message.includes('Nao existe')
+    message.includes('nao encontrado') ||
+    message.includes('não encontrado') ||
+    message.includes('Nao existe') ||
+    message.includes('Não existe')
       ? 404
       : message.includes('obrigatorio') ||
+          message.includes('obrigatório') ||
           message.includes('Ja existe') ||
+          message.includes('Já existe') ||
           message.includes('data valida') ||
+          message.includes('data válida') ||
           message.includes('negativo') ||
-          message.includes('voltar a draft')
+          message.includes('voltar a rascunho')
         ? 400
         : 500
 
@@ -72,7 +78,7 @@ export async function initializePlanningWorkspaceDraftService(session, body) {
       clonePreviousDay,
     })
   } catch (error) {
-    throw toPlanningMutationError(error, 'Erro ao preparar draft do planeamento')
+    throw toPlanningMutationError(error, 'Erro ao preparar rascunho do planeamento')
   }
 }
 
@@ -92,12 +98,12 @@ export async function setPlanningWorkspaceToDraftService(session, workspaceId) {
   try {
     return await setPlanningWorkspaceToDraftData(workspaceId)
   } catch (error) {
-    throw toPlanningMutationError(error, 'Erro ao voltar o planeamento para draft')
+    throw toPlanningMutationError(error, 'Erro ao voltar o planeamento para rascunho')
   }
 }
 
 export async function createPlanningDraftAssignmentService(session, body) {
-  ensurePermission(session, 'work_assignments.create', 'Sem permissao para criar afetacoes no draft.')
+  ensurePermission(session, 'work_assignments.create', 'Sem permissao para criar afetações no rascunho.')
 
   const workspaceId = Number(body?.workspaceId)
   const workId = Number(body?.workId)
@@ -110,18 +116,18 @@ export async function createPlanningDraftAssignmentService(session, body) {
   try {
     return await createPlanningDraftAssignmentData(workspaceId, body || {})
   } catch (error) {
-    throw toPlanningMutationError(error, 'Erro ao criar afetacao no draft')
+    throw toPlanningMutationError(error, 'Erro ao criar afetação no rascunho')
   }
 }
 
 export async function updatePlanningDraftAssignmentService(session, assignmentId, body) {
-  ensurePermission(session, 'work_assignments.update', 'Sem permissao para editar afetacoes no draft.')
+  ensurePermission(session, 'work_assignments.update', 'Sem permissao para editar afetações no rascunho.')
 
   try {
     const assignment = await updatePlanningDraftAssignmentData(assignmentId, body || {})
 
     if (!assignment) {
-      throw new HttpError(404, 'Afetacao de draft nao encontrada')
+      throw new HttpError(404, 'Afetação de rascunho não encontrada')
     }
 
     return assignment
@@ -130,26 +136,26 @@ export async function updatePlanningDraftAssignmentService(session, assignmentId
       throw error
     }
 
-    throw toPlanningMutationError(error, 'Erro ao atualizar afetacao no draft')
+    throw toPlanningMutationError(error, 'Erro ao atualizar afetação no rascunho')
   }
 }
 
 export async function deletePlanningDraftAssignmentService(session, assignmentId) {
-  ensurePermission(session, 'work_assignments.delete', 'Sem permissao para remover afetacoes do draft.')
+  ensurePermission(session, 'work_assignments.delete', 'Sem permissao para remover afetações do rascunho.')
 
   try {
     const deleted = await deletePlanningDraftAssignmentData(assignmentId)
 
     if (!deleted) {
-      throw new HttpError(404, 'Afetacao de draft nao encontrada')
+      throw new HttpError(404, 'Afetação de rascunho não encontrada')
     }
 
-    return { message: 'Afetacao de draft removida com sucesso' }
+    return { message: 'Afetação de rascunho removida com sucesso' }
   } catch (error) {
     if (error instanceof HttpError) {
       throw error
     }
 
-    throw toPlanningMutationError(error, 'Erro ao remover afetacao do draft')
+    throw toPlanningMutationError(error, 'Erro ao remover afetação do rascunho')
   }
 }
