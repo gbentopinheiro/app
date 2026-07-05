@@ -180,6 +180,11 @@ const { decryptProtectedPayload, getLoginTransportPublicKey } = await import('..
 const { verifyPassword } = await import('../lib/passwords.js')
 const { normalizePersonPricingInput } = await import('../lib/person-pricing.js')
 const { appendBuildVersion } = await import('../lib/pwa-version.js')
+const {
+  buildPlanningMessagePreview,
+  createDuplicateChefMessageSelectionMap,
+  getDuplicatedChefAssignmentsForMessage,
+} = await import('../lib/planning-message.js')
 const { getEntityRoleLabel, getRoleDisplayLabel } = await import('../lib/roles.js')
 const { getTomorrowPlanningDateValue } = await import('../lib/planning-date.js')
 const { buildLoginRedirectPath, getSafeRedirectPath } = await import('../lib/safe-redirect.js')
@@ -330,6 +335,11 @@ test('Plano diário arranca com amanhã como data predefinida em hora local', ()
   assert.match(dailyPlanPageSource, /useState\(\(\) => getTomorrowPlanningDateValue\(\)\)/)
 })
 
+test('Plano diário usa scroll único da página e não mantém área interna com scroll próprio', () => {
+  assert.doesNotMatch(dailyPlanPageSource, /lockViewport/)
+  assert.doesNotMatch(dailyPlanPageSource, /ViewportScrollArea/)
+})
+
 test('/mobile/chef sem sessao redireciona para /mobile/login com redirectTo seguro', () => {
   assert.equal(
     getUnauthorizedRedirectPath('/mobile/chef'),
@@ -468,6 +478,79 @@ test('admin edita draft sem publicar e a versao oficial continua vazia', async (
   assert.equal(workspaceView.items.length, 1)
   assert.equal(workspaceView.items[0].notes, 'Draft revisto')
   assert.equal(getAllWorkAssignments({ date: PLANNING_WORKFLOW_DATE }).length, 0)
+})
+
+test('filtro de chefes duplicados afeta apenas a mensagem gerada e não altera as afetações', () => {
+  const groupedAssignments = [
+    {
+      workId: '10',
+      workName: 'Obra A',
+      assignments: [
+        { personId: '2', person: { name: 'Chefe Teste', role: 'chef_primeira' } },
+        { personId: '3', person: { name: 'Carpinteiro Teste', role: 'carpinteiro' } },
+      ],
+    },
+    {
+      workId: '11',
+      workName: 'Obra B',
+      assignments: [
+        { personId: '2', person: { name: 'Chefe Teste', role: 'chef_primeira' } },
+        { personId: '4', person: { name: 'Ferrajeiro Teste', role: 'ferrajeiro' } },
+      ],
+    },
+    {
+      workId: '12',
+      workName: 'Obra C',
+      assignments: [
+        { personId: '2', person: { name: 'Chefe Teste', role: 'chef_primeira' } },
+      ],
+    },
+  ]
+  const duplicatedChefAssignments = getDuplicatedChefAssignmentsForMessage(groupedAssignments)
+  const defaultSelections = createDuplicateChefMessageSelectionMap(duplicatedChefAssignments)
+  const filteredMessage = buildPlanningMessagePreview({
+    planningDate: '2030-02-15',
+    groupedAssignments,
+    selectedWorkIds: ['10', '11', '12'],
+    duplicateChefSelections: {
+      ...defaultSelections,
+      2: ['10', '11'],
+    },
+  })
+
+  assert.equal(duplicatedChefAssignments.length, 1)
+  assert.equal(duplicatedChefAssignments[0].works.length, 3)
+  assert.match(filteredMessage, /Obra A[\s\S]*Chefe Teste/)
+  assert.match(filteredMessage, /Obra B[\s\S]*Chefe Teste/)
+  assert.doesNotMatch(filteredMessage, /Obra C[\s\S]*Chefe Teste/)
+  assert.match(filteredMessage, /Obra C/)
+  assert.equal(groupedAssignments[2].assignments.length, 1)
+  assert.equal(groupedAssignments[2].assignments[0].person.role, 'chef_primeira')
+})
+
+test('quando não existem chefes duplicados a mensagem continua normal e sem filtro adicional', () => {
+  const groupedAssignments = [
+    {
+      workId: '21',
+      workName: 'Obra Única',
+      assignments: [
+        { personId: '2', person: { name: 'Chefe Único', role: 'chef_primeira' } },
+        { personId: '3', person: { name: 'Carpinteiro Teste', role: 'carpinteiro' } },
+      ],
+    },
+  ]
+  const duplicatedChefAssignments = getDuplicatedChefAssignmentsForMessage(groupedAssignments)
+  const message = buildPlanningMessagePreview({
+    planningDate: '2030-02-16',
+    groupedAssignments,
+    selectedWorkIds: ['21'],
+    duplicateChefSelections: {},
+  })
+
+  assert.deepEqual(duplicatedChefAssignments, [])
+  assert.match(message, /Obra Única/)
+  assert.match(message, /Chefe Único/)
+  assert.match(message, /Carpinteiro Teste/)
 })
 
 test('inicializacao automatica cria draft a partir do ultimo planeamento publicado quando a data ainda nao existe', async () => {

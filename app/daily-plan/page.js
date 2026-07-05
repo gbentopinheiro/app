@@ -11,7 +11,6 @@ import {
   ResponsiveGrid,
   SurfaceCard,
   ViewportPage,
-  ViewportScrollArea,
   ViewportShell,
 } from '../components/ViewportLayout.js'
 import {
@@ -27,6 +26,11 @@ import {
   getWorkDisplayName,
   getWorkDisplayReference,
 } from '../../lib/display-names.js'
+import {
+  buildPlanningMessagePreview,
+  createDuplicateChefMessageSelectionMap,
+  getDuplicatedChefAssignmentsForMessage,
+} from '../../lib/planning-message.js'
 import { getTomorrowPlanningDateValue } from '../../lib/planning-date.js'
 import { getEntityRoleLabel, getRoleLabel, isChefRole } from '../../lib/roles.js'
 
@@ -69,6 +73,11 @@ const modalBackdropStyle = {
   justifyContent: 'center',
   padding: '24px',
   zIndex: 50,
+}
+
+const nestedModalBackdropStyle = {
+  ...modalBackdropStyle,
+  zIndex: 60,
 }
 
 const modalCardStyle = {
@@ -365,9 +374,11 @@ export default function DailyPlanPage() {
   const [savingAssignment, setSavingAssignment] = useState(false)
   const [showAddModal, setShowAddModal] = useState(false)
   const [showMessageModal, setShowMessageModal] = useState(false)
+  const [showMessageChefFilterModal, setShowMessageChefFilterModal] = useState(false)
   const [showUnassignedPeopleModal, setShowUnassignedPeopleModal] = useState(false)
   const [selectedUnassignedRole, setSelectedUnassignedRole] = useState('all')
   const [selectedMessageWorkIds, setSelectedMessageWorkIds] = useState([])
+  const [messageChefSelections, setMessageChefSelections] = useState({})
   const [messageSelectionError, setMessageSelectionError] = useState('')
   const [draggedAssignmentId, setDraggedAssignmentId] = useState(null)
   const [draggedSourceWorkId, setDraggedSourceWorkId] = useState(null)
@@ -628,23 +639,18 @@ export default function DailyPlanPage() {
     () => new Set(duplicateNonChefAssignments.map(person => String(person.personId))),
     [duplicateNonChefAssignments],
   )
+  const duplicatedChefAssignments = useMemo(
+    () => getDuplicatedChefAssignmentsForMessage(groupedAssignments),
+    [groupedAssignments],
+  )
   const generatedMessage = useMemo(() => {
-    if (!selectedPlanningWorkspace || selectedMessageWorkIds.length === 0) return ''
-
-    const selectedGroups = groupedAssignments.filter(group => selectedMessageWorkIds.includes(String(group.workId)))
-
-    if (selectedGroups.length === 0) return ''
-
-    const messageParts = selectedGroups.map(group => {
-      const peopleLines = group.assignments
-        .map(assignment => `- ${getPersonDisplayName(assignment.person, assignment.personId)}`)
-        .join('\n')
-
-      return `${group.workName}\n${peopleLines}`
+    return buildPlanningMessagePreview({
+      planningDate: selectedPlanningWorkspace?.date || '',
+      groupedAssignments,
+      selectedWorkIds: selectedMessageWorkIds,
+      duplicateChefSelections: messageChefSelections,
     })
-
-    return [`Plano do dia ${selectedPlanningWorkspace.date}`, ...messageParts].join('\n\n')
-  }, [groupedAssignments, selectedMessageWorkIds, selectedPlanningWorkspace])
+  }, [groupedAssignments, messageChefSelections, selectedMessageWorkIds, selectedPlanningWorkspace])
   async function loadDailyPlan(date) {
     const requestId = ++loadRequestIdRef.current
 
@@ -830,16 +836,46 @@ export default function DailyPlanPage() {
     if (!selectedPlanningWorkspace || groupedAssignments.length === 0) return
 
     setSelectedMessageWorkIds(groupedAssignments.map(group => String(group.workId)))
+    setMessageChefSelections(createDuplicateChefMessageSelectionMap(duplicatedChefAssignments))
     setMessageSelectionError('')
     setError('')
     setSuccess('')
     setShowMessageModal(true)
+    setShowMessageChefFilterModal(duplicatedChefAssignments.length > 0)
   }
 
   function closeMessageModal() {
     setShowMessageModal(false)
+    setShowMessageChefFilterModal(false)
     setSelectedMessageWorkIds([])
+    setMessageChefSelections({})
     setMessageSelectionError('')
+  }
+
+  function handleMessageChefWorkToggle(personId, workId) {
+    const normalizedPersonId = String(personId)
+    const normalizedWorkId = String(workId)
+
+    setMessageChefSelections(current => {
+      const currentSelection = new Set(current[normalizedPersonId] || [])
+
+      if (currentSelection.has(normalizedWorkId)) {
+        currentSelection.delete(normalizedWorkId)
+      } else {
+        currentSelection.add(normalizedWorkId)
+      }
+
+      return {
+        ...current,
+        [normalizedPersonId]: Array.from(currentSelection),
+      }
+    })
+    setMessageSelectionError('')
+  }
+
+  function handleContinueMessageWorkflow() {
+    setMessageSelectionError('')
+    setShowMessageChefFilterModal(false)
   }
 
   function openUnassignedPeopleModal() {
@@ -959,8 +995,13 @@ export default function DailyPlanPage() {
   }
 
   async function handleCopyMessage() {
-    if (!generatedMessage.trim()) {
+    if (selectedMessageWorkIds.length === 0) {
       setMessageSelectionError('Seleciona pelo menos uma obra para criar a mensagem.')
+      return
+    }
+
+    if (!generatedMessage.trim()) {
+      setMessageSelectionError('A seleção atual não gera nenhuma mensagem para copiar.')
       return
     }
 
@@ -1168,8 +1209,8 @@ export default function DailyPlanPage() {
   const isPlanActionBusy = creating || publishing || switchingToDraft
 
   return (
-    <ViewportPage lockViewport style={pageStyle}>
-      <ViewportShell fillHeight style={shellStyle}>
+    <ViewportPage style={pageStyle}>
+      <ViewportShell style={shellStyle}>
         <ContentFrame width="ultra">
           <section style={heroStyle}>
             <div style={topBarStyle}>
@@ -1270,24 +1311,23 @@ export default function DailyPlanPage() {
             </ResponsiveGrid>
           </section>
         </ContentFrame>
-        <ViewportScrollArea style={{ '--vp-page-scroll-gap': '24px' }}>
-          <ContentFrame width="ultra">
-            <FlowStack gap="lg">
-              {(error || success || loading || (!selectedPlanningWorkspace && !error && !loading)) && (
-                <SurfaceCard as="section" variant="panel">
-                  {error && <p style={{ margin: 0, color: '#b42318' }}>{error}</p>}
-                  {success && <p style={{ margin: 0, color: '#1f7a45' }}>{success}</p>}
-                  {loading && <p style={{ margin: 0 }}>A carregar plano diário...</p>}
-                  {!selectedPlanningWorkspace && !error && !loading && (
-                    <p style={{ margin: 0, color: 'var(--vp-text-muted)' }}>
-                      Ainda não existe planeamento para este dia. Cria um novo plano para começar.
-                    </p>
-                  )}
-                </SurfaceCard>
-              )}
+        <ContentFrame width="ultra">
+          <FlowStack gap="lg">
+            {(error || success || loading || (!selectedPlanningWorkspace && !error && !loading)) && (
+              <SurfaceCard as="section" variant="panel">
+                {error && <p style={{ margin: 0, color: '#b42318' }}>{error}</p>}
+                {success && <p style={{ margin: 0, color: '#1f7a45' }}>{success}</p>}
+                {loading && <p style={{ margin: 0 }}>A carregar plano diário...</p>}
+                {!selectedPlanningWorkspace && !error && !loading && (
+                  <p style={{ margin: 0, color: 'var(--vp-text-muted)' }}>
+                    Ainda não existe planeamento para este dia. Cria um novo plano para começar.
+                  </p>
+                )}
+              </SurfaceCard>
+            )}
 
-              {!loading && selectedPlanningWorkspace && (
-                <SurfaceCard as="section" variant="panel" className="vp-planning-assignments-panel">
+            {!loading && selectedPlanningWorkspace && (
+              <SurfaceCard as="section" variant="panel" className="vp-planning-assignments-panel">
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
                     <h2 style={{ margin: 0, fontWeight: 900, fontSize: '22px' }}>Afetações do planeamento</h2>
 
@@ -1554,11 +1594,10 @@ export default function DailyPlanPage() {
                       Importar mensagem
                     </button>
                   </div>
-                </SurfaceCard>
-              )}
-            </FlowStack>
-          </ContentFrame>
-        </ViewportScrollArea>
+              </SurfaceCard>
+            )}
+          </FlowStack>
+        </ContentFrame>
       </ViewportShell>
 
       {showUnassignedPeopleModal && (
@@ -1928,6 +1967,80 @@ export default function DailyPlanPage() {
             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '18px' }}>
               <button className="vp-planning-action-button" type="button" onClick={handleCopyMessage} style={primaryButtonStyle}>
                 Copiar mensagem
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {showMessageChefFilterModal && duplicatedChefAssignments.length > 0 && (
+        <div style={nestedModalBackdropStyle} onClick={closeMessageModal}>
+          <section className="vp-modal-card" style={{ ...modalCardStyle, width: 'min(720px, 100%)' }} onClick={(event) => event.stopPropagation()}>
+            <div style={{ display: 'grid', gap: '10px' }}>
+              <h2 style={{ margin: 0 }}>Chefes afetos a várias obras</h2>
+              <p style={{ margin: 0, color: 'var(--vp-text-muted)' }}>
+                Selecione em quais obras cada chefe deve aparecer na mensagem. Esta escolha apenas afeta a mensagem gerada.
+              </p>
+            </div>
+
+            <div style={{ display: 'grid', gap: '14px', marginTop: '20px' }}>
+              {duplicatedChefAssignments.map(person => (
+                <div
+                  key={person.personId}
+                  style={{
+                    display: 'grid',
+                    gap: '10px',
+                    padding: '16px 18px',
+                    borderRadius: '18px',
+                    border: '1px solid var(--vp-border)',
+                    background: 'var(--vp-surface)',
+                  }}
+                >
+                  <div style={{ display: 'grid', gap: '4px' }}>
+                    <strong style={{ fontWeight: 900 }}>{person.name}</strong>
+                    <span style={{ color: 'var(--vp-text-muted)' }}>
+                      {person.name} está afeto a {person.works.length} {person.works.length === 1 ? 'obra' : 'obras'}.
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'grid', gap: '8px' }}>
+                    {person.works.map(work => {
+                      const isChecked = (messageChefSelections[person.personId] || []).includes(String(work.workId))
+
+                      return (
+                        <label
+                          key={`${person.personId}-${work.workId}`}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '10px',
+                            padding: '10px 12px',
+                            borderRadius: '14px',
+                            border: `1px solid ${isChecked ? 'var(--vp-accent)' : 'var(--vp-border)'}`,
+                            background: isChecked ? 'var(--vp-highlight)' : 'var(--vp-surface-muted)',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => handleMessageChefWorkToggle(person.personId, work.workId)}
+                          />
+                          <span>{work.workName}</span>
+                        </label>
+                      )
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', flexWrap: 'wrap', marginTop: '20px' }}>
+              <button className="vp-planning-action-button" type="button" onClick={closeMessageModal} style={secondaryButtonStyle}>
+                Cancelar
+              </button>
+              <button className="vp-planning-action-button" type="button" onClick={handleContinueMessageWorkflow} style={primaryButtonStyle}>
+                Continuar
               </button>
             </div>
           </section>
