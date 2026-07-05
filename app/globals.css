@@ -239,9 +239,29 @@ body > * {
 }
 
 .vp-planning-assignments-panel {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  align-content: start;
   gap: 16px;
+  overflow: visible;
+}
+
+.vp-planning-work-grid {
+  min-width: 0;
+  width: 100%;
+  display: grid;
+  align-items: start;
+  align-content: start;
+  grid-auto-flow: row;
+  grid-auto-rows: auto;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
+  gap: 14px;
+  overflow: visible;
+}
+
+.vp-planning-work-grid > * {
+  min-width: 0;
+  max-width: 100%;
+  align-self: start;
 }
 
 .vp-planning-work-drop-layer {
@@ -253,11 +273,12 @@ body > * {
 }
 
 .vp-planning-secondary-action-bar {
-  margin-top: auto;
-  padding-top: 4px;
+  margin-top: 8px;
+  padding-top: 12px;
   display: flex;
   justify-content: flex-end;
   align-items: center;
+  overflow: visible;
 }
 
 .vp-planning-calendar-nav:hover,

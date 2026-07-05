@@ -12,6 +12,7 @@ const __dirname = dirname(__filename)
 const repoRoot = join(__dirname, '..')
 const dataDir = join(repoRoot, 'data')
 const dailyPlanPageSource = readFileSync(join(repoRoot, 'app', 'daily-plan', 'page.js'), 'utf8')
+const globalCssSource = readFileSync(join(repoRoot, 'app', 'globals.css'), 'utf8')
 
 const fixturePasswords = {
   admin: 'AdminTeste#2026',
@@ -338,6 +339,22 @@ test('Plano diário arranca com amanhã como data predefinida em hora local', ()
 test('Plano diário usa scroll único da página e não mantém área interna com scroll próprio', () => {
   assert.doesNotMatch(dailyPlanPageSource, /lockViewport/)
   assert.doesNotMatch(dailyPlanPageSource, /ViewportScrollArea/)
+})
+
+test('workspace do Plano diário usa grelha em fluxo normal e rodapé de ação sem sobreposição', () => {
+  assert.match(dailyPlanPageSource, /className="vp-planning-work-grid"/)
+  assert.match(globalCssSource, /\.vp-planning-work-grid\s*\{[\s\S]*grid-auto-flow:\s*row/)
+  assert.match(globalCssSource, /\.vp-planning-work-grid\s*\{[\s\S]*grid-auto-rows:\s*auto/)
+  assert.match(globalCssSource, /\.vp-planning-secondary-action-bar\s*\{[\s\S]*justify-content:\s*flex-end/)
+  assert.doesNotMatch(globalCssSource, /\.vp-planning-secondary-action-bar\s*\{[\s\S]*margin-top:\s*auto/)
+})
+
+test('drag do Plano diário ativa auto-scroll da página perto das margens do viewport', () => {
+  assert.match(dailyPlanPageSource, /AUTO_SCROLL_EDGE_THRESHOLD = 80/)
+  assert.match(dailyPlanPageSource, /window\.addEventListener\('dragover', trackDragPointer\)/)
+  assert.match(dailyPlanPageSource, /window\.scrollBy\(0, scrollDelta\)/)
+  assert.match(dailyPlanPageSource, /requestAnimationFrame\(stepAutoScroll\)/)
+  assert.match(dailyPlanPageSource, /cancelAnimationFrame\(dragAutoScrollFrameRef\.current\)/)
 })
 
 test('/mobile/chef sem sessao redireciona para /mobile/login com redirectTo seguro', () => {

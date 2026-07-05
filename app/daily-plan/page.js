@@ -47,6 +47,7 @@ const shellStyle = {
   minWidth: 0,
   display: 'grid',
   gap: '28px',
+  alignContent: 'start',
 }
 
 const heroStyle = {
@@ -281,6 +282,9 @@ function capitalizeLabel(value) {
   return value.charAt(0).toUpperCase() + value.slice(1)
 }
 
+const AUTO_SCROLL_EDGE_THRESHOLD = 80
+const AUTO_SCROLL_MAX_STEP = 18
+
 function getWorkHourlyCostForPerson(work, person, fallbackCost = 0) {
   const specialPersonCost = work?.specialPersonHourlyCosts?.[String(person?.id)]
 
@@ -388,10 +392,75 @@ export default function DailyPlanPage() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const loadRequestIdRef = useRef(0)
+  const dragPointerYRef = useRef(null)
+  const dragAutoScrollFrameRef = useRef(null)
 
   useEffect(() => {
     loadDailyPlan(selectedDate)
   }, [selectedDate])
+
+  useEffect(() => {
+    if (!draggedAssignmentId) {
+      dragPointerYRef.current = null
+
+      if (dragAutoScrollFrameRef.current) {
+        cancelAnimationFrame(dragAutoScrollFrameRef.current)
+        dragAutoScrollFrameRef.current = null
+      }
+
+      return undefined
+    }
+
+    function trackDragPointer(event) {
+      dragPointerYRef.current = event.clientY
+    }
+
+    function stopAutoScroll() {
+      dragPointerYRef.current = null
+    }
+
+    function stepAutoScroll() {
+      const pointerY = dragPointerYRef.current
+
+      if (pointerY !== null && pointerY !== undefined) {
+        let scrollDelta = 0
+
+        if (pointerY < AUTO_SCROLL_EDGE_THRESHOLD) {
+          const intensity = (AUTO_SCROLL_EDGE_THRESHOLD - pointerY) / AUTO_SCROLL_EDGE_THRESHOLD
+          scrollDelta = -Math.max(6, Math.round(AUTO_SCROLL_MAX_STEP * intensity))
+        } else if (pointerY > window.innerHeight - AUTO_SCROLL_EDGE_THRESHOLD) {
+          const intensity =
+            (pointerY - (window.innerHeight - AUTO_SCROLL_EDGE_THRESHOLD)) /
+            AUTO_SCROLL_EDGE_THRESHOLD
+          scrollDelta = Math.max(6, Math.round(AUTO_SCROLL_MAX_STEP * intensity))
+        }
+
+        if (scrollDelta !== 0) {
+          window.scrollBy(0, scrollDelta)
+        }
+      }
+
+      dragAutoScrollFrameRef.current = requestAnimationFrame(stepAutoScroll)
+    }
+
+    window.addEventListener('dragover', trackDragPointer)
+    window.addEventListener('drop', stopAutoScroll)
+    window.addEventListener('dragend', stopAutoScroll)
+    dragAutoScrollFrameRef.current = requestAnimationFrame(stepAutoScroll)
+
+    return () => {
+      window.removeEventListener('dragover', trackDragPointer)
+      window.removeEventListener('drop', stopAutoScroll)
+      window.removeEventListener('dragend', stopAutoScroll)
+
+      if (dragAutoScrollFrameRef.current) {
+        cancelAnimationFrame(dragAutoScrollFrameRef.current)
+        dragAutoScrollFrameRef.current = null
+      }
+
+      dragPointerYRef.current = null
+    }
+  }, [draggedAssignmentId])
 
   const groupedAssignments = useMemo(() => {
     const groups = new Map()
@@ -1112,6 +1181,7 @@ export default function DailyPlanPage() {
     setDraggedAssignmentId(String(assignment.id))
     setDraggedSourceWorkId(String(assignment.workId))
     setDropTargetWorkId(null)
+    dragPointerYRef.current = event?.clientY ?? null
     setError('')
     setSuccess('')
   }
@@ -1120,10 +1190,12 @@ export default function DailyPlanPage() {
     setDraggedAssignmentId(null)
     setDraggedSourceWorkId(null)
     setDropTargetWorkId(null)
+    dragPointerYRef.current = null
   }
 
   function handleWorkDragOver(event, workId) {
     event.preventDefault()
+    dragPointerYRef.current = event?.clientY ?? dragPointerYRef.current
     if (event?.dataTransfer) {
       event.dataTransfer.dropEffect = 'move'
     }
@@ -1149,6 +1221,7 @@ export default function DailyPlanPage() {
     setDraggedAssignmentId(null)
     setDraggedSourceWorkId(null)
     setDropTargetWorkId(null)
+    dragPointerYRef.current = null
 
     if (!selectedPlanningWorkspace || !isDraftPlanning || !assignment || !targetWork || String(assignment.workId) === String(targetWorkId)) {
       return
@@ -1405,12 +1478,7 @@ export default function DailyPlanPage() {
                   )}
 
                   {groupedAssignments.length > 0 && (
-                    <ResponsiveGrid
-                      style={{
-                        '--vp-grid-gap': '14px',
-                        gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 420px), 1fr))',
-                      }}
-                    >
+                    <ResponsiveGrid className="vp-planning-work-grid">
                       {groupedAssignments.map(group => {
                         const chefAccessAssignmentId = getChefAccessAssignmentId(group.assignments)
                         const totalChefAssignments = getChefAssignmentsForWork(group.assignments).length
