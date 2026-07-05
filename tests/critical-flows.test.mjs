@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { constants, createCipheriv, publicEncrypt, randomBytes } from 'node:crypto'
 import { beforeEach, test } from 'node:test'
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -11,6 +11,7 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 const repoRoot = join(__dirname, '..')
 const dataDir = join(repoRoot, 'data')
+const dailyPlanPageSource = readFileSync(join(repoRoot, 'app', 'daily-plan', 'page.js'), 'utf8')
 
 const fixturePasswords = {
   admin: 'AdminTeste#2026',
@@ -180,6 +181,7 @@ const { verifyPassword } = await import('../lib/passwords.js')
 const { normalizePersonPricingInput } = await import('../lib/person-pricing.js')
 const { appendBuildVersion } = await import('../lib/pwa-version.js')
 const { getEntityRoleLabel, getRoleDisplayLabel } = await import('../lib/roles.js')
+const { getTomorrowPlanningDateValue } = await import('../lib/planning-date.js')
 const { buildLoginRedirectPath, getSafeRedirectPath } = await import('../lib/safe-redirect.js')
 const { buildOperationalWorkStatuses } = await import('../lib/work-operation-status.js')
 const { getNextWorkNumber } = await import('../lib/work-numbering.js')
@@ -223,6 +225,9 @@ const CHEF_SESSION = {
 }
 const PLANNING_WORKFLOW_DATE = '2030-02-10'
 const REPUBLISH_WORKFLOW_DATE = '2030-02-11'
+const AUTO_DRAFT_SOURCE_DATE = '2030-02-09'
+const AUTO_DRAFT_TARGET_DATE = '2030-02-12'
+const AUTO_PUBLISHED_TARGET_DATE = '2030-02-13'
 
 beforeEach(() => {
   seedFixtureData()
@@ -318,6 +323,11 @@ test('redirectTo do login aceita apenas paths internos seguros', () => {
 test('/mobile/login e tratado como rota publica pelo guard', () => {
   assert.equal(isPublicAppPath('/mobile/login'), true)
   assert.equal(getUnauthorizedRedirectPath('/mobile/login'), '/mobile/login')
+})
+
+test('Plano diário arranca com amanhã como data predefinida em hora local', () => {
+  assert.equal(getTomorrowPlanningDateValue(new Date(2026, 6, 5, 10, 30, 0)), '2026-07-06')
+  assert.match(dailyPlanPageSource, /useState\(\(\) => getTomorrowPlanningDateValue\(\)\)/)
 })
 
 test('/mobile/chef sem sessao redireciona para /mobile/login com redirectTo seguro', () => {
@@ -458,6 +468,116 @@ test('admin edita draft sem publicar e a versao oficial continua vazia', async (
   assert.equal(workspaceView.items.length, 1)
   assert.equal(workspaceView.items[0].notes, 'Draft revisto')
   assert.equal(getAllWorkAssignments({ date: PLANNING_WORKFLOW_DATE }).length, 0)
+})
+
+test('inicializacao automatica cria draft a partir do ultimo planeamento publicado quando a data ainda nao existe', async () => {
+  const { workspace: sourceWorkspace } = await initializePlanningWorkspaceDraftService(ADMIN_SESSION, {
+    date: AUTO_DRAFT_SOURCE_DATE,
+  })
+
+  await createPlanningDraftAssignmentService(ADMIN_SESSION, {
+    workspaceId: sourceWorkspace.id,
+    workId: 1,
+    personId: 3,
+    notes: 'Publicado base para copia automatica',
+  })
+  await publishPlanningWorkspaceService(ADMIN_SESSION, sourceWorkspace.id)
+
+  const initializedWorkspace = await initializePlanningWorkspaceDraftService(ADMIN_SESSION, {
+    date: AUTO_DRAFT_TARGET_DATE,
+    clonePreviousDay: true,
+    onlyIfMissing: true,
+  })
+  const targetWorkspaceView = await getPlanningWorkspaceViewService(
+    ADMIN_SESSION,
+    createSearchParams({ date: AUTO_DRAFT_TARGET_DATE }),
+  )
+
+  assert.equal(initializedWorkspace.workspace.state, 'draft')
+  assert.equal(initializedWorkspace.reusedWorkspace, false)
+  assert.equal(initializedWorkspace.clonedAssignments, 1)
+  assert.equal(initializedWorkspace.clonedFromDate, AUTO_DRAFT_SOURCE_DATE)
+  assert.equal(targetWorkspaceView.workspace.state, 'draft')
+  assert.equal(targetWorkspaceView.items.length, 1)
+  assert.equal(targetWorkspaceView.items[0].notes, 'Publicado base para copia automatica')
+  assert.equal(targetWorkspaceView.items[0].personId, 3)
+})
+
+test('inicializacao automatica nao sobrescreve um draft existente nem volta a copiar', async () => {
+  const { workspace: sourceWorkspace } = await initializePlanningWorkspaceDraftService(ADMIN_SESSION, {
+    date: AUTO_DRAFT_SOURCE_DATE,
+  })
+
+  await createPlanningDraftAssignmentService(ADMIN_SESSION, {
+    workspaceId: sourceWorkspace.id,
+    workId: 1,
+    personId: 3,
+    notes: 'Publicado base',
+  })
+  await publishPlanningWorkspaceService(ADMIN_SESSION, sourceWorkspace.id)
+
+  const firstInitialization = await initializePlanningWorkspaceDraftService(ADMIN_SESSION, {
+    date: AUTO_DRAFT_TARGET_DATE,
+    clonePreviousDay: true,
+    onlyIfMissing: true,
+  })
+
+  await updatePlanningDraftAssignmentService(
+    ADMIN_SESSION,
+    firstInitialization.items[0].id,
+    {
+      notes: 'Rascunho alterado manualmente',
+    },
+  )
+
+  const secondInitialization = await initializePlanningWorkspaceDraftService(ADMIN_SESSION, {
+    date: AUTO_DRAFT_TARGET_DATE,
+    clonePreviousDay: true,
+    onlyIfMissing: true,
+  })
+  const targetWorkspaceView = await getPlanningWorkspaceViewService(
+    ADMIN_SESSION,
+    createSearchParams({ date: AUTO_DRAFT_TARGET_DATE }),
+  )
+
+  assert.equal(secondInitialization.workspace.id, firstInitialization.workspace.id)
+  assert.equal(secondInitialization.reusedWorkspace, true)
+  assert.equal(secondInitialization.clonedAssignments, 0)
+  assert.equal(targetWorkspaceView.workspace.state, 'draft')
+  assert.equal(targetWorkspaceView.items.length, 1)
+  assert.equal(targetWorkspaceView.items[0].notes, 'Rascunho alterado manualmente')
+})
+
+test('inicializacao automatica respeita um planeamento ja publicado e nao o converte em draft', async () => {
+  const { workspace } = await initializePlanningWorkspaceDraftService(ADMIN_SESSION, {
+    date: AUTO_PUBLISHED_TARGET_DATE,
+  })
+
+  await createPlanningDraftAssignmentService(ADMIN_SESSION, {
+    workspaceId: workspace.id,
+    workId: 1,
+    personId: 4,
+    notes: 'Publicado final',
+  })
+  await publishPlanningWorkspaceService(ADMIN_SESSION, workspace.id)
+
+  const initializationAttempt = await initializePlanningWorkspaceDraftService(ADMIN_SESSION, {
+    date: AUTO_PUBLISHED_TARGET_DATE,
+    clonePreviousDay: true,
+    onlyIfMissing: true,
+  })
+  const workspaceView = await getPlanningWorkspaceViewService(
+    ADMIN_SESSION,
+    createSearchParams({ date: AUTO_PUBLISHED_TARGET_DATE }),
+  )
+
+  assert.equal(initializationAttempt.workspace.state, 'published')
+  assert.equal(initializationAttempt.reusedWorkspace, true)
+  assert.equal(initializationAttempt.clonedAssignments, 0)
+  assert.equal(workspaceView.workspace.state, 'published')
+  assert.equal(workspaceView.items.length, 1)
+  assert.equal(workspaceView.items[0].notes, 'Publicado final')
+  assert.equal(workspaceView.items[0].personId, 4)
 })
 
 test('draft fica invisivel para chefes enquanto nao for publicado', async () => {

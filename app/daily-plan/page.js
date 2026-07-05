@@ -1,7 +1,7 @@
 ﻿'use client'
 
 import Link from 'next/link'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import PlanningDatePopover from '../components/PlanningDatePopover'
 import EditPencilIcon, { editPencilButtonStyle } from '../components/EditPencilIcon'
 import TrashBinIcon, { trashBinButtonStyle } from '../components/TrashBinIcon'
@@ -27,6 +27,7 @@ import {
   getWorkDisplayName,
   getWorkDisplayReference,
 } from '../../lib/display-names.js'
+import { getTomorrowPlanningDateValue } from '../../lib/planning-date.js'
 import { getEntityRoleLabel, getRoleLabel, isChefRole } from '../../lib/roles.js'
 
 const pageStyle = {
@@ -256,7 +257,6 @@ const personListItemStyle = {
   flexWrap: 'wrap',
 }
 
-const today = new Date().toISOString().slice(0, 10)
 const emptyAssignmentForm = {
   id: null,
   personId: '',
@@ -353,7 +353,7 @@ function getManualHourlyCostSuggestions(work, person) {
 }
 
 export default function DailyPlanPage() {
-  const [selectedDate, setSelectedDate] = useState(today)
+  const [selectedDate, setSelectedDate] = useState(() => getTomorrowPlanningDateValue())
   const [selectedPlanningWorkspace, setSelectedPlanningWorkspace] = useState(null)
   const [assignments, setAssignments] = useState([])
   const [defaults, setDefaults] = useState({ people: [], works: [] })
@@ -376,6 +376,7 @@ export default function DailyPlanPage() {
   const [formErrors, setFormErrors] = useState({})
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const loadRequestIdRef = useRef(0)
 
   useEffect(() => {
     loadDailyPlan(selectedDate)
@@ -645,6 +646,24 @@ export default function DailyPlanPage() {
     return [`Plano do dia ${selectedPlanningWorkspace.date}`, ...messageParts].join('\n\n')
   }, [groupedAssignments, selectedMessageWorkIds, selectedPlanningWorkspace])
   async function loadDailyPlan(date) {
+    const requestId = ++loadRequestIdRef.current
+
+    function isCurrentRequest() {
+      return loadRequestIdRef.current === requestId
+    }
+
+    function applyWorkspaceView(data) {
+      if (!isCurrentRequest()) {
+        return false
+      }
+
+      const nextDefaults = data.defaults || { people: [], works: [] }
+      setDefaults(nextDefaults)
+      setSelectedPlanningWorkspace(data.workspace || null)
+      setAssignments(Array.isArray(data.items) ? data.items : [])
+      return true
+    }
+
     setLoading(true)
     setError('')
     setSuccess('')
@@ -657,17 +676,45 @@ export default function DailyPlanPage() {
         'Erro ao carregar plano diário',
       )
 
-      const nextDefaults = data.defaults || { people: [], works: [] }
-      setDefaults(nextDefaults)
-      setSelectedPlanningWorkspace(data.workspace || null)
-      setAssignments(Array.isArray(data.items) ? data.items : [])
+      if (!data.workspace) {
+        await initializePlanningWorkspaceDraft(
+          {
+            date,
+            clonePreviousDay: true,
+            onlyIfMissing: true,
+          },
+          'Erro ao preparar automaticamente o plano diário',
+        )
+
+        if (!isCurrentRequest()) {
+          return
+        }
+
+        const initializedData = await getPlanningWorkspaceView(
+          {
+            date,
+          },
+          'Erro ao carregar plano diário',
+        )
+
+        applyWorkspaceView(initializedData)
+        return
+      }
+
+      applyWorkspaceView(data)
     } catch (err) {
+      if (!isCurrentRequest()) {
+        return
+      }
+
       setError(err.message)
       setDefaults({ people: [], works: [] })
       setSelectedPlanningWorkspace(null)
       setAssignments([])
     } finally {
-      setLoading(false)
+      if (isCurrentRequest()) {
+        setLoading(false)
+      }
     }
   }
 

@@ -57,6 +57,7 @@ export async function initializePlanningWorkspaceDraftService(session, body) {
 
   const date = body?.date
   const clonePreviousDay = body?.clonePreviousDay === true
+  const onlyIfMissing = body?.onlyIfMissing === true
   const companyId = resolveCompanyId(body?.companyId)
 
   if (!date) {
@@ -76,6 +77,7 @@ export async function initializePlanningWorkspaceDraftService(session, body) {
       date,
       companyId,
       clonePreviousDay,
+      onlyIfMissing,
     })
   } catch (error) {
     throw toPlanningMutationError(error, 'Erro ao preparar rascunho do planeamento')
