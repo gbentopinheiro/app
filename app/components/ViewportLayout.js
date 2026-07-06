@@ -136,3 +136,100 @@ export function SurfaceCard({
     </Component>
   )
 }
+
+export function BentixPage({
+  as: Component = 'main',
+  children,
+  className = '',
+  padding = 'default',
+  style,
+}) {
+  return (
+    <ViewportPage
+      as={Component}
+      className={joinClassNames('btx-page', padding ? `btx-page--${padding}` : '', className)}
+      style={style}
+    >
+      {children}
+    </ViewportPage>
+  )
+}
+
+export function BentixContent({
+  as: Component = 'div',
+  width = 'default',
+  gap = 'lg',
+  children,
+  className = '',
+  style,
+}) {
+  return (
+    <ContentFrame
+      as={Component}
+      width={width}
+      className={joinClassNames('btx-content', gap ? `btx-content--${gap}` : '', className)}
+      style={style}
+    >
+      {children}
+    </ContentFrame>
+  )
+}
+
+export function BentixSection({
+  as: Component = 'section',
+  variant = 'panel',
+  children,
+  className = '',
+  style,
+  ...props
+}) {
+  return (
+    <SurfaceCard
+      as={Component}
+      variant={variant}
+      className={joinClassNames('btx-section', className)}
+      style={style}
+      {...props}
+    >
+      {children}
+    </SurfaceCard>
+  )
+}
+
+export function BentixResponsiveGrid({
+  as: Component = 'div',
+  preset = 'cards',
+  children,
+  className = '',
+  style,
+}) {
+  return (
+    <Component
+      className={joinClassNames(
+        'vp-grid',
+        'btx-responsive-grid',
+        preset ? `btx-responsive-grid--${preset}` : '',
+        className,
+      )}
+      style={style}
+    >
+      {children}
+    </Component>
+  )
+}
+
+export function BentixOverflowX({
+  as: Component = 'div',
+  children,
+  className = '',
+  style,
+}) {
+  return (
+    <Component
+      className={joinClassNames('vp-overflow-x-auto', 'btx-overflow-x', className)}
+      style={style}
+    >
+      {children}
+    </Component>
+  )
+}

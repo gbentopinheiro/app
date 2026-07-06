@@ -26,6 +26,24 @@ body > * {
   min-width: 0;
 }
 
+.btx-page {
+  min-width: 0;
+  min-height: 100dvh;
+  overflow-x: hidden;
+}
+
+.btx-page--none {
+  padding: 0;
+}
+
+.btx-page--tight {
+  padding: clamp(14px, 2vw, 24px) clamp(14px, 2vw, 24px) clamp(28px, 4vw, 40px);
+}
+
+.btx-page--default {
+  padding: clamp(24px, 3.5vw, 40px) clamp(16px, 2vw, 24px) clamp(40px, 5vw, 60px);
+}
+
 .vp-page-fixed {
   height: 100dvh !important;
   min-height: 100dvh !important;
@@ -52,6 +70,14 @@ body > * {
 
 .vp-content-frame--default {
   --vp-frame-max: 1180px;
+}
+
+.vp-content-frame--app {
+  --vp-frame-max: 1240px;
+}
+
+.vp-content-frame--dashboard {
+  --vp-frame-max: 1320px;
 }
 
 .vp-content-frame--wide {
@@ -81,6 +107,29 @@ body > * {
 
 .vp-page-scroll-x {
   overflow-x: auto;
+}
+
+.btx-content {
+  min-width: 0;
+  display: grid;
+  align-content: start;
+  gap: var(--btx-content-gap, 24px);
+}
+
+.btx-content--sm {
+  --btx-content-gap: 12px;
+}
+
+.btx-content--md {
+  --btx-content-gap: 16px;
+}
+
+.btx-content--lg {
+  --btx-content-gap: 24px;
+}
+
+.btx-content--xl {
+  --btx-content-gap: 32px;
 }
 
 .vp-modal-card {
@@ -272,6 +321,25 @@ body > * {
   background: transparent;
 }
 
+.vp-planning-work-card {
+  overflow: visible;
+}
+
+.vp-planning-work-quick-add {
+  flex-shrink: 0;
+}
+
+.vp-planning-work-quick-add:hover:not(:disabled) {
+  background: rgba(239, 245, 255, 0.98) !important;
+  border-color: rgba(28, 85, 173, 0.28) !important;
+  box-shadow: 0 12px 24px rgba(16, 35, 62, 0.12) !important;
+}
+
+.vp-planning-work-quick-add:focus-visible {
+  outline: 2px solid rgba(16, 35, 62, 0.26);
+  outline-offset: 2px;
+}
+
 .vp-planning-secondary-action-bar {
   margin-top: 8px;
   padding-top: 12px;
@@ -279,6 +347,21 @@ body > * {
   justify-content: flex-end;
   align-items: center;
   overflow: visible;
+}
+
+.vp-planning-secondary-actions {
+  margin-top: 8px;
+  padding-top: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  overflow: visible;
+}
+
+.vp-planning-secondary-actions > * {
+  min-width: 0;
 }
 
 .vp-planning-calendar-nav:hover,
@@ -298,6 +381,45 @@ body > * {
   overflow-y: hidden;
 }
 
+.btx-section {
+  min-width: 0;
+}
+
+.btx-responsive-grid--stats {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)) !important;
+}
+
+.btx-responsive-grid--split {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)) !important;
+}
+
+.btx-responsive-grid--split-compact {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)) !important;
+}
+
+.btx-responsive-grid--dashboard-main {
+  grid-template-columns: repeat(1, minmax(0, 1fr)) !important;
+}
+
+.btx-responsive-grid--cards {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr)) !important;
+}
+
+.btx-responsive-grid--dashboard-cards {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)) !important;
+}
+
+.btx-overflow-x {
+  max-width: 100%;
+  scrollbar-gutter: stable;
+}
+
+.btx-dashboard-responsavel-calendar {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1.4fr) minmax(170px, 0.92fr);
+  gap: 16px;
+}
+
 @media (min-width: 640px) {
   .vp-grid--summary {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -309,6 +431,18 @@ body > * {
   .vp-grid--planning-dropzones,
   .vp-grid--modal-form {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 960px) {
+  .btx-responsive-grid--dashboard-main {
+    grid-template-columns: minmax(0, 1.36fr) minmax(300px, 0.94fr) !important;
+  }
+}
+
+@media (min-width: 1280px) {
+  .btx-responsive-grid--dashboard-main {
+    grid-template-columns: minmax(0, 1.48fr) minmax(320px, 0.9fr) !important;
   }
 }
 
@@ -341,6 +475,16 @@ body > * {
     justify-content: center;
   }
 
+  .vp-planning-secondary-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .vp-planning-secondary-actions > * {
+    width: 100%;
+  }
+
+  .vp-planning-secondary-actions .vp-planning-action-button,
   .vp-planning-secondary-action-bar > .vp-planning-action-button {
     width: 100%;
   }
@@ -349,6 +493,25 @@ body > * {
   .vp-surface-card--work,
   .vp-surface-card--dropzone {
     padding: 16px;
+  }
+}
+
+@media (min-width: 1024px) and (hover: hover) and (pointer: fine) {
+  .vp-planning-work-quick-add {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .vp-planning-work-card:hover .vp-planning-work-quick-add,
+  .vp-planning-work-card:focus-within .vp-planning-work-quick-add {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+@media (max-width: 1120px) {
+  .btx-dashboard-responsavel-calendar {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 

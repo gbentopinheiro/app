@@ -21,6 +21,7 @@ import {
   savePlanningDraftAssignment,
   setPlanningWorkspaceToDraft,
 } from '../../frontend/controllers/planning-workspaces-controller.js'
+import { saveWorkExtraAccessSelections } from '../../frontend/controllers/work-extra-access-grants-controller.js'
 import {
   getPersonDisplayName,
   getWorkDisplayName,
@@ -28,8 +29,7 @@ import {
 } from '../../lib/display-names.js'
 import {
   buildPlanningMessagePreview,
-  createDuplicateChefMessageSelectionMap,
-  getDuplicatedChefAssignmentsForMessage,
+  filterPlanningMessageAssignmentsForWork,
 } from '../../lib/planning-message.js'
 import { getTomorrowPlanningDateValue } from '../../lib/planning-date.js'
 import { getEntityRoleLabel, getRoleLabel, isChefRole } from '../../lib/roles.js'
@@ -76,11 +76,6 @@ const modalBackdropStyle = {
   zIndex: 50,
 }
 
-const nestedModalBackdropStyle = {
-  ...modalBackdropStyle,
-  zIndex: 60,
-}
-
 const modalCardStyle = {
   width: 'min(760px, 100%)',
   maxHeight: 'calc(100vh - 48px)',
@@ -106,7 +101,7 @@ const heroActionColumnStyle = {
   flexDirection: 'column',
   gap: '12px',
   alignItems: 'stretch',
-  width: 'min(100%, 164px)',
+  width: 'min(100%, 188px)',
 }
 
 const topSummaryGridStyle = {
@@ -197,6 +192,24 @@ const compactActionButtonStyle = {
   textAlign: 'center',
 }
 
+const quickAddButtonStyle = {
+  width: '34px',
+  height: '34px',
+  borderRadius: '999px',
+  border: '1px solid rgba(16, 35, 62, 0.14)',
+  background: 'rgba(255, 255, 255, 0.92)',
+  color: 'var(--vp-accent)',
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  fontSize: '22px',
+  lineHeight: 1,
+  fontWeight: 700,
+  cursor: 'pointer',
+  boxShadow: '0 8px 18px rgba(16, 35, 62, 0.08)',
+  transition: 'opacity 180ms ease, background-color 180ms ease, border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease',
+}
+
 const statusPillStyle = {
   display: 'inline-flex',
   alignItems: 'center',
@@ -233,18 +246,6 @@ const closeButtonStyle = {
   cursor: 'pointer',
 }
 
-const chefAccessStarButtonStyle = (selected, disabled = false) => ({
-  border: 'none',
-  background: 'transparent',
-  padding: 0,
-  margin: 0,
-  color: selected ? '#f59e0b' : 'var(--vp-text-soft)',
-  fontSize: '20px',
-  lineHeight: 1,
-  cursor: disabled ? 'not-allowed' : 'pointer',
-  opacity: disabled ? 0.45 : 1,
-})
-
 const personListStyle = {
   margin: '20px 0 0',
   padding: 0,
@@ -270,16 +271,74 @@ const personListItemStyle = {
 const emptyAssignmentForm = {
   id: null,
   personId: '',
+  clientId: '',
   workId: '',
   hourlyCost: '',
   manualHourlyCost: false,
   notes: '',
-  hasWorkAccess: false,
 }
+
+const planningPeopleCollator = new Intl.Collator('pt-PT', {
+  sensitivity: 'base',
+  usage: 'sort',
+})
+
+const PLANNING_PERSON_ROLE_ORDER = new Map([
+  ['chef_primeira', 1],
+  ['gruista', 2],
+  ['chef_segunda:carpinteiro', 3],
+  ['carpinteiro', 4],
+  ['chef_segunda:ferrajeiro', 5],
+  ['ferrajeiro', 6],
+  ['chef_segunda:trolha', 7],
+  ['trolha', 8],
+])
 
 function capitalizeLabel(value) {
   if (!value) return ''
   return value.charAt(0).toUpperCase() + value.slice(1)
+}
+
+function getPlanningPersonOrderKey(person) {
+  const role = String(person?.person?.role || person?.role || '').trim().toLowerCase()
+  const chefCategory = String(
+    person?.person?.chefCategory ?? person?.chefCategory ?? '',
+  )
+    .trim()
+    .toLowerCase()
+
+  if (role === 'chef_segunda' && chefCategory) {
+    return `${role}:${chefCategory}`
+  }
+
+  return role
+}
+
+function comparePlanningPeople(left, right) {
+  const leftKey = getPlanningPersonOrderKey(left)
+  const rightKey = getPlanningPersonOrderKey(right)
+  const leftRank = PLANNING_PERSON_ROLE_ORDER.get(leftKey) ?? Number.POSITIVE_INFINITY
+  const rightRank = PLANNING_PERSON_ROLE_ORDER.get(rightKey) ?? Number.POSITIVE_INFINITY
+
+  if (leftRank !== rightRank) {
+    return leftRank - rightRank
+  }
+
+  if (!Number.isFinite(leftRank) && !Number.isFinite(rightRank)) {
+    const roleComparison = planningPeopleCollator.compare(
+      getEntityRoleLabel(left) || '',
+      getEntityRoleLabel(right) || '',
+    )
+
+    if (roleComparison !== 0) {
+      return roleComparison
+    }
+  }
+
+  return planningPeopleCollator.compare(
+    getPersonDisplayName(left, left?.id ?? left?.personId),
+    getPersonDisplayName(right, right?.id ?? right?.personId),
+  )
 }
 
 const AUTO_SCROLL_EDGE_THRESHOLD = 80
@@ -299,22 +358,6 @@ function getWorkHourlyCostForPerson(work, person, fallbackCost = 0) {
   }
 
   return Number(work?.defaultHourlyCost ?? fallbackCost ?? 0)
-}
-
-function getChefAssignmentsForWork(assignments) {
-  return assignments
-    .filter(assignment => isChefRole(assignment.person?.role))
-    .sort((left, right) => Number(left.id) - Number(right.id))
-}
-
-function getChefAccessAssignmentId(assignments) {
-  const chefAssignments = getChefAssignmentsForWork(assignments)
-
-  if (chefAssignments.length === 0) {
-    return null
-  }
-
-  return String((chefAssignments.find(assignment => assignment.hasWorkAccess) || chefAssignments[0]).id)
 }
 
 function canRoleUseManualHourlyCost(role) {
@@ -365,6 +408,25 @@ function getManualHourlyCostSuggestions(work, person) {
   return suggestions.filter(suggestion => !Number.isNaN(suggestion.value) && suggestion.value >= 0)
 }
 
+function normalizeWorkAccessSelectionsMap(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return {}
+  }
+
+  return Object.fromEntries(
+    Object.entries(value).map(([personId, workIds]) => [
+      String(personId),
+      Array.from(
+        new Set(
+          (Array.isArray(workIds) ? workIds : [])
+            .map(workId => String(workId || '').trim())
+            .filter(Boolean),
+        ),
+      ).sort((left, right) => Number(left) - Number(right)),
+    ]),
+  )
+}
+
 export default function DailyPlanPage() {
   const [selectedDate, setSelectedDate] = useState(() => getTomorrowPlanningDateValue())
   const [selectedPlanningWorkspace, setSelectedPlanningWorkspace] = useState(null)
@@ -378,12 +440,14 @@ export default function DailyPlanPage() {
   const [savingAssignment, setSavingAssignment] = useState(false)
   const [showAddModal, setShowAddModal] = useState(false)
   const [showMessageModal, setShowMessageModal] = useState(false)
-  const [showMessageChefFilterModal, setShowMessageChefFilterModal] = useState(false)
+  const [showWorkAccessModal, setShowWorkAccessModal] = useState(false)
   const [showUnassignedPeopleModal, setShowUnassignedPeopleModal] = useState(false)
+  const [planActionConfirmation, setPlanActionConfirmation] = useState(null)
   const [selectedUnassignedRole, setSelectedUnassignedRole] = useState('all')
   const [selectedMessageWorkIds, setSelectedMessageWorkIds] = useState([])
-  const [messageChefSelections, setMessageChefSelections] = useState({})
+  const [workExtraAccessSelectionsByPersonId, setWorkExtraAccessSelectionsByPersonId] = useState({})
   const [messageSelectionError, setMessageSelectionError] = useState('')
+  const [savingWorkExtraAccess, setSavingWorkExtraAccess] = useState(false)
   const [draggedAssignmentId, setDraggedAssignmentId] = useState(null)
   const [draggedSourceWorkId, setDraggedSourceWorkId] = useState(null)
   const [dropTargetWorkId, setDropTargetWorkId] = useState(null)
@@ -484,13 +548,7 @@ export default function DailyPlanPage() {
     return Array.from(groups.values())
       .map(group => ({
         ...group,
-        assignments: [...group.assignments].sort((left, right) =>
-          String(getPersonDisplayName(left.person, left.personId)).localeCompare(
-            String(getPersonDisplayName(right.person, right.personId)),
-            'pt-PT',
-            { sensitivity: 'base' },
-          ),
-        ),
+        assignments: [...group.assignments].sort(comparePlanningPeople),
       }))
       .sort((left, right) => Number(left.workNumber) - Number(right.workNumber))
   }, [assignments])
@@ -542,71 +600,42 @@ export default function DailyPlanPage() {
     () => defaults.works.filter(work => work.status !== 'completed'),
     [defaults.works],
   )
+  const activeClients = useMemo(() => {
+    const clientsById = new Map()
+
+    activeWorks.forEach(work => {
+      const clientId = String(work.clientId || '').trim()
+
+      if (!clientId || clientsById.has(clientId)) {
+        return
+      }
+
+      clientsById.set(clientId, {
+        id: clientId,
+        name: String(work.clientName || 'Cliente sem nome'),
+      })
+    })
+
+    return Array.from(clientsById.values()).sort((left, right) =>
+      String(left.name).localeCompare(String(right.name), 'pt-PT', {
+        sensitivity: 'base',
+      }),
+    )
+  }, [activeWorks])
   const selectedWork = useMemo(
     () => activeWorks.find(work => String(work.id) === String(assignmentForm.workId)),
     [activeWorks, assignmentForm.workId],
   )
+  const selectedClient = useMemo(() => {
+    const selectedClientId =
+      String(assignmentForm.clientId || '').trim() ||
+      String(selectedWork?.clientId || '').trim()
+
+    return activeClients.find(client => String(client.id) === selectedClientId) || null
+  }, [activeClients, assignmentForm.clientId, selectedWork])
   const selectedPerson = useMemo(
     () => defaults.people.find(person => String(person.id) === String(assignmentForm.personId)),
     [defaults.people, assignmentForm.personId],
-  )
-  const selectedWorkChefAssignments = useMemo(() => {
-    if (!assignmentForm.workId) {
-      return []
-    }
-
-    const currentChefAssignments = assignments.filter(
-      assignment =>
-        String(assignment.workId) === String(assignmentForm.workId) &&
-        isChefRole(assignment.person?.role),
-    )
-
-    if (!assignmentForm.id || !selectedPerson || !isChefRole(selectedPerson.role)) {
-      return currentChefAssignments
-    }
-
-    const currentAssignmentIsAlreadyIncluded = currentChefAssignments.some(
-      assignment => String(assignment.id) === String(assignmentForm.id),
-    )
-
-    if (currentAssignmentIsAlreadyIncluded) {
-      return currentChefAssignments
-    }
-
-    return [...currentChefAssignments, { id: assignmentForm.id, personId: assignmentForm.personId, person: selectedPerson }]
-  }, [assignmentForm.id, assignmentForm.workId, assignments, selectedPerson])
-  const canChooseChefWorkAccessInEdit = Boolean(
-    assignmentForm.id &&
-    selectedPerson &&
-    isChefRole(selectedPerson.role) &&
-    selectedWorkChefAssignments.length > 1,
-  )
-  const canChooseChefWorkAccessOnAdd = Boolean(
-    !assignmentForm.id &&
-    assignmentForm.workId &&
-    selectedPerson &&
-    isChefRole(selectedPerson.role) &&
-    selectedWorkChefAssignments.length > 0,
-  )
-  const selectedWorkAccessChef = useMemo(() => {
-    const chefAccessAssignmentId = getChefAccessAssignmentId(selectedWorkChefAssignments)
-
-    if (!chefAccessAssignmentId) {
-      return null
-    }
-
-    return selectedWorkChefAssignments.find(
-      assignment => String(assignment.id) === String(chefAccessAssignmentId),
-    ) || null
-  }, [selectedWorkChefAssignments])
-  const shouldSuggestChefAccessOnAdd = Boolean(
-    !assignmentForm.id &&
-    assignmentForm.workId &&
-    selectedPerson &&
-    isChefRole(selectedPerson.role) &&
-    selectedWorkChefAssignments.some(
-      assignment => String(assignment.personId) !== String(selectedPerson.id),
-    ),
   )
   const canUseManualHourlyCost = Boolean(
     selectedPerson && canRoleUseManualHourlyCost(selectedPerson.role),
@@ -622,43 +651,65 @@ export default function DailyPlanPage() {
 
     return getWorkHourlyCostForPerson(selectedWork, selectedPerson, 0)
   }, [assignmentForm.hourlyCost, assignmentForm.manualHourlyCost, canUseManualHourlyCost, selectedPerson, selectedWork])
-  const selectedHourlyCostSource = useMemo(() => {
-    if (canUseManualHourlyCost && assignmentForm.manualHourlyCost) {
-      return 'manual na afetação'
-    }
-
-    if (!selectedWork || !selectedPerson) {
-      return 'default da obra'
-    }
-
-    if (selectedWork.specialPersonHourlyCosts?.[String(selectedPerson.id)] !== undefined) {
-      return 'preço especial da pessoa nesta obra'
-    }
-
-    if (selectedWork.roleHourlyCosts?.[selectedPerson.role] !== undefined) {
-      return `role ${getEntityRoleLabel(selectedPerson)}`
-    }
-
-    return 'default da obra'
-  }, [assignmentForm.manualHourlyCost, canUseManualHourlyCost, selectedPerson, selectedWork])
   const manualHourlyCostSuggestions = useMemo(
     () => getManualHourlyCostSuggestions(selectedWork, selectedPerson),
     [selectedPerson, selectedWork],
   )
   const sortedPeople = useMemo(
-    () =>
-      [...defaults.people].sort((left, right) =>
-        String(getPersonDisplayName(left, left.id)).localeCompare(
-          String(getPersonDisplayName(right, right.id)),
-          'pt-PT',
-          { sensitivity: 'base' },
-        ),
-      ),
+    () => [...defaults.people].sort(comparePlanningPeople),
     [defaults.people],
   )
   const activeWorksById = useMemo(
     () => new Map(activeWorks.map(work => [String(work.id), work])),
     [activeWorks],
+  )
+  const sortedActiveWorks = useMemo(
+    () =>
+      [...activeWorks].sort(
+        (left, right) =>
+          Number(left.number || 0) - Number(right.number || 0) ||
+          String(left.name || '').localeCompare(String(right.name || ''), 'pt-PT', {
+            sensitivity: 'base',
+          }),
+      ),
+    [activeWorks],
+  )
+  const filteredActiveWorks = useMemo(() => {
+    const selectedClientId = String(assignmentForm.clientId || '').trim()
+
+    if (!selectedClientId) {
+      return sortedActiveWorks
+    }
+
+    return sortedActiveWorks.filter(
+      work => String(work.clientId || '').trim() === selectedClientId,
+    )
+  }, [assignmentForm.clientId, sortedActiveWorks])
+  const chefAccessPeople = useMemo(
+    () => sortedPeople.filter(person => isChefRole(person.role)),
+    [sortedPeople],
+  )
+  const assignedWorkIdsByChefPersonId = useMemo(() => {
+    return assignments.reduce((assignedMap, assignment) => {
+      if (!isChefRole(assignment.person?.role)) {
+        return assignedMap
+      }
+
+      const personId = String(assignment.personId)
+      const workId = String(assignment.workId)
+      const currentWorkIds = assignedMap.get(personId) || new Set()
+      currentWorkIds.add(workId)
+      assignedMap.set(personId, currentWorkIds)
+      return assignedMap
+    }, new Map())
+  }, [assignments])
+  const eligibleChefAccessPeople = useMemo(
+    () =>
+      chefAccessPeople.filter(person => {
+        const assignedWorkIds = assignedWorkIdsByChefPersonId.get(String(person.id))
+        return assignedWorkIds && assignedWorkIds.size > 0
+      }),
+    [assignedWorkIdsByChefPersonId, chefAccessPeople],
   )
   const unplannedWorks = useMemo(() => {
     const plannedWorkIds = new Set(groupedAssignments.map(group => String(group.workId)))
@@ -708,18 +759,24 @@ export default function DailyPlanPage() {
     () => new Set(duplicateNonChefAssignments.map(person => String(person.personId))),
     [duplicateNonChefAssignments],
   )
-  const duplicatedChefAssignments = useMemo(
-    () => getDuplicatedChefAssignmentsForMessage(groupedAssignments),
-    [groupedAssignments],
-  )
   const generatedMessage = useMemo(() => {
     return buildPlanningMessagePreview({
       planningDate: selectedPlanningWorkspace?.date || '',
       groupedAssignments,
       selectedWorkIds: selectedMessageWorkIds,
-      duplicateChefSelections: messageChefSelections,
     })
-  }, [groupedAssignments, messageChefSelections, selectedMessageWorkIds, selectedPlanningWorkspace])
+  }, [groupedAssignments, selectedMessageWorkIds, selectedPlanningWorkspace])
+  const messagePreviewAssignmentsByWorkId = useMemo(() => {
+    return new Map(
+      groupedAssignments.map(group => [
+        String(group.workId),
+        filterPlanningMessageAssignmentsForWork({
+          workId: group.workId,
+          assignments: group.assignments,
+        }),
+      ]),
+    )
+  }, [groupedAssignments])
   async function loadDailyPlan(date) {
     const requestId = ++loadRequestIdRef.current
 
@@ -736,6 +793,9 @@ export default function DailyPlanPage() {
       setDefaults(nextDefaults)
       setSelectedPlanningWorkspace(data.workspace || null)
       setAssignments(Array.isArray(data.items) ? data.items : [])
+      setWorkExtraAccessSelectionsByPersonId(
+        normalizeWorkAccessSelectionsMap(data.workExtraAccessSelectionsByPersonId),
+      )
       return true
     }
 
@@ -786,6 +846,7 @@ export default function DailyPlanPage() {
       setDefaults({ people: [], works: [] })
       setSelectedPlanningWorkspace(null)
       setAssignments([])
+      setWorkExtraAccessSelectionsByPersonId({})
     } finally {
       if (isCurrentRequest()) {
         setLoading(false)
@@ -824,6 +885,16 @@ export default function DailyPlanPage() {
       setCreating(false)
       setCreatingMode('')
     }
+  }
+
+  async function handleConfirmCreateWorkPlan() {
+    if (!planActionConfirmation) {
+      return
+    }
+
+    const { clonePreviousDay } = planActionConfirmation
+    setPlanActionConfirmation(null)
+    await handleCreateWorkPlan(clonePreviousDay)
   }
 
   async function handlePublishPlanning() {
@@ -870,9 +941,17 @@ export default function DailyPlanPage() {
     }
   }
 
-  function openAddModal() {
+  function openAddModal(workId = '') {
     if (!selectedPlanningWorkspace || !isDraftPlanning) return
-    setAssignmentForm(emptyAssignmentForm)
+    const initialWork =
+      activeWorksById.get(String(workId || '')) ||
+      (activeWorks.length === 1 ? activeWorks[0] : null)
+
+    setAssignmentForm({
+      ...emptyAssignmentForm,
+      clientId: initialWork?.clientId ? String(initialWork.clientId) : '',
+      workId: initialWork?.id ? String(initialWork.id) : '',
+    })
     setFormErrors({})
     setError('')
     setSuccess('')
@@ -880,14 +959,17 @@ export default function DailyPlanPage() {
   }
 
   function openEditModal(assignment) {
+    const assignmentWork =
+      activeWorksById.get(String(assignment.workId || '')) || assignment.work || null
+
     setAssignmentForm({
       id: assignment.id,
       personId: String(assignment.personId),
+      clientId: assignmentWork?.clientId ? String(assignmentWork.clientId) : '',
       workId: String(assignment.workId),
       hourlyCost: String(assignment.hourlyCost ?? ''),
       manualHourlyCost: assignment.manualHourlyCost === true,
       notes: assignment.notes || '',
-      hasWorkAccess: assignment.hasWorkAccess === true,
     })
     setFormErrors({})
     setError('')
@@ -905,46 +987,114 @@ export default function DailyPlanPage() {
     if (!selectedPlanningWorkspace || groupedAssignments.length === 0) return
 
     setSelectedMessageWorkIds(groupedAssignments.map(group => String(group.workId)))
-    setMessageChefSelections(createDuplicateChefMessageSelectionMap(duplicatedChefAssignments))
     setMessageSelectionError('')
     setError('')
     setSuccess('')
     setShowMessageModal(true)
-    setShowMessageChefFilterModal(duplicatedChefAssignments.length > 0)
   }
 
   function closeMessageModal() {
     setShowMessageModal(false)
-    setShowMessageChefFilterModal(false)
     setSelectedMessageWorkIds([])
-    setMessageChefSelections({})
     setMessageSelectionError('')
   }
 
-  function handleMessageChefWorkToggle(personId, workId) {
+  function requestCreateWorkPlanConfirmation(clonePreviousDay = false) {
+    setPlanActionConfirmation({
+      clonePreviousDay,
+      title: clonePreviousDay ? 'Copiar planeamento anterior?' : 'Criar novo plano?',
+      message: clonePreviousDay
+        ? 'Esta ação irá substituir o rascunho atual pelo último planeamento publicado.'
+        : 'Esta ação irá substituir o rascunho atual por um plano vazio.',
+      confirmLabel: clonePreviousDay ? 'Copiar anterior' : 'Criar novo plano',
+    })
+  }
+
+  function closePlanActionConfirmation() {
+    if (creating) {
+      return
+    }
+
+    setPlanActionConfirmation(null)
+  }
+
+  function openWorkAccessModal() {
+    if (!selectedPlanningWorkspace) return
+    setError('')
+    setSuccess('')
+    setShowWorkAccessModal(true)
+  }
+
+  function closeWorkAccessModal() {
+    setShowWorkAccessModal(false)
+  }
+
+  function handleWorkExtraAccessToggle(personId, workId) {
     const normalizedPersonId = String(personId)
     const normalizedWorkId = String(workId)
+    const assignedWorkIds = assignedWorkIdsByChefPersonId.get(normalizedPersonId)
 
-    setMessageChefSelections(current => {
-      const currentSelection = new Set(current[normalizedPersonId] || [])
+    if (assignedWorkIds?.has(normalizedWorkId)) {
+      return
+    }
 
-      if (currentSelection.has(normalizedWorkId)) {
-        currentSelection.delete(normalizedWorkId)
+    setWorkExtraAccessSelectionsByPersonId(current => {
+      const nextSelections = new Set(current[normalizedPersonId] || [])
+
+      if (nextSelections.has(normalizedWorkId)) {
+        nextSelections.delete(normalizedWorkId)
       } else {
-        currentSelection.add(normalizedWorkId)
+        nextSelections.add(normalizedWorkId)
       }
 
       return {
         ...current,
-        [normalizedPersonId]: Array.from(currentSelection),
+        [normalizedPersonId]: Array.from(nextSelections).sort(
+          (left, right) => Number(left) - Number(right),
+        ),
       }
     })
-    setMessageSelectionError('')
   }
 
-  function handleContinueMessageWorkflow() {
-    setMessageSelectionError('')
-    setShowMessageChefFilterModal(false)
+  async function handleSaveWorkAccessSelections() {
+    setSavingWorkExtraAccess(true)
+    setError('')
+    setSuccess('')
+
+    try {
+      const normalizedSelectionsByPersonId = Object.fromEntries(
+        eligibleChefAccessPeople.map(person => {
+          const personId = String(person.id)
+          const assignedWorkIds = assignedWorkIdsByChefPersonId.get(personId) || new Set()
+          const selectedWorkIds = Array.from(
+            new Set(workExtraAccessSelectionsByPersonId[personId] || []),
+          ).filter(workId => !assignedWorkIds.has(String(workId)))
+
+          return [
+            personId,
+            selectedWorkIds.sort((left, right) => Number(left) - Number(right)),
+          ]
+        }),
+      )
+
+      const data = await saveWorkExtraAccessSelections(
+        {
+          companyId: selectedPlanningWorkspace?.companyId,
+          selectionsByPersonId: normalizedSelectionsByPersonId,
+        },
+        'Erro ao guardar acessos extra às obras',
+      )
+
+      setWorkExtraAccessSelectionsByPersonId(
+        normalizeWorkAccessSelectionsMap(data.selectionsByPersonId),
+      )
+      setSuccess('Acessos extra às obras guardados com sucesso.')
+      setShowWorkAccessModal(false)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setSavingWorkExtraAccess(false)
+    }
   }
 
   function openUnassignedPeopleModal() {
@@ -962,30 +1112,40 @@ export default function DailyPlanPage() {
 
     setAssignmentForm(current => {
       const nextPersonId = name === 'personId' ? value : current.personId
-      const nextWorkId = name === 'workId' ? value : current.workId
       const nextPerson = defaults.people.find(person => String(person.id) === String(nextPersonId))
-      const nextWorkChefAssignments = assignments.filter(
-        assignment =>
-          String(assignment.workId) === String(nextWorkId) &&
-          isChefRole(assignment.person?.role) &&
-          (!current.id || String(assignment.id) !== String(current.id)),
-      )
+      const nextWorkId =
+        name === 'workId'
+          ? value
+          : current.workId
+      const nextWork =
+        activeWorksById.get(String(nextWorkId || '')) || null
       const nextForm = {
         ...current,
         [name]: value,
       }
 
+      if (name === 'clientId') {
+        const nextClientWorks = sortedActiveWorks.filter(
+          work => String(work.clientId || '').trim() === String(value || '').trim(),
+        )
+        const currentWorkMatchesClient = nextClientWorks.some(
+          work => String(work.id) === String(current.workId),
+        )
+
+        nextForm.workId = currentWorkMatchesClient
+          ? current.workId
+          : nextClientWorks[0]
+            ? String(nextClientWorks[0].id)
+            : ''
+      }
+
+      if (name === 'workId') {
+        nextForm.clientId = nextWork?.clientId ? String(nextWork.clientId) : current.clientId
+      }
+
       if (!canRoleUseManualHourlyCost(nextPerson?.role)) {
         nextForm.manualHourlyCost = false
         nextForm.hourlyCost = ''
-      }
-
-      if (!current.id) {
-        nextForm.hasWorkAccess = isChefRole(nextPerson?.role) ? nextWorkChefAssignments.length === 0 : false
-      } else if (name === 'personId') {
-        if (!isChefRole(nextPerson?.role)) {
-          nextForm.hasWorkAccess = false
-        }
       }
 
       return nextForm
@@ -1115,7 +1275,6 @@ export default function DailyPlanPage() {
             manualHourlyCost: assignmentForm.manualHourlyCost === true,
             hourlyCost: assignmentForm.manualHourlyCost ? selectedHourlyCost : undefined,
             notes: assignmentForm.notes,
-            hasWorkAccess: selectedPerson && isChefRole(selectedPerson.role) ? assignmentForm.hasWorkAccess === true : false,
           }
         : {
             workspaceId: selectedPlanningWorkspace.id,
@@ -1124,7 +1283,6 @@ export default function DailyPlanPage() {
             manualHourlyCost: assignmentForm.manualHourlyCost === true,
             hourlyCost: assignmentForm.manualHourlyCost ? selectedHourlyCost : undefined,
             notes: assignmentForm.notes,
-            hasWorkAccess: selectedPerson && isChefRole(selectedPerson.role) ? assignmentForm.hasWorkAccess === true : false,
           }
 
       const data = await savePlanningDraftAssignment(
@@ -1240,7 +1398,6 @@ export default function DailyPlanPage() {
           manualHourlyCost: false,
           hourlyCost: getWorkHourlyCostForPerson(targetWork, targetPerson, assignment.hourlyCost),
           notes: assignment.notes || '',
-          hasWorkAccess: assignment.hasWorkAccess === true,
         },
         'Erro ao mover afetação no rascunho',
       )
@@ -1264,7 +1421,7 @@ export default function DailyPlanPage() {
   const unassignedPeople = useMemo(
     () => defaults.people
       .filter(person => !assignedPersonIds.has(String(person.id)))
-      .sort((left, right) => (left.name || '').localeCompare(right.name || '', 'pt-PT')),
+      .sort(comparePlanningPeople),
     [assignedPersonIds, defaults.people],
   )
   const unassignedRoleOptions = useMemo(
@@ -1296,19 +1453,66 @@ export default function DailyPlanPage() {
                 </h1>
               </div>
               <div style={heroActionColumnStyle}>
-                <button
-                  className="vp-planning-action-button"
-                  type="button"
-                  onClick={() => handleCreateWorkPlan(false)}
-                  disabled={isPlanActionBusy}
-                  style={
-                    isPlanActionBusy
-                      ? { ...disabledButtonStyle, ...compactActionButtonStyle, width: '100%' }
-                      : { ...primaryButtonStyle, ...compactActionButtonStyle, width: '100%' }
-                  }
-                >
-                  {creating && creatingMode === 'new' ? 'A criar...' : 'Criar novo'}
-                </button>
+                {(!selectedPlanningWorkspace || isDraftPlanning) && (
+                  <>
+                    <button
+                      className="vp-planning-action-button"
+                      type="button"
+                      onClick={() => requestCreateWorkPlanConfirmation(false)}
+                      disabled={isPlanActionBusy}
+                      style={
+                        isPlanActionBusy
+                          ? { ...disabledButtonStyle, ...compactActionButtonStyle, width: '100%' }
+                          : { ...secondaryButtonStyle, ...compactActionButtonStyle, width: '100%' }
+                      }
+                    >
+                      {creating && creatingMode === 'new' ? 'A criar...' : 'Novo plano'}
+                    </button>
+                    <button
+                      className="vp-planning-action-button"
+                      type="button"
+                      onClick={() => requestCreateWorkPlanConfirmation(true)}
+                      disabled={isPlanActionBusy}
+                      style={
+                        isPlanActionBusy
+                          ? { ...disabledButtonStyle, ...compactActionButtonStyle, width: '100%' }
+                          : { ...secondaryButtonStyle, ...compactActionButtonStyle, width: '100%' }
+                      }
+                    >
+                      {creating && creatingMode === 'clone' ? 'A copiar...' : 'Copiar anterior'}
+                    </button>
+                  </>
+                )}
+                {isDraftPlanning && (
+                  <button
+                    className="vp-planning-action-button"
+                    type="button"
+                    onClick={handlePublishPlanning}
+                    disabled={publishing || savingAssignment}
+                    style={
+                      publishing || savingAssignment
+                        ? { ...disabledButtonStyle, ...compactActionButtonStyle, width: '100%' }
+                        : { ...primaryButtonStyle, ...compactActionButtonStyle, width: '100%' }
+                    }
+                  >
+                    {publishing ? 'A publicar...' : 'Publicar'}
+                  </button>
+                )}
+                {isPublishedPlanning && (
+                  <button
+                    className="vp-planning-action-button"
+                    type="button"
+                    onClick={handleEditPublishedPlanning}
+                    disabled={switchingToDraft}
+                    style={
+                      switchingToDraft
+                        ? { ...disabledButtonStyle, ...compactActionButtonStyle, width: '100%' }
+                        : { ...secondaryButtonStyle, ...compactActionButtonStyle, width: '100%' }
+                    }
+                  >
+                    {switchingToDraft ? 'A voltar...' : 'Editar publicação'}
+                  </button>
+                )}
               </div>
             </div>
             <div style={planningHeaderStyle}>
@@ -1403,53 +1607,6 @@ export default function DailyPlanPage() {
               <SurfaceCard as="section" variant="panel" className="vp-planning-assignments-panel">
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
                     <h2 style={{ margin: 0, fontWeight: 900, fontSize: '22px' }}>Afetações do planeamento</h2>
-
-                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
-                      {isDraftPlanning ? (
-                        <>
-                          <button
-                            className="vp-planning-action-button"
-                            type="button"
-                            onClick={openAddModal}
-                            disabled={savingAssignment || publishing}
-                            style={
-                              savingAssignment || publishing
-                                ? { ...disabledButtonStyle, ...compactActionButtonStyle }
-                                : { ...primaryButtonStyle, ...compactActionButtonStyle }
-                            }
-                          >
-                            Adicionar
-                          </button>
-                          <button
-                            className="vp-planning-action-button"
-                            type="button"
-                            onClick={handlePublishPlanning}
-                            disabled={publishing || savingAssignment}
-                            style={
-                              publishing || savingAssignment
-                                ? { ...disabledButtonStyle, ...compactActionButtonStyle }
-                                : { ...secondaryButtonStyle, ...compactActionButtonStyle }
-                            }
-                          >
-                            {publishing ? 'A publicar...' : 'Publicar'}
-                          </button>
-                        </>
-                      ) : (
-                        <button
-                          className="vp-planning-action-button"
-                          type="button"
-                          onClick={handleEditPublishedPlanning}
-                          disabled={switchingToDraft}
-                          style={
-                            switchingToDraft
-                              ? { ...disabledButtonStyle, ...compactActionButtonStyle }
-                              : { ...secondaryButtonStyle, ...compactActionButtonStyle }
-                          }
-                        >
-                          {switchingToDraft ? 'A voltar...' : 'Editar'}
-                        </button>
-                      )}
-                    </div>
                   </div>
 
                   {duplicateNonChefAssignments.length > 0 && (
@@ -1480,8 +1637,6 @@ export default function DailyPlanPage() {
                   {groupedAssignments.length > 0 && (
                     <ResponsiveGrid className="vp-planning-work-grid">
                       {groupedAssignments.map(group => {
-                        const chefAccessAssignmentId = getChefAccessAssignmentId(group.assignments)
-                        const totalChefAssignments = getChefAssignmentsForWork(group.assignments).length
                         const isDropActive = isDraftPlanning && (
                           dropTargetWorkId === String(group.workId) ||
                           (draggedSourceWorkId === String(group.workId) && !dropTargetWorkId)
@@ -1496,6 +1651,7 @@ export default function DailyPlanPage() {
                             as="article"
                             key={group.workId}
                             variant="work"
+                            className="vp-planning-work-card"
                             onDragOver={isDraftPlanning ? (event) => handleWorkDragOver(event, group.workId) : undefined}
                             onDragLeave={isDraftPlanning ? () => handleWorkDragLeave(group.workId) : undefined}
                             onDrop={isDraftPlanning ? (event) => handleWorkDrop(event, group.workId) : undefined}
@@ -1525,14 +1681,22 @@ export default function DailyPlanPage() {
                                     {group.assignments.length} afetações
                                   </p>
                                 </div>
+                                {isDraftPlanning && (
+                                  <button
+                                    className="vp-planning-work-quick-add"
+                                    type="button"
+                                    onClick={() => openAddModal(group.workId)}
+                                    style={quickAddButtonStyle}
+                                    title={`Adicionar afetação à obra ${group.workName}`}
+                                    aria-label={`Adicionar afetação à obra ${group.workName}`}
+                                  >
+                                    +
+                                  </button>
+                                )}
                               </div>
 
                               <div style={{ display: 'grid', gap: '8px' }}>
                                 {group.assignments.map(assignment => {
-                                  const isChefAssignment = isChefRole(assignment.person?.role)
-                                  const hasChefWorkAccess = isChefAssignment && String(assignment.id) === chefAccessAssignmentId
-                                  const showChefAccessIndicator = totalChefAssignments > 1 && hasChefWorkAccess
-
                                   return (
                                     <div
                                       key={assignment.id}
@@ -1554,15 +1718,6 @@ export default function DailyPlanPage() {
                                       <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
                                         <div>
                                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                                            {showChefAccessIndicator ? (
-                                              <span
-                                                style={chefAccessStarButtonStyle(true)}
-                                                title="Chefe com acesso a esta obra"
-                                                aria-label="Chefe com acesso a esta obra"
-                                              >
-                                                ★
-                                              </span>
-                                            ) : null}
                                             <strong style={{ fontWeight: 900 }}>
                                               {getPersonDisplayName(assignment.person, assignment.personId)}
                                             </strong>
@@ -1628,6 +1783,7 @@ export default function DailyPlanPage() {
                             as="article"
                             key={work.id}
                             variant="dropzone"
+                            className="vp-planning-work-card"
                             onDragOver={(event) => handleWorkDragOver(event, work.id)}
                             onDragLeave={() => handleWorkDragLeave(work.id)}
                             onDrop={(event) => handleWorkDrop(event, work.id)}
@@ -1637,7 +1793,19 @@ export default function DailyPlanPage() {
                               background: dropTargetWorkId === String(work.id) ? 'var(--vp-highlight)' : 'var(--vp-surface)',
                             }}
                           >
-                            <strong>{getWorkDisplayReference(work, work.id)}</strong>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+                              <strong>{getWorkDisplayReference(work, work.id)}</strong>
+                              <button
+                                className="vp-planning-work-quick-add"
+                                type="button"
+                                onClick={() => openAddModal(work.id)}
+                                style={quickAddButtonStyle}
+                                title={`Adicionar afetação à obra ${getWorkDisplayName(work, work.id)}`}
+                                aria-label={`Adicionar afetação à obra ${getWorkDisplayName(work, work.id)}`}
+                              >
+                                +
+                              </button>
+                            </div>
                             <p style={{ margin: '6px 0 0', color: 'var(--vp-text-muted)', fontSize: '13px' }}>
                               Larga aqui para mover uma pessoa para esta obra.
                             </p>
@@ -1647,20 +1815,38 @@ export default function DailyPlanPage() {
                     </FlowStack>
                   )}
 
-                  <div className="vp-planning-secondary-action-bar">
-                    <button
-                      className="vp-planning-action-button"
-                      type="button"
-                      onClick={openMessageModal}
-                      disabled={groupedAssignments.length === 0}
-                      style={
-                        groupedAssignments.length === 0
-                          ? { ...disabledButtonStyle, ...compactActionButtonStyle }
-                          : { ...secondaryButtonStyle, ...compactActionButtonStyle }
-                      }
-                    >
-                      Importar mensagem
-                    </button>
+                  <div className="vp-planning-secondary-actions">
+                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+                      <button
+                        className="vp-planning-action-button"
+                        type="button"
+                        onClick={openWorkAccessModal}
+        disabled={eligibleChefAccessPeople.length === 0 || sortedActiveWorks.length === 0}
+                        style={
+                          eligibleChefAccessPeople.length === 0 || sortedActiveWorks.length === 0
+                            ? { ...disabledButtonStyle, ...compactActionButtonStyle }
+                            : { ...secondaryButtonStyle, ...compactActionButtonStyle }
+                        }
+                      >
+                        Acessos às obras
+                      </button>
+                    </div>
+
+                    <div className="vp-planning-secondary-action-bar">
+                      <button
+                        className="vp-planning-action-button"
+                        type="button"
+                        onClick={openMessageModal}
+                        disabled={groupedAssignments.length === 0}
+                        style={
+                          groupedAssignments.length === 0
+                            ? { ...disabledButtonStyle, ...compactActionButtonStyle }
+                            : { ...secondaryButtonStyle, ...compactActionButtonStyle }
+                        }
+                      >
+                        Importar mensagem
+                      </button>
+                    </div>
                   </div>
               </SurfaceCard>
             )}
@@ -1732,12 +1918,7 @@ export default function DailyPlanPage() {
           <section className="vp-modal-card" style={modalCardStyle} onClick={(event) => event.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center' }}>
               <div>
-                <h2 style={{ margin: 0 }}>{assignmentForm.id ? 'Editar afetação' : 'Adicionar afetação'}</h2>
-                {assignmentForm.id ? (
-                  <p style={{ margin: '6px 0 0', color: 'var(--vp-text-muted)', fontSize: '13px', fontWeight: 700 }}>
-                    ID da afetação: {assignmentForm.id}
-                  </p>
-                ) : null}
+                <h2 style={{ margin: 0 }}>{assignmentForm.id ? 'Editar pessoa' : 'Adicionar afetação'}</h2>
               </div>
               <button type="button" onClick={closeAddModal} style={closeButtonStyle} aria-label="Fechar">
                 ×
@@ -1760,10 +1941,22 @@ export default function DailyPlanPage() {
                 </label>
 
                 <label style={labelStyle}>
+                  Cliente
+                  <select name="clientId" value={assignmentForm.clientId} onChange={handleAssignmentChange} style={inputStyle}>
+                    <option value="">Seleciona um cliente</option>
+                    {activeClients.map(client => (
+                      <option key={client.id} value={client.id}>
+                        {client.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label style={labelStyle}>
                   Obra
                   <select name="workId" value={assignmentForm.workId} onChange={handleAssignmentChange} style={inputStyle}>
                     <option value="">Seleciona uma obra</option>
-                    {activeWorks.map(work => (
+                    {filteredActiveWorks.map(work => (
                       <option key={work.id} value={work.id}>
                         {getWorkDisplayReference(work, work.id)}
                       </option>
@@ -1772,110 +1965,6 @@ export default function DailyPlanPage() {
                   {formErrors.workId && <span style={{ color: '#b42318', fontSize: '13px' }}>{formErrors.workId}</span>}
                 </label>
               </ResponsiveGrid>
-
-              {canChooseChefWorkAccessOnAdd && (
-                <div
-                  style={{
-                    padding: '14px 16px',
-                    borderRadius: '14px',
-                    border: `1px solid ${assignmentForm.hasWorkAccess ? 'var(--vp-accent)' : 'var(--vp-border)'}`,
-                    background: assignmentForm.hasWorkAccess ? 'var(--vp-highlight)' : 'var(--vp-surface)',
-                    display: 'grid',
-                    gap: '10px',
-                  }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
-                    <div>
-                      <strong style={{ fontWeight: 900 }}>Acesso do chefe à obra</strong>
-                    </div>
-                    <span style={chefAccessStarButtonStyle(assignmentForm.hasWorkAccess === true)}>
-                      {assignmentForm.hasWorkAccess ? '★' : '☆'}
-                    </span>
-                  </div>
-
-                  {selectedWorkChefAssignments.length > 0 && (
-                    <p style={{ margin: 0, color: 'var(--vp-text-muted)', fontSize: '13px' }}>
-                      Chefes já nesta obra:{' '}
-                      {selectedWorkChefAssignments
-                        .map(assignment => getPersonDisplayName(assignment.person, assignment.personId))
-                        .join(', ')}.
-                    </p>
-                  )}
-
-                  <p style={{ margin: 0, color: 'var(--vp-text-muted)', fontSize: '13px' }}>
-                    {shouldSuggestChefAccessOnAdd
-                      ? `Como estás a preparar mais um chefe para esta obra, por defeito o acesso vai ficar com ${selectedWorkAccessChef?.person ? getPersonDisplayName(selectedWorkAccessChef.person, selectedWorkAccessChef.personId) : 'o chefe que vinha dos dias anteriores'}.`
-                      : 'Se este chefe ficar com estrela, será ele a entrar nesta obra na aplicação.'}
-                  </p>
-
-                  {assignmentForm.hasWorkAccess ? (
-                    <p style={{ margin: 0, color: 'var(--vp-highlight-text)', fontSize: '13px', fontWeight: 700 }}>
-                      Este é o chefe que fica com acesso a esta obra.
-                    </p>
-                  ) : (
-                    <div>
-                      <button
-                        className="vp-planning-action-button"
-                        type="button"
-                        onClick={() => setAssignmentForm(current => ({ ...current, hasWorkAccess: true }))}
-                        style={secondaryButtonStyle}
-                      >
-                        Dar estrela a este chefe
-                      </button>
-                      {shouldSuggestChefAccessOnAdd && (
-                        <p style={{ margin: '8px 0 0', color: 'var(--vp-text-muted)', fontSize: '13px' }}>
-                          Por defeito, fica selecionado o chefe que já vinha dos dias anteriores nesta obra.
-                        </p>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {canChooseChefWorkAccessInEdit && (
-                <div
-                  style={{
-                    padding: '14px 16px',
-                    borderRadius: '14px',
-                    border: `1px solid ${assignmentForm.hasWorkAccess ? 'var(--vp-accent)' : 'var(--vp-border)'}`,
-                    background: assignmentForm.hasWorkAccess ? 'var(--vp-highlight)' : 'var(--vp-surface)',
-                    display: 'grid',
-                    gap: '10px',
-                  }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
-                    <div>
-                      <strong style={{ fontWeight: 900 }}>Acesso do chefe à obra</strong>
-                      <p style={{ margin: '6px 0 0', color: 'var(--vp-text-muted)', fontSize: '13px' }}>
-                        Como existem vários chefes nesta obra, só o chefe com estrela terá acesso a ela na aplicação.
-                      </p>
-                    </div>
-                    <span style={chefAccessStarButtonStyle(assignmentForm.hasWorkAccess === true)}>
-                      {assignmentForm.hasWorkAccess ? '★' : '☆'}
-                    </span>
-                  </div>
-
-                  {assignmentForm.hasWorkAccess ? (
-                    <p style={{ margin: 0, color: 'var(--vp-highlight-text)', fontSize: '13px', fontWeight: 700 }}>
-                      Este é o chefe que fica com acesso a esta obra.
-                    </p>
-                  ) : (
-                    <div>
-                      <button
-                        className="vp-planning-action-button"
-                        type="button"
-                        onClick={() => setAssignmentForm(current => ({ ...current, hasWorkAccess: true }))}
-                        style={secondaryButtonStyle}
-                      >
-                        Dar estrela a este chefe
-                      </button>
-                      <p style={{ margin: '8px 0 0', color: 'var(--vp-text-muted)', fontSize: '13px' }}>
-                        Por defeito, fica selecionado o chefe que já vinha dos dias anteriores nesta obra.
-                      </p>
-                    </div>
-                  )}
-                </div>
-              )}
 
               {canUseManualHourlyCost && (
                 <div
@@ -1935,21 +2024,33 @@ export default function DailyPlanPage() {
                       )}
                       {formErrors.hourlyCost && <span style={{ color: '#b42318', fontSize: '13px' }}>{formErrors.hourlyCost}</span>}
                     </div>
-                  ) : (
-                    <p style={{ margin: 0, color: 'var(--vp-text-muted)', fontSize: '13px' }}>
-                      Preço automático pela hierarquia: pessoa na obra, role da obra, default da obra.
-                    </p>
-                  )}
+                  ) : null}
                 </div>
               )}
 
-              <div style={{ padding: '14px 16px', borderRadius: '14px', background: 'var(--vp-highlight)', color: 'var(--vp-highlight-text)' }}>
-                <strong>Resumo:</strong>{' '}
-                {selectedPerson ? selectedPerson.name : 'Escolhe uma pessoa'}
-                {' | '}
-                {selectedWork ? `Obra: ${selectedWork.name}` : 'Escolhe uma obra'}
-                {' | '}
-                {selectedWork ? `Preço: ${selectedHourlyCost}/h (${selectedHourlyCostSource})` : 'Preço automático pela obra'}
+              <div
+                style={{
+                  padding: '14px 18px',
+                  borderRadius: '16px',
+                  background: 'var(--vp-highlight)',
+                  color: 'var(--vp-highlight-text)',
+                  display: 'grid',
+                  gap: '8px',
+                }}
+              >
+                <strong style={{ fontSize: '15px', fontWeight: 900 }}>Resumo</strong>
+                <div style={{ display: 'grid', gap: '4px' }}>
+                  <span style={{ fontSize: '16px', fontWeight: 900, textTransform: 'uppercase', lineHeight: 1.25 }}>
+                    {selectedPerson ? getPersonDisplayName(selectedPerson, selectedPerson.id) : 'Seleciona uma pessoa'}
+                  </span>
+                  <span style={{ fontSize: '14px', fontWeight: 700, lineHeight: 1.45, opacity: 0.92 }}>
+                    {[
+                      selectedClient?.name || selectedWork?.clientName || 'Seleciona um cliente',
+                      selectedWork ? getWorkDisplayName(selectedWork, selectedWork.id) : 'Seleciona uma obra',
+                      selectedWork ? `${formatHourlyCostLabel(selectedHourlyCost)} €/h` : 'Preço automático pela obra',
+                    ].join(' • ')}
+                  </span>
+                </div>
               </div>
 
               <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
@@ -1958,6 +2059,127 @@ export default function DailyPlanPage() {
                 </button>
               </div>
             </form>
+          </section>
+        </div>
+      )}
+
+      {showWorkAccessModal && selectedPlanningWorkspace && (
+        <div style={modalBackdropStyle} onClick={closeWorkAccessModal}>
+          <section className="vp-modal-card" style={modalCardStyle} onClick={(event) => event.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <h2 style={{ margin: 0 }}>Acessos às obras</h2>
+              <button type="button" onClick={closeWorkAccessModal} style={closeButtonStyle} aria-label="Fechar">
+                ×
+              </button>
+            </div>
+
+            <div
+              style={{
+                display: 'grid',
+                gap: '14px',
+                marginTop: '20px',
+                maxHeight: 'min(56vh, 460px)',
+                overflowY: 'auto',
+                paddingRight: '4px',
+              }}
+            >
+              {eligibleChefAccessPeople.length === 0 && (
+                <p style={{ margin: 0, color: 'var(--vp-text-muted)' }}>
+                  Ainda não existem chefes afetos a este planeamento.
+                </p>
+              )}
+
+              {eligibleChefAccessPeople.map(person => {
+                const personId = String(person.id)
+                const assignedWorkIds = assignedWorkIdsByChefPersonId.get(personId) || new Set()
+                const selectedWorkIds = new Set(workExtraAccessSelectionsByPersonId[personId] || [])
+
+                return (
+                  <div
+                    key={person.id}
+                    style={{
+                      display: 'grid',
+                      gap: '12px',
+                      padding: '16px 18px',
+                      borderRadius: '18px',
+                      border: '1px solid var(--vp-border)',
+                      background: 'var(--vp-surface)',
+                    }}
+                  >
+                    <div style={{ display: 'grid', gap: '4px' }}>
+                      <strong style={{ fontWeight: 900 }}>{getPersonDisplayName(person, person.id)}</strong>
+                      <span style={{ color: 'var(--vp-text-muted)', fontSize: '13px' }}>
+                        {getEntityRoleLabel(person)}
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'grid', gap: '8px' }}>
+                      {sortedActiveWorks.map(work => {
+                        const workId = String(work.id)
+                        const hasAutomaticAccess = assignedWorkIds.has(workId)
+                        const checked = hasAutomaticAccess || selectedWorkIds.has(workId)
+
+                        return (
+                          <label
+                            key={`${person.id}-${work.id}`}
+                            style={{
+                              display: 'grid',
+                              gap: '4px',
+                              padding: '12px 14px',
+                              borderRadius: '14px',
+                              border: `1px solid ${checked ? 'var(--vp-accent)' : 'var(--vp-border)'}`,
+                              background: checked ? 'var(--vp-highlight)' : 'var(--vp-surface-muted)',
+                              cursor: hasAutomaticAccess ? 'default' : 'pointer',
+                              opacity: hasAutomaticAccess ? 0.92 : 1,
+                            }}
+                          >
+                            <span style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                disabled={hasAutomaticAccess}
+                                onChange={() => handleWorkExtraAccessToggle(person.id, work.id)}
+                                style={{ marginTop: '2px' }}
+                              />
+                              <span style={{ display: 'grid', gap: '4px' }}>
+                                <strong style={{ fontWeight: 800 }}>
+                                  {String(work.name || 'Obra sem nome')}
+                                </strong>
+                                {hasAutomaticAccess && (
+                                  <span style={{ color: 'var(--vp-text-muted)', fontSize: '12px', fontWeight: 700 }}>
+                                    Acesso automático por afetação
+                                  </span>
+                                )}
+                              </span>
+                            </span>
+                          </label>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', flexWrap: 'wrap', marginTop: '20px' }}>
+              <button
+                className="vp-planning-action-button"
+                type="button"
+                onClick={closeWorkAccessModal}
+                style={secondaryButtonStyle}
+              >
+                Cancelar
+              </button>
+              <button
+                className="vp-planning-action-button"
+                type="button"
+                onClick={handleSaveWorkAccessSelections}
+                disabled={savingWorkExtraAccess}
+                style={savingWorkExtraAccess ? disabledButtonStyle : primaryButtonStyle}
+              >
+                {savingWorkExtraAccess ? 'A guardar...' : 'Guardar acessos'}
+              </button>
+            </div>
           </section>
         </div>
       )}
@@ -1984,6 +2206,8 @@ export default function DailyPlanPage() {
             <div style={{ display: 'grid', gap: '12px', marginTop: '18px' }}>
               {groupedAssignments.map(group => {
                 const checked = selectedMessageWorkIds.includes(String(group.workId))
+                const visibleMessageAssignments =
+                  messagePreviewAssignmentsByWorkId.get(String(group.workId)) || []
 
                 return (
                   <label
@@ -2008,9 +2232,11 @@ export default function DailyPlanPage() {
                     <div>
                       <strong>{group.workName}</strong>
                       <p style={{ margin: '6px 0 0', color: 'var(--vp-text-muted)' }}>
-                        {group.assignments
+                        {visibleMessageAssignments.length > 0
+                          ? visibleMessageAssignments
                           .map(assignment => getPersonDisplayName(assignment.person, assignment.personId))
-                          .join(', ')}
+                          .join(', ')
+                          : 'Sem pessoas na mensagem'}
                       </p>
                     </div>
                   </label>
@@ -2041,74 +2267,34 @@ export default function DailyPlanPage() {
         </div>
       )}
 
-      {showMessageChefFilterModal && duplicatedChefAssignments.length > 0 && (
-        <div style={nestedModalBackdropStyle} onClick={closeMessageModal}>
-          <section className="vp-modal-card" style={{ ...modalCardStyle, width: 'min(720px, 100%)' }} onClick={(event) => event.stopPropagation()}>
+      {planActionConfirmation && (
+        <div style={modalBackdropStyle} onClick={closePlanActionConfirmation}>
+          <section className="vp-modal-card" style={{ ...modalCardStyle, width: 'min(520px, 100%)' }} onClick={(event) => event.stopPropagation()}>
             <div style={{ display: 'grid', gap: '10px' }}>
-              <h2 style={{ margin: 0 }}>Chefes afetos a várias obras</h2>
-              <p style={{ margin: 0, color: 'var(--vp-text-muted)' }}>
-                Selecione em quais obras cada chefe deve aparecer na mensagem. Esta escolha apenas afeta a mensagem gerada.
+              <h2 style={{ margin: 0 }}>{planActionConfirmation.title}</h2>
+              <p style={{ margin: 0, color: 'var(--vp-text-muted)', lineHeight: 1.5 }}>
+                {planActionConfirmation.message}
               </p>
             </div>
 
-            <div style={{ display: 'grid', gap: '14px', marginTop: '20px' }}>
-              {duplicatedChefAssignments.map(person => (
-                <div
-                  key={person.personId}
-                  style={{
-                    display: 'grid',
-                    gap: '10px',
-                    padding: '16px 18px',
-                    borderRadius: '18px',
-                    border: '1px solid var(--vp-border)',
-                    background: 'var(--vp-surface)',
-                  }}
-                >
-                  <div style={{ display: 'grid', gap: '4px' }}>
-                    <strong style={{ fontWeight: 900 }}>{person.name}</strong>
-                    <span style={{ color: 'var(--vp-text-muted)' }}>
-                      {person.name} está afeto a {person.works.length} {person.works.length === 1 ? 'obra' : 'obras'}.
-                    </span>
-                  </div>
-
-                  <div style={{ display: 'grid', gap: '8px' }}>
-                    {person.works.map(work => {
-                      const isChecked = (messageChefSelections[person.personId] || []).includes(String(work.workId))
-
-                      return (
-                        <label
-                          key={`${person.personId}-${work.workId}`}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '10px',
-                            padding: '10px 12px',
-                            borderRadius: '14px',
-                            border: `1px solid ${isChecked ? 'var(--vp-accent)' : 'var(--vp-border)'}`,
-                            background: isChecked ? 'var(--vp-highlight)' : 'var(--vp-surface-muted)',
-                            cursor: 'pointer',
-                          }}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={isChecked}
-                            onChange={() => handleMessageChefWorkToggle(person.personId, work.workId)}
-                          />
-                          <span>{work.workName}</span>
-                        </label>
-                      )
-                    })}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', flexWrap: 'wrap', marginTop: '20px' }}>
-              <button className="vp-planning-action-button" type="button" onClick={closeMessageModal} style={secondaryButtonStyle}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', flexWrap: 'wrap', marginTop: '24px' }}>
+              <button
+                className="vp-planning-action-button"
+                type="button"
+                onClick={closePlanActionConfirmation}
+                disabled={creating}
+                style={creating ? disabledButtonStyle : secondaryButtonStyle}
+              >
                 Cancelar
               </button>
-              <button className="vp-planning-action-button" type="button" onClick={handleContinueMessageWorkflow} style={primaryButtonStyle}>
-                Continuar
+              <button
+                className="vp-planning-action-button"
+                type="button"
+                onClick={handleConfirmCreateWorkPlan}
+                disabled={creating}
+                style={creating ? disabledButtonStyle : primaryButtonStyle}
+              >
+                {creating ? 'A processar...' : planActionConfirmation.confirmLabel}
               </button>
             </div>
           </section>

@@ -3,7 +3,11 @@
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import EditPencilIcon, { editPencilButtonStyle } from '../components/EditPencilIcon'
-import { ViewportPage, ViewportScrollArea, ViewportShell } from '../components/ViewportLayout.js'
+import {
+  BentixContent,
+  BentixPage,
+  BentixResponsiveGrid,
+} from '../components/ViewportLayout.js'
 import {
   deleteMaterial,
   listMaterials,
@@ -34,18 +38,13 @@ const emptyMaterialForm = {
 }
 
 const pageStyle = {
-  minHeight: '100vh',
-  padding: '40px 24px 60px',
   background: 'var(--vp-page-background)',
   color: 'var(--vp-text)',
   fontFamily: '"Avenir Next", "Segoe UI", "-apple-system", "BlinkMacSystemFont", sans-serif',
 }
 
 const shellStyle = {
-  maxWidth: '1240px',
-  margin: '0 auto',
-  display: 'grid',
-  gap: '24px',
+  '--btx-content-gap': '24px',
 }
 
 const heroStyle = {
@@ -124,8 +123,6 @@ const introStyle = {
 }
 
 const statsGridStyle = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
   gap: '14px',
 }
 
@@ -260,8 +257,6 @@ const messageSuccessStyle = {
 }
 
 const layoutStyle = {
-  display: 'grid',
-  gridTemplateColumns: 'minmax(340px, 0.95fr) minmax(0, 1.25fr)',
   gap: '24px',
 }
 
@@ -609,8 +604,8 @@ export default function MaterialsClient() {
   }
 
   return (
-    <ViewportPage lockViewport style={pageStyle}>
-      <ViewportShell fillHeight style={shellStyle}>
+    <BentixPage style={pageStyle}>
+      <BentixContent width="app" gap="lg" style={shellStyle}>
         <section style={heroStyle}>
           <div style={heroGlowStyle} />
           <div style={heroContentStyle}>
@@ -631,7 +626,7 @@ export default function MaterialsClient() {
               </p>
             </div>
 
-            <div className="vp-responsive-stat-grid" style={statsGridStyle}>
+            <BentixResponsiveGrid preset="stats" style={statsGridStyle}>
               <article style={heroStatCardStyle}>
                 <p style={heroStatLabelStyle}>Materiais totais</p>
                 <p style={heroStatValueStyle}>{materials.length}</p>
@@ -647,11 +642,11 @@ export default function MaterialsClient() {
                 <p style={heroStatValueStyle}>{noStockCount}</p>
                 <p style={heroStatTextStyle}>ja estao esgotados</p>
               </article>
-            </div>
+            </BentixResponsiveGrid>
           </div>
         </section>
 
-        <ViewportScrollArea style={{ '--vp-page-scroll-gap': '24px' }}>
+        <div style={{ display: 'grid', gap: '24px' }}>
         {showForm && (
           <section style={panelStyle}>
             <div style={toolbarStyle}>
@@ -748,7 +743,7 @@ export default function MaterialsClient() {
           </section>
         )}
 
-        <section className="vp-responsive-split-grid" style={layoutStyle}>
+        <BentixResponsiveGrid as="section" preset="split" style={layoutStyle}>
           <section style={panelStyle}>
             <div style={listHeaderStyle}>
               <div style={toolbarStyle}>
@@ -876,12 +871,12 @@ export default function MaterialsClient() {
               </>
             ) : null}
           </section>
-        </section>
+        </BentixResponsiveGrid>
 
         {!showForm && error ? <p style={messageErrorStyle}>{error}</p> : null}
         {!showForm && success ? <p style={messageSuccessStyle}>{success}</p> : null}
-        </ViewportScrollArea>
-      </ViewportShell>
-    </ViewportPage>
+        </div>
+      </BentixContent>
+    </BentixPage>
   )
 }

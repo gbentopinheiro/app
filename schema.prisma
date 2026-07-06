@@ -127,6 +127,7 @@ model Person {
   user                       User?
   workAssignments            WorkAssignment[]
   planningWorkspaceAssignments PlanningWorkspaceAssignment[]
+  workExtraAccessGrants      WorkExtraAccessGrant[]
   workHourlyCosts            WorkPersonHourlyCost[]
   authoredNotes              DailyWorkNote[]
   loginEvents                LoginEvent[]
@@ -156,6 +157,7 @@ model Work {
   personHourlyCosts  WorkPersonHourlyCost[]
   workAssignments            WorkAssignment[]
   planningWorkspaceAssignments PlanningWorkspaceAssignment[]
+  workExtraAccessGrants      WorkExtraAccessGrant[]
   dailyWorkNotes             DailyWorkNote[]
 
   @@unique([companyId, number])
@@ -277,6 +279,7 @@ model WorkAssignment {
   manualHourlyCost      Boolean   @default(false) @map("manual_hourly_cost")
   notes                 String?   @db.Text
   hasWorkAccess         Boolean   @default(false) @map("has_work_access")
+  assignmentPurpose     String    @default("work") @map("assignment_purpose") @db.VarChar(16)
   planningVisible       Boolean   @default(true) @map("planning_visible")
   workPlan              WorkPlan  @relation(fields: [workPlanId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   work                  Work      @relation(fields: [workId], references: [id], onDelete: Restrict, onUpdate: Cascade)
@@ -317,6 +320,7 @@ model PlanningWorkspaceAssignment {
   manualHourlyCost   Boolean           @default(false) @map("manual_hourly_cost")
   notes              String?           @db.Text
   hasWorkAccess      Boolean           @default(false) @map("has_work_access")
+  assignmentPurpose  String            @default("work") @map("assignment_purpose") @db.VarChar(16)
   createdAt          DateTime          @default(now()) @map("created_at")
   updatedAt          DateTime          @updatedAt @map("updated_at")
   workspace          PlanningWorkspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade, onUpdate: Cascade)
@@ -328,6 +332,21 @@ model PlanningWorkspaceAssignment {
   @@index([workId])
   @@index([personId])
   @@map("planning_workspace_assignments")
+}
+
+model WorkExtraAccessGrant {
+  id        Int      @id @default(autoincrement())
+  personId  Int      @map("person_id")
+  workId    Int      @map("work_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  person    Person   @relation(fields: [personId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  work      Work     @relation(fields: [workId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@unique([personId, workId])
+  @@index([personId])
+  @@index([workId])
+  @@map("work_extra_access_grants")
 }
 
 model DailyWorkNote {

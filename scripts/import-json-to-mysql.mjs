@@ -27,6 +27,7 @@ async function main() {
     prisma.loginAttempt.deleteMany(),
     prisma.loginEvent.deleteMany(),
     prisma.dailyWorkNote.deleteMany(),
+    prisma.workExtraAccessGrant.deleteMany(),
     prisma.planningWorkspaceAssignment.deleteMany(),
     prisma.planningWorkspace.deleteMany(),
     prisma.workAssignment.deleteMany(),
@@ -56,6 +57,9 @@ async function main() {
   await prisma.workAssignment.createMany({ data: target.workAssignments })
   await prisma.planningWorkspaceAssignment.createMany({
     data: target.planningWorkspaceAssignments.map(preparePlanningWorkspaceAssignmentForImport),
+  })
+  await prisma.workExtraAccessGrant.createMany({
+    data: target.workExtraAccessGrants.map(prepareWorkExtraAccessGrantForImport),
   })
   await prisma.dailyWorkNote.createMany({ data: target.dailyWorkNotes.map(prepareDailyWorkNoteForImport) })
   await prisma.loginEvent.createMany({ data: target.loginEvents })
@@ -90,7 +94,8 @@ async function loadSnapshot() {
       Array.isArray(snapshot?.target?.auditTrailEvents) &&
       Array.isArray(snapshot?.target?.featureFlags) &&
       Array.isArray(snapshot?.target?.planningWorkspaces) &&
-      Array.isArray(snapshot?.target?.planningWorkspaceAssignments)
+      Array.isArray(snapshot?.target?.planningWorkspaceAssignments) &&
+      Array.isArray(snapshot?.target?.workExtraAccessGrants)
     ) {
       return snapshot
     }
@@ -145,6 +150,14 @@ function preparePlanningWorkspaceAssignmentForImport(assignment) {
     ...assignment,
     createdAt: assignment.createdAt ? new Date(assignment.createdAt) : new Date(),
     updatedAt: assignment.updatedAt ? new Date(assignment.updatedAt) : new Date(),
+  }
+}
+
+function prepareWorkExtraAccessGrantForImport(grant) {
+  return {
+    ...grant,
+    createdAt: grant.createdAt ? new Date(grant.createdAt) : new Date(),
+    updatedAt: grant.updatedAt ? new Date(grant.updatedAt) : new Date(),
   }
 }
 

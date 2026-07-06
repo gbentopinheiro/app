@@ -12,7 +12,15 @@ const __dirname = dirname(__filename)
 const repoRoot = join(__dirname, '..')
 const dataDir = join(repoRoot, 'data')
 const dailyPlanPageSource = readFileSync(join(repoRoot, 'app', 'daily-plan', 'page.js'), 'utf8')
+const dailyHoursPageSource = readFileSync(join(repoRoot, 'app', 'daily-hours', 'page.js'), 'utf8')
+const viewportLayoutSource = readFileSync(join(repoRoot, 'app', 'components', 'ViewportLayout.js'), 'utf8')
 const globalCssSource = readFileSync(join(repoRoot, 'app', 'globals.css'), 'utf8')
+const homePageSource = readFileSync(join(repoRoot, 'app', 'page.js'), 'utf8')
+const peoplePageSource = readFileSync(join(repoRoot, 'app', 'people', 'page.js'), 'utf8')
+const clientsPageSource = readFileSync(join(repoRoot, 'app', 'clients', 'page.js'), 'utf8')
+const worksPageSource = readFileSync(join(repoRoot, 'app', 'works', 'page.js'), 'utf8')
+const materialsPageSource = readFileSync(join(repoRoot, 'app', 'materials', 'MaterialsClient.js'), 'utf8')
+const loginPageSource = readFileSync(join(repoRoot, 'app', 'login', 'page.js'), 'utf8')
 
 const fixturePasswords = {
   admin: 'AdminTeste#2026',
@@ -115,6 +123,7 @@ function buildFixtureData() {
     'work-assignments.json': [],
     'planning-workspaces.json': [],
     'planning-workspace-assignments.json': [],
+    'work-extra-access-grants.json': [],
     'daily-work-notes.json': [],
     'feature-flags.json': {
       activityHistory: true,
@@ -183,17 +192,20 @@ const { normalizePersonPricingInput } = await import('../lib/person-pricing.js')
 const { appendBuildVersion } = await import('../lib/pwa-version.js')
 const {
   buildPlanningMessagePreview,
-  createDuplicateChefMessageSelectionMap,
-  getDuplicatedChefAssignmentsForMessage,
+  filterPlanningMessageAssignmentsForWork,
 } = await import('../lib/planning-message.js')
 const { getEntityRoleLabel, getRoleDisplayLabel } = await import('../lib/roles.js')
 const { getTomorrowPlanningDateValue } = await import('../lib/planning-date.js')
 const { buildLoginRedirectPath, getSafeRedirectPath } = await import('../lib/safe-redirect.js')
 const { buildOperationalWorkStatuses } = await import('../lib/work-operation-status.js')
 const { getNextWorkNumber } = await import('../lib/work-numbering.js')
+const {
+  getWorkExtraAccessSelectionsByPersonData,
+  replaceWorkExtraAccessSelectionsData,
+} = await import('../lib/work-extra-access-grants.js')
 const { deleteClientService } = await import('../server/services/clients-service.js')
 const { createPersonService, updatePersonService } = await import('../server/services/people-service.js')
-const { deleteWorkService } = await import('../server/services/works-service.js')
+const { createWorkService, deleteWorkService } = await import('../server/services/works-service.js')
 const {
   createWorkAssignment,
   getAllWorkAssignments,
@@ -226,6 +238,7 @@ const CHEF_SESSION = {
   role: 'chef_primeira',
   accountType: 'operational',
   accessProfile: 'chef',
+  personId: 2,
   workIds: [1],
   name: 'Chefe Teste',
 }
@@ -347,6 +360,68 @@ test('workspace do Plano diário usa grelha em fluxo normal e rodapé de ação 
   assert.match(globalCssSource, /\.vp-planning-work-grid\s*\{[\s\S]*grid-auto-rows:\s*auto/)
   assert.match(globalCssSource, /\.vp-planning-secondary-action-bar\s*\{[\s\S]*justify-content:\s*flex-end/)
   assert.doesNotMatch(globalCssSource, /\.vp-planning-secondary-action-bar\s*\{[\s\S]*margin-top:\s*auto/)
+})
+
+test('Plano diário usa o modal final de acessos às obras e remove o workflow temporário dos chefes', () => {
+  assert.match(dailyPlanPageSource, /Acessos às obras/)
+  assert.match(dailyPlanPageSource, /Acesso automático por afetação/)
+  assert.match(dailyPlanPageSource, /Ainda não existem chefes afetos a este planeamento\./)
+  assert.match(dailyPlanPageSource, /eligibleChefAccessPeople/)
+  assert.match(dailyPlanPageSource, /String\(work\.name \|\| 'Obra sem nome'\)/)
+  assert.doesNotMatch(
+    dailyPlanPageSource,
+    /Selecione em quais obras cada chefe deve ter acesso extra\./,
+  )
+  assert.doesNotMatch(dailyPlanPageSource, /Chefes afetos a várias obras/)
+  assert.doesNotMatch(dailyPlanPageSource, /Tipo de afetação do chefe/)
+  assert.doesNotMatch(dailyPlanPageSource, /Dar estrela a este chefe/)
+})
+
+test('Adaptive Layout System expõe primitivas reutilizáveis e classes globais partilhadas', () => {
+  assert.match(viewportLayoutSource, /export function BentixPage/)
+  assert.match(viewportLayoutSource, /export function BentixContent/)
+  assert.match(viewportLayoutSource, /export function BentixSection/)
+  assert.match(viewportLayoutSource, /export function BentixResponsiveGrid/)
+  assert.match(viewportLayoutSource, /export function BentixOverflowX/)
+  assert.match(globalCssSource, /\.vp-content-frame--app\s*\{/)
+  assert.match(globalCssSource, /\.vp-content-frame--dashboard\s*\{/)
+  assert.match(globalCssSource, /\.btx-page--default\s*\{/)
+  assert.match(globalCssSource, /\.btx-content--lg\s*\{/)
+  assert.match(globalCssSource, /\.btx-responsive-grid--split\s*\{/)
+  assert.match(globalCssSource, /\.btx-responsive-grid--dashboard-main\s*\{/)
+  assert.match(globalCssSource, /\.btx-overflow-x\s*\{/)
+})
+
+test('páginas de maior risco usam scroll principal da página sem ViewportScrollArea nem lockViewport', () => {
+  for (const source of [
+    homePageSource,
+    peoplePageSource,
+    clientsPageSource,
+    worksPageSource,
+    materialsPageSource,
+    loginPageSource,
+  ]) {
+    assert.doesNotMatch(source, /lockViewport/)
+    assert.doesNotMatch(source, /ViewportScrollArea/)
+  }
+})
+
+test('páginas principais migradas usam primitivas adaptativas sem listas principais com altura fixa', () => {
+  assert.match(homePageSource, /<BentixPage padding="tight"/)
+  assert.match(homePageSource, /<BentixContent width="dashboard"/)
+  assert.match(homePageSource, /<BentixResponsiveGrid preset="dashboard-main"/)
+  assert.match(homePageSource, /className="btx-dashboard-responsavel-calendar"/)
+  assert.match(peoplePageSource, /<BentixContent width="app"/)
+  assert.match(peoplePageSource, /btx-responsive-grid--split/)
+  assert.match(
+    peoplePageSource,
+    /const peopleListStyle = \{\s*display: 'grid',\s*gap: '12px',\s*\}/,
+  )
+  assert.match(clientsPageSource, /<BentixResponsiveGrid as="section" preset="split"/)
+  assert.match(clientsPageSource, /<BentixSection as="div"/)
+  assert.match(worksPageSource, /<BentixOverflowX/)
+  assert.match(materialsPageSource, /<BentixResponsiveGrid as="section" preset="split"/)
+  assert.match(loginPageSource, /<BentixPage padding="none"/)
 })
 
 test('drag do Plano diário ativa auto-scroll da página perto das margens do viewport', () => {
@@ -497,7 +572,7 @@ test('admin edita draft sem publicar e a versao oficial continua vazia', async (
   assert.equal(getAllWorkAssignments({ date: PLANNING_WORKFLOW_DATE }).length, 0)
 })
 
-test('filtro de chefes duplicados afeta apenas a mensagem gerada e não altera as afetações', () => {
+test('mensagem gerada usa apenas as afetações reais do planeamento', () => {
   const groupedAssignments = [
     {
       workId: '10',
@@ -511,63 +586,48 @@ test('filtro de chefes duplicados afeta apenas a mensagem gerada e não altera a
       workId: '11',
       workName: 'Obra B',
       assignments: [
-        { personId: '2', person: { name: 'Chefe Teste', role: 'chef_primeira' } },
         { personId: '4', person: { name: 'Ferrajeiro Teste', role: 'ferrajeiro' } },
       ],
     },
-    {
-      workId: '12',
-      workName: 'Obra C',
-      assignments: [
-        { personId: '2', person: { name: 'Chefe Teste', role: 'chef_primeira' } },
-      ],
-    },
   ]
-  const duplicatedChefAssignments = getDuplicatedChefAssignmentsForMessage(groupedAssignments)
-  const defaultSelections = createDuplicateChefMessageSelectionMap(duplicatedChefAssignments)
-  const filteredMessage = buildPlanningMessagePreview({
+  const message = buildPlanningMessagePreview({
     planningDate: '2030-02-15',
     groupedAssignments,
-    selectedWorkIds: ['10', '11', '12'],
-    duplicateChefSelections: {
-      ...defaultSelections,
-      2: ['10', '11'],
-    },
+    selectedWorkIds: ['10', '11'],
   })
 
-  assert.equal(duplicatedChefAssignments.length, 1)
-  assert.equal(duplicatedChefAssignments[0].works.length, 3)
-  assert.match(filteredMessage, /Obra A[\s\S]*Chefe Teste/)
-  assert.match(filteredMessage, /Obra B[\s\S]*Chefe Teste/)
-  assert.doesNotMatch(filteredMessage, /Obra C[\s\S]*Chefe Teste/)
-  assert.match(filteredMessage, /Obra C/)
-  assert.equal(groupedAssignments[2].assignments.length, 1)
-  assert.equal(groupedAssignments[2].assignments[0].person.role, 'chef_primeira')
+  assert.match(message, /Obra A[\s\S]*Chefe Teste/)
+  assert.match(message, /Obra A[\s\S]*Carpinteiro Teste/)
+  assert.match(message, /Obra B[\s\S]*Ferrajeiro Teste/)
 })
 
-test('quando não existem chefes duplicados a mensagem continua normal e sem filtro adicional', () => {
-  const groupedAssignments = [
-    {
-      workId: '21',
-      workName: 'Obra Única',
-      assignments: [
-        { personId: '2', person: { name: 'Chefe Único', role: 'chef_primeira' } },
-        { personId: '3', person: { name: 'Carpinteiro Teste', role: 'carpinteiro' } },
-      ],
-    },
-  ]
-  const duplicatedChefAssignments = getDuplicatedChefAssignmentsForMessage(groupedAssignments)
-  const message = buildPlanningMessagePreview({
-    planningDate: '2030-02-16',
-    groupedAssignments,
-    selectedWorkIds: ['21'],
-    duplicateChefSelections: {},
+test('modal de importar mensagem reutiliza o mesmo filtro da mensagem gerada', () => {
+  assert.match(dailyPlanPageSource, /filterPlanningMessageAssignmentsForWork/)
+  assert.match(dailyPlanPageSource, /messagePreviewAssignmentsByWorkId/)
+  assert.match(dailyPlanPageSource, /Sem pessoas na mensagem/)
+})
+
+test('mensagem gerada exclui afetações persistidas como só acesso', () => {
+  const filteredAssignments = filterPlanningMessageAssignmentsForWork({
+    workId: '11',
+    assignments: [
+      {
+        personId: '2',
+        assignmentPurpose: 'access',
+        person: { id: '2', name: 'Chefe Acesso', role: 'chef_primeira' },
+      },
+      {
+        personId: '3',
+        assignmentPurpose: 'work',
+        person: { id: '3', name: 'Carpinteiro Teste', role: 'carpinteiro' },
+      },
+    ],
   })
 
-  assert.deepEqual(duplicatedChefAssignments, [])
-  assert.match(message, /Obra Única/)
-  assert.match(message, /Chefe Único/)
-  assert.match(message, /Carpinteiro Teste/)
+  assert.deepEqual(
+    filteredAssignments.map(assignment => String(assignment.personId)),
+    ['3'],
+  )
 })
 
 test('inicializacao automatica cria draft a partir do ultimo planeamento publicado quando a data ainda nao existe', async () => {
@@ -601,6 +661,37 @@ test('inicializacao automatica cria draft a partir do ultimo planeamento publica
   assert.equal(targetWorkspaceView.items.length, 1)
   assert.equal(targetWorkspaceView.items[0].notes, 'Publicado base para copia automatica')
   assert.equal(targetWorkspaceView.items[0].personId, 3)
+})
+
+test('inicializacao automatica cria apenas draft e nao altera o publicado visivel aos chefes', async () => {
+  const { workspace: sourceWorkspace } = await initializePlanningWorkspaceDraftService(ADMIN_SESSION, {
+    date: AUTO_DRAFT_SOURCE_DATE,
+  })
+
+  await createPlanningDraftAssignmentService(ADMIN_SESSION, {
+    workspaceId: sourceWorkspace.id,
+    workId: 1,
+    personId: 3,
+    notes: 'Publicado base para auto-draft invisivel',
+  })
+  await publishPlanningWorkspaceService(ADMIN_SESSION, sourceWorkspace.id)
+
+  const initializedWorkspace = await initializePlanningWorkspaceDraftService(ADMIN_SESSION, {
+    date: AUTO_DRAFT_TARGET_DATE,
+    clonePreviousDay: true,
+    onlyIfMissing: true,
+  })
+  const targetOfficialWorkPlan = getWorkPlanByDate(AUTO_DRAFT_TARGET_DATE, 1)
+  const targetOfficialAssignments = getAllWorkAssignments({ date: AUTO_DRAFT_TARGET_DATE })
+  const chefAssignments = await getWorkAssignmentsListService(
+    CHEF_SESSION,
+    createSearchParams({ date: AUTO_DRAFT_TARGET_DATE }),
+  )
+
+  assert.equal(initializedWorkspace.workspace.state, 'draft')
+  assert.equal(targetOfficialWorkPlan, null)
+  assert.equal(targetOfficialAssignments.length, 0)
+  assert.deepEqual(chefAssignments, [])
 })
 
 test('inicializacao automatica nao sobrescreve um draft existente nem volta a copiar', async () => {
@@ -678,6 +769,203 @@ test('inicializacao automatica respeita um planeamento ja publicado e nao o conv
   assert.equal(workspaceView.items.length, 1)
   assert.equal(workspaceView.items[0].notes, 'Publicado final')
   assert.equal(workspaceView.items[0].personId, 4)
+})
+
+test('copiar anterior cria ou substitui apenas o draft e nunca publica automaticamente', async () => {
+  const { workspace: sourceWorkspace } = await initializePlanningWorkspaceDraftService(ADMIN_SESSION, {
+    date: AUTO_DRAFT_SOURCE_DATE,
+  })
+
+  await createPlanningDraftAssignmentService(ADMIN_SESSION, {
+    workspaceId: sourceWorkspace.id,
+    workId: 1,
+    personId: 4,
+    notes: 'Publicado base para copia manual',
+  })
+  await publishPlanningWorkspaceService(ADMIN_SESSION, sourceWorkspace.id)
+
+  const copiedWorkspace = await initializePlanningWorkspaceDraftService(ADMIN_SESSION, {
+    date: AUTO_DRAFT_TARGET_DATE,
+    clonePreviousDay: true,
+  })
+  const targetOfficialWorkPlan = getWorkPlanByDate(AUTO_DRAFT_TARGET_DATE, 1)
+  const targetOfficialAssignments = getAllWorkAssignments({ date: AUTO_DRAFT_TARGET_DATE })
+  const chefAssignments = await getWorkAssignmentsListService(
+    CHEF_SESSION,
+    createSearchParams({ date: AUTO_DRAFT_TARGET_DATE }),
+  )
+
+  assert.equal(copiedWorkspace.workspace.state, 'draft')
+  assert.equal(copiedWorkspace.clonedAssignments, 1)
+  assert.equal(targetOfficialWorkPlan, null)
+  assert.equal(targetOfficialAssignments.length, 0)
+  assert.deepEqual(chefAssignments, [])
+})
+
+test('afetações normais mantêm assignmentPurpose work apenas por compatibilidade interna', async () => {
+  const targetDate = '2030-02-14'
+  const { workspace } = await initializePlanningWorkspaceDraftService(ADMIN_SESSION, {
+    date: targetDate,
+  })
+
+  const draftAssignment = await createPlanningDraftAssignmentService(ADMIN_SESSION, {
+    workspaceId: workspace.id,
+    workId: 1,
+    personId: 3,
+    notes: 'Afetação normal',
+  })
+
+  await publishPlanningWorkspaceService(ADMIN_SESSION, workspace.id)
+
+  const publishedAssignment = getAllWorkAssignments({ date: targetDate }).find(
+    assignment => assignment.personId === 3 && assignment.planningVisible !== false,
+  )
+
+  assert.equal(draftAssignment.assignmentPurpose, 'work')
+  assert.equal(publishedAssignment?.assignmentPurpose, 'work')
+})
+
+test('chefe atribuído mantém acesso automático, aparece no planeamento e entra na mensagem', async () => {
+  const createdWork = await createWorkService(ADMIN_SESSION, {
+    name: 'Obra Chefe Atribuído',
+    clientId: 1,
+    number: 102,
+    location: 'Porto',
+    status: 'planned',
+    defaultHourlyCost: 12,
+  })
+  const targetDate = '2030-02-15'
+  const { workspace } = await initializePlanningWorkspaceDraftService(ADMIN_SESSION, {
+    date: targetDate,
+  })
+
+  await createPlanningDraftAssignmentService(ADMIN_SESSION, {
+    workspaceId: workspace.id,
+    workId: createdWork.id,
+    personId: 2,
+    notes: 'Chefe na obra',
+  })
+  await createPlanningDraftAssignmentService(ADMIN_SESSION, {
+    workspaceId: workspace.id,
+    workId: createdWork.id,
+    personId: 3,
+    notes: 'Operacional',
+  })
+  await publishPlanningWorkspaceService(ADMIN_SESSION, workspace.id)
+
+  const workspaceView = await getPlanningWorkspaceViewService(
+    ADMIN_SESSION,
+    createSearchParams({ date: targetDate }),
+  )
+  const workAssignments = workspaceView.items.filter(
+    assignment => Number(assignment.workId) === Number(createdWork.id),
+  )
+  const identity = getAccessIdentityByPersonId(2)
+  const message = buildPlanningMessagePreview({
+    planningDate: targetDate,
+    groupedAssignments: [
+      {
+        workId: String(createdWork.id),
+        workName: createdWork.name,
+        assignments: workAssignments,
+      },
+    ],
+    selectedWorkIds: [String(createdWork.id)],
+  })
+
+  assert.ok(workAssignments.some(assignment => Number(assignment.personId) === 2))
+  assert.ok(identity?.works?.some(work => Number(work.id) === Number(createdWork.id)))
+  assert.match(message, /Chefe Teste/)
+})
+
+test('acesso extra mostra a obra no mobile sem adicionar o chefe como trabalhador', async () => {
+  const createdWork = await createWorkService(ADMIN_SESSION, {
+    name: 'Obra Acesso Extra',
+    clientId: 1,
+    number: 103,
+    location: 'Braga',
+    status: 'planned',
+    defaultHourlyCost: 12,
+  })
+  const targetDate = '2030-02-16'
+  const { workspace } = await initializePlanningWorkspaceDraftService(ADMIN_SESSION, {
+    date: targetDate,
+  })
+
+  await createPlanningDraftAssignmentService(ADMIN_SESSION, {
+    workspaceId: workspace.id,
+    workId: createdWork.id,
+    personId: 3,
+    notes: 'Operacional',
+  })
+  await publishPlanningWorkspaceService(ADMIN_SESSION, workspace.id)
+  await replaceWorkExtraAccessSelectionsData({
+    2: [createdWork.id],
+  })
+
+  const selections = await getWorkExtraAccessSelectionsByPersonData({ personIds: [2] })
+  const identity = getAccessIdentityByPersonId(2)
+  const scopedChefSession = {
+    ...CHEF_SESSION,
+    personId: 2,
+    workIds: identity?.works?.map(work => Number(work.id)) || CHEF_SESSION.workIds,
+  }
+  const mobileList = await getWorkAssignmentsListService(
+    scopedChefSession,
+    createSearchParams({ date: targetDate, includeDefaults: true, workId: createdWork.id }),
+  )
+
+  assert.deepEqual(selections, {
+    2: [createdWork.id],
+  })
+  assert.ok(identity?.works?.some(work => Number(work.id) === Number(createdWork.id)))
+  assert.ok(mobileList.defaults.works.some(work => Number(work.id) === Number(createdWork.id)))
+  assert.ok(mobileList.items.some(assignment => Number(assignment.personId) === 3))
+  assert.ok(!mobileList.items.some(assignment => Number(assignment.personId) === 2))
+})
+
+test('remover acesso extra remove apenas o acesso e não altera as afetações publicadas', async () => {
+  const createdWork = await createWorkService(ADMIN_SESSION, {
+    name: 'Obra Remover Acesso',
+    clientId: 1,
+    number: 104,
+    location: 'Setúbal',
+    status: 'planned',
+    defaultHourlyCost: 12,
+  })
+  const targetDate = '2030-02-17'
+  const { workspace } = await initializePlanningWorkspaceDraftService(ADMIN_SESSION, {
+    date: targetDate,
+  })
+
+  await createPlanningDraftAssignmentService(ADMIN_SESSION, {
+    workspaceId: workspace.id,
+    workId: createdWork.id,
+    personId: 3,
+    notes: 'Operacional publicado',
+  })
+  await publishPlanningWorkspaceService(ADMIN_SESSION, workspace.id)
+  await replaceWorkExtraAccessSelectionsData({
+    2: [createdWork.id],
+  })
+  await replaceWorkExtraAccessSelectionsData({
+    2: [],
+  })
+
+  const selections = await getWorkExtraAccessSelectionsByPersonData({ personIds: [2] })
+  const identity = getAccessIdentityByPersonId(2)
+  const workspaceView = await getPlanningWorkspaceViewService(
+    ADMIN_SESSION,
+    createSearchParams({ date: targetDate }),
+  )
+  const workAssignments = workspaceView.items.filter(
+    assignment => Number(assignment.workId) === Number(createdWork.id),
+  )
+
+  assert.deepEqual(selections, {})
+  assert.ok(!identity?.works?.some(work => Number(work.id) === Number(createdWork.id)))
+  assert.equal(workAssignments.length, 1)
+  assert.equal(workAssignments[0].personId, 3)
 })
 
 test('draft fica invisivel para chefes enquanto nao for publicado', async () => {
@@ -973,4 +1261,38 @@ test('remover obra limpa afetacoes antigas e permite remover o cliente a seguir'
 
   assert.equal(deleteClientResult.message, 'Cliente removido com sucesso')
   assert.equal(getAllClients().length, 0)
+})
+
+test('Plano diário usa a toolbar final, confirmações antes de substituir e quick-add contextual', () => {
+  assert.match(dailyPlanPageSource, /Novo plano/)
+  assert.match(dailyPlanPageSource, /Copiar anterior/)
+  assert.match(dailyPlanPageSource, /Editar publica[cç][aã]o/)
+  assert.match(dailyPlanPageSource, /requestCreateWorkPlanConfirmation\(false\)/)
+  assert.match(dailyPlanPageSource, /requestCreateWorkPlanConfirmation\(true\)/)
+  assert.match(dailyPlanPageSource, /Criar novo plano\?/)
+  assert.match(dailyPlanPageSource, /Copiar planeamento anterior\?/)
+  assert.match(dailyPlanPageSource, /className="vp-planning-work-quick-add"/)
+  assert.match(globalCssSource, /\.vp-planning-work-card:hover \.vp-planning-work-quick-add/)
+})
+
+test('Plano diário só publica através da ação manual Publicar', () => {
+  assert.equal((dailyPlanPageSource.match(/publishPlanningWorkspace\(/g) || []).length, 1)
+  assert.match(dailyPlanPageSource, /async function handlePublishPlanning\(\)/)
+})
+
+test('modal de editar pessoa usa Cliente -> Obra e remove informação técnica', () => {
+  assert.match(dailyPlanPageSource, /name="clientId"/)
+  assert.match(dailyPlanPageSource, /filteredActiveWorks\.map/)
+  assert.doesNotMatch(dailyPlanPageSource, /ID da afetação:/)
+  assert.doesNotMatch(dailyPlanPageSource, /Preço automático pela hierarquia:/)
+  assert.match(dailyPlanPageSource, /Editar pessoa/)
+  assert.match(dailyPlanPageSource, /Resumo/)
+})
+
+test('Registo diário do admin mostra apenas obras com afetações na data selecionada', () => {
+  assert.match(dailyHoursPageSource, /const adminAssignedWorks = useMemo\(\(\) =>/)
+  assert.match(dailyHoursPageSource, /dailyEntries[\s\S]*entry => String\(entry\.workId \|\| ''\)\.trim\(\)/)
+  assert.match(dailyHoursPageSource, /const visibleWorks = isChef \? activeWorks : adminAssignedWorks/)
+  assert.match(dailyHoursPageSource, /visibleWorks\.map\(work => \(/)
+  assert.match(dailyHoursPageSource, /Não existem obras atribuídas para a data selecionada\./)
 })

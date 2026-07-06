@@ -89,7 +89,7 @@ const bodyStyle = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="pt">
+    <html lang="pt" data-scroll-behavior="smooth">
       <body style={bodyStyle}>
         <PwaSetupClient />
         {children}

@@ -122,6 +122,7 @@ export async function createWorkAssignmentService(session, body) {
     manualHourlyCost,
     notes,
     hasWorkAccess,
+    assignmentPurpose,
   } = body || {}
   const targetDate = await resolveDailyPlanDate({ workPlanId, date })
 
@@ -165,6 +166,7 @@ export async function createWorkAssignmentService(session, body) {
       manualHourlyCost,
       notes,
       hasWorkAccess,
+      assignmentPurpose,
     })
   } catch (error) {
     if (error instanceof HttpError) {
@@ -214,6 +216,7 @@ export async function updateWorkAssignmentService(session, id, body) {
     manualHourlyCost,
     notes,
     hasWorkAccess,
+    assignmentPurpose,
     submitted,
   } = body || {}
   const targetWorkId = workId !== undefined ? Number(workId) : Number(currentAssignment.workId)
@@ -286,6 +289,7 @@ export async function updateWorkAssignmentService(session, id, body) {
         manualHourlyCost,
         notes,
         hasWorkAccess,
+        assignmentPurpose,
         submitted: shouldAutoSubmitFromAdmin ? true : undefined,
         submittedAt,
         submittedBy,

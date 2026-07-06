@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 import * as XLSX from 'xlsx'
 import EditPencilIcon, { editPencilButtonStyle } from '../components/EditPencilIcon'
-import { ViewportPage, ViewportScrollArea, ViewportShell } from '../components/ViewportLayout.js'
+import { BentixContent, BentixPage, BentixResponsiveGrid } from '../components/ViewportLayout.js'
 import {
   deletePerson,
   listPeople,
@@ -38,18 +38,13 @@ import {
 } from '../../lib/roles.js'
 
 const pageStyle = {
-  minHeight: '100vh',
-  padding: '40px 24px 60px',
   background: 'var(--vp-page-background)',
   color: 'var(--vp-text)',
   fontFamily: '"Avenir Next", "Segoe UI", "-apple-system", "BlinkMacSystemFont", sans-serif',
 }
 
 const shellStyle = {
-  maxWidth: '1240px',
-  margin: '0 auto',
-  display: 'grid',
-  gap: '24px',
+  '--btx-content-gap': '24px',
 }
 
 const heroStyle = {
@@ -76,8 +71,6 @@ const topBarStyle = {
 }
 
 const statGridStyle = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
   gap: '14px',
   flex: 1,
 }
@@ -91,8 +84,6 @@ const statCardStyle = {
 }
 
 const layoutStyle = {
-  display: 'grid',
-  gridTemplateColumns: 'minmax(320px, 360px) minmax(0, 1fr)',
   gap: '24px',
   alignItems: 'start',
 }
@@ -142,14 +133,10 @@ const searchInputStyle = {
 const peopleListStyle = {
   display: 'grid',
   gap: '12px',
-  maxHeight: '560px',
-  overflowY: 'auto',
-  paddingRight: '6px',
 }
 
 const responsavelPeopleListStyle = {
   ...peopleListStyle,
-  overflowX: 'hidden',
   justifyItems: 'start',
 }
 
@@ -2453,8 +2440,8 @@ export default function PeoplePage() {
   }
 
   return (
-    <ViewportPage lockViewport style={pageStyle}>
-      <ViewportShell fillHeight style={shellStyle}>
+    <BentixPage style={pageStyle}>
+      <BentixContent width="app" gap="lg" style={shellStyle}>
         <section style={heroStyle}>
           <Link href="/" style={{ color: 'var(--vp-accent)', textDecoration: 'none', fontWeight: 700 }}>
             Voltar ao menu
@@ -2469,10 +2456,10 @@ export default function PeoplePage() {
           </h1>
         </section>
 
-        <ViewportScrollArea style={{ '--vp-page-scroll-gap': '24px' }}>
+        <div style={{ display: 'grid', gap: '24px' }}>
         {canManagePeople && (
           <section style={topBarStyle}>
-            <div className="vp-responsive-stat-grid" style={statGridStyle}>
+            <BentixResponsiveGrid preset="stats" style={statGridStyle}>
               <article style={statCardStyle}>
                 <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>Pessoas totais</div>
                 <div style={{ marginTop: '8px', fontSize: '32px', fontWeight: 700 }}>{people.length}</div>
@@ -2485,7 +2472,7 @@ export default function PeoplePage() {
                 <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>Horárias</div>
                 <div style={{ marginTop: '8px', fontSize: '32px', fontWeight: 700 }}>{hourlyPeople.length}</div>
               </article>
-            </div>
+            </BentixResponsiveGrid>
 
             <div style={buttonGroupStyle}>
               <label style={{ display: 'none', gap: '6px', fontSize: '12px', color: 'var(--vp-text-soft)' }}>
@@ -2511,7 +2498,7 @@ export default function PeoplePage() {
         {!showForm && error && <p style={{ margin: 0, color: '#b42318' }}>{error}</p>}
         {!showForm && success && <p style={{ margin: 0, color: '#1f7a45' }}>{success}</p>}
 
-        <div className={canManagePeople ? 'vp-responsive-split-grid' : ''} style={canManagePeople ? layoutStyle : { display: 'grid' }}>
+        <div className={canManagePeople ? 'vp-grid btx-responsive-grid btx-responsive-grid--split' : ''} style={canManagePeople ? layoutStyle : { display: 'grid' }}>
           <section style={panelStyle}>
             <div style={isResponsavelView ? responsavelListHeaderStyle : {}}>
               <h2 style={{ marginTop: 0, marginBottom: isResponsavelView ? 0 : undefined }}>Lista de pessoas</h2>
@@ -2706,8 +2693,8 @@ export default function PeoplePage() {
             </section>
           )}
         </div>
-        </ViewportScrollArea>
-      </ViewportShell>
+        </div>
+      </BentixContent>
 
       {showForm && (
         <div style={modalBackdropStyle} onClick={cancelForm}>
@@ -3028,7 +3015,7 @@ export default function PeoplePage() {
           </section>
         </div>
       )}
-    </ViewportPage>
+    </BentixPage>
   )
 }
 

@@ -6,12 +6,9 @@ import { loginWithProtectedPayload } from '../../frontend/controllers/auth-contr
 import { createProtectedPayload } from '../../lib/browser-protected-payload.js'
 import { getSafeRedirectPath } from '../../lib/safe-redirect.js'
 import { BentixLogo } from './components/BentixLogo'
-import { ViewportPage, ViewportScrollArea, ViewportShell } from '../components/ViewportLayout.js'
+import { BentixPage, ViewportShell } from '../components/ViewportLayout.js'
 
 const pageStyle = {
-  height: '100vh',
-  width: '100%',
-  overflow: 'hidden',
   background: '#071226',
   fontFamily: '"Avenir Next", "Segoe UI", "-apple-system", "BlinkMacSystemFont", sans-serif',
 }
@@ -19,10 +16,10 @@ const pageStyle = {
 const shellStyle = {
   position: 'relative',
   isolation: 'isolate',
-  height: '100%',
+  width: '100%',
+  minHeight: '100dvh',
   display: 'grid',
   gridTemplateColumns: '65fr 35fr',
-  overflow: 'hidden',
 }
 
 const shellBackdropStyle = {
@@ -36,7 +33,6 @@ const shellBackdropStyle = {
 const heroStyle = {
   position: 'relative',
   zIndex: 1,
-  height: '100%',
   overflow: 'hidden',
   display: 'flex',
   alignItems: 'stretch',
@@ -86,7 +82,7 @@ const heroContentStyle = {
   zIndex: 1,
   width: '100%',
   maxWidth: '860px',
-  height: '100%',
+  minHeight: '100dvh',
   display: 'flex',
   flexDirection: 'column',
   justifyContent: 'space-between',
@@ -180,7 +176,7 @@ const featureTextStyle = {
 const panelWrapStyle = {
   position: 'relative',
   zIndex: 2,
-  height: '100%',
+  minHeight: '100dvh',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
@@ -351,7 +347,7 @@ export default function LoginPage() {
   }
 
   return (
-    <ViewportPage lockViewport style={pageStyle}>
+    <BentixPage padding="none" style={pageStyle}>
       <ViewportShell className="login-shell" style={shellStyle}>
         <div style={shellBackdropStyle} aria-hidden="true">
           <div style={shellBackdropImageStyle} />
@@ -385,7 +381,7 @@ export default function LoginPage() {
           </div>
         </section>
 
-        <ViewportScrollArea as="section" className="login-panel-wrap" style={panelWrapStyle}>
+        <section className="login-panel-wrap" style={panelWrapStyle}>
           <div className="login-panel" style={panelStyle}>
             <div style={panelHeaderStyle}>
               <h2 style={panelTitleStyle}>
@@ -449,7 +445,7 @@ export default function LoginPage() {
               </a>
             </p>
           </div>
-        </ViewportScrollArea>
+        </section>
       </ViewportShell>
 
       <style jsx>{`
@@ -485,13 +481,30 @@ export default function LoginPage() {
           border-radius: 10px;
         }
 
+        @media (max-width: 1200px) {
+          .login-panel {
+            transform: none;
+          }
+        }
+
         @media (max-width: 980px) {
           .login-shell {
             grid-template-columns: 1fr;
+            min-height: 100dvh;
           }
 
           .login-hero {
             display: none;
+          }
+
+          .login-panel-wrap {
+            min-height: 100dvh;
+            padding-left: clamp(18px, 4vw, 32px);
+          }
+
+          .login-panel {
+            max-width: 640px;
+            transform: none;
           }
         }
 
@@ -510,7 +523,7 @@ export default function LoginPage() {
           }
         }
       `}</style>
-    </ViewportPage>
+    </BentixPage>
   )
 }
 

@@ -4,7 +4,12 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import EditPencilIcon, { editPencilButtonStyle } from '../components/EditPencilIcon'
-import { ViewportPage, ViewportScrollArea, ViewportShell } from '../components/ViewportLayout.js'
+import {
+  BentixContent,
+  BentixOverflowX,
+  BentixPage,
+  BentixResponsiveGrid,
+} from '../components/ViewportLayout.js'
 import {
   deleteClient as deleteClientRequest,
   listClients,
@@ -21,18 +26,13 @@ import { getNextWorkNumber } from '../../lib/work-numbering.js'
 import { buildWorkPricingSnapshot, hasWorkPricingChanges } from '../../lib/work-pricing.js'
 
 const pageStyle = {
-  minHeight: '100vh',
-  padding: '40px 24px 60px',
   background: 'var(--vp-page-background)',
   color: 'var(--vp-text)',
   fontFamily: '"Avenir Next", "Segoe UI", "-apple-system", "BlinkMacSystemFont", sans-serif',
 }
 
 const shellStyle = {
-  maxWidth: '1240px',
-  margin: '0 auto',
-  display: 'grid',
-  gap: '24px',
+  '--btx-content-gap': '24px',
 }
 
 const heroStyle = {
@@ -59,8 +59,6 @@ const topBarStyle = {
 }
 
 const statGridStyle = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
   gap: '14px',
   flex: 1,
 }
@@ -1690,8 +1688,8 @@ export function WorksPageView({ forcedClientId = '', dedicatedClientView = false
   }
 
   return (
-    <ViewportPage lockViewport style={pageStyle}>
-      <ViewportShell fillHeight style={shellStyle}>
+    <BentixPage style={pageStyle}>
+      <BentixContent width="app" gap="lg" style={shellStyle}>
         <section style={heroStyle}>
           <Link
             href={dedicatedClientView ? '/works' : '/'}
@@ -1715,9 +1713,9 @@ export function WorksPageView({ forcedClientId = '', dedicatedClientView = false
 
         </section>
 
-        <ViewportScrollArea style={{ '--vp-page-scroll-gap': '24px' }}>
+        <div style={{ display: 'grid', gap: '24px' }}>
         <section style={topBarStyle}>
-          <div className="vp-responsive-stat-grid" style={statGridStyle}>
+          <BentixResponsiveGrid preset="stats" style={statGridStyle}>
             <article style={statCardStyle}>
               <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>Clientes</div>
               <div style={{ marginTop: '8px', fontSize: '32px', fontWeight: 700 }}>{clients.length}</div>
@@ -1730,7 +1728,7 @@ export function WorksPageView({ forcedClientId = '', dedicatedClientView = false
               <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>Obras ativas</div>
               <div style={{ marginTop: '8px', fontSize: '32px', fontWeight: 700 }}>{activeWorks.length}</div>
             </article>
-          </div>
+          </BentixResponsiveGrid>
 
           <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'flex-end', alignItems: 'flex-start' }}>
             {dedicatedClientView ? (
@@ -1793,7 +1791,7 @@ export function WorksPageView({ forcedClientId = '', dedicatedClientView = false
               <p style={{ marginTop: '18px', color: '#b42318' }}>{annualSummaryError}</p>
             )}
             {!annualSummaryLoading && !annualSummaryError && (
-              <div style={{ ...annualSummaryTableWrapStyle, marginTop: '18px' }}>
+              <BentixOverflowX style={{ ...annualSummaryTableWrapStyle, marginTop: '18px' }}>
                 <table style={{ ...annualSummaryTableStyle, minWidth: '1320px' }}>
                   <thead>
                     <tr>
@@ -1827,7 +1825,7 @@ export function WorksPageView({ forcedClientId = '', dedicatedClientView = false
                     ))}
                   </tbody>
                 </table>
-              </div>
+              </BentixOverflowX>
             )}
           </section>
         )}
@@ -1949,7 +1947,7 @@ export function WorksPageView({ forcedClientId = '', dedicatedClientView = false
               <p style={{ marginTop: '18px', color: '#b42318' }}>{annualSummaryError}</p>
             )}
             {!annualSummaryLoading && !annualSummaryError && (
-              <div style={{ ...annualSummaryTableWrapStyle, marginTop: '18px' }}>
+              <BentixOverflowX style={{ ...annualSummaryTableWrapStyle, marginTop: '18px' }}>
                 <table style={annualSummaryTableStyle}>
                   <thead>
                     <tr>
@@ -1976,7 +1974,7 @@ export function WorksPageView({ forcedClientId = '', dedicatedClientView = false
                     </tr>
                   </tbody>
                 </table>
-              </div>
+              </BentixOverflowX>
             )}
           </section>
         )}
@@ -2014,8 +2012,8 @@ export function WorksPageView({ forcedClientId = '', dedicatedClientView = false
           )}
         </section>
         )}
-        </ViewportScrollArea>
-      </ViewportShell>
+        </div>
+      </BentixContent>
 
       {showCreateForm && (
         <div style={modalBackdropStyle} onClick={cancelCreate}>
@@ -2288,7 +2286,7 @@ export function WorksPageView({ forcedClientId = '', dedicatedClientView = false
           </section>
         </div>
       )}
-    </ViewportPage>
+    </BentixPage>
   )
 }
 

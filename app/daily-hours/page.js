@@ -463,9 +463,25 @@ export default function DailyHoursPage() {
     return sortWorksByNumber(availableWorks)
   }, [defaults.works, isChef])
 
+  const adminAssignedWorks = useMemo(() => {
+    if (isChef) return []
+
+    const assignedWorkIds = new Set(
+      dailyEntries
+        .map(entry => String(entry.workId || '').trim())
+        .filter(Boolean),
+    )
+
+    return sortWorksByNumber(
+      activeWorks.filter(work => assignedWorkIds.has(String(work.id))),
+    )
+  }, [activeWorks, dailyEntries, isChef])
+
+  const visibleWorks = isChef ? activeWorks : adminAssignedWorks
+
   const selectedWork = useMemo(
-    () => activeWorks.find(work => String(work.id) === String(selectedWorkId)) || null,
-    [activeWorks, selectedWorkId],
+    () => visibleWorks.find(work => String(work.id) === String(selectedWorkId)) || null,
+    [selectedWorkId, visibleWorks],
   )
 
   const selectedWorkEntries = useMemo(
@@ -513,19 +529,18 @@ export default function DailyHoursPage() {
       return
     }
 
-    if (selectedWorkId && activeWorks.some(work => String(work.id) === String(selectedWorkId))) {
+    if (selectedWorkId && visibleWorks.some(work => String(work.id) === String(selectedWorkId))) {
       return
     }
 
-    const firstWorkWithEntries = activeWorks.find(work =>
-      dailyEntries.some(entry => String(entry.workId) === String(work.id)),
-    )
-    const fallbackWork = firstWorkWithEntries || activeWorks[0] || null
+    const fallbackWork = visibleWorks[0] || null
 
     if (fallbackWork) {
       setSelectedWorkId(String(fallbackWork.id))
+    } else if (selectedWorkId) {
+      setSelectedWorkId('')
     }
-  }, [activeWorks, dailyEntries, isChef, selectedWorkId, session?.workIds])
+  }, [activeWorks, dailyEntries, isChef, selectedWorkId, session?.workIds, visibleWorks])
 
   useEffect(() => {
     const nextEntryHours = {}
@@ -1135,7 +1150,7 @@ export default function DailyHoursPage() {
               ) : (
                 <select name="workId" value={selectedWorkId} onChange={handleWorkChange} style={inputStyle}>
                   <option value="">Seleciona uma obra</option>
-                  {activeWorks.map(work => (
+                  {visibleWorks.map(work => (
                     <option key={work.id} value={work.id}>
                       {work.name}
                     </option>
@@ -1194,15 +1209,21 @@ export default function DailyHoursPage() {
               )}
             </div>
           )}
-          {!loading && activeWorks.length === 0 && (
+          {!loading && isChef && activeWorks.length === 0 && (
             <p style={{ margin: '18px 0 0', color: '#b42b21' }}>
               Não existem obras ativas para registar horas.
             </p>
           )}
 
+          {!loading && !isChef && visibleWorks.length === 0 && (
+            <p style={{ margin: '18px 0 0', color: 'var(--vp-text-muted)' }}>
+              Não existem obras atribuídas para a data selecionada.
+            </p>
+          )}
+
           {loading && <p style={{ margin: '18px 0 0' }}>A carregar equipa do dia...</p>}
 
-          {!loading && !selectedWork && activeWorks.length > 0 && !isChef && (
+          {!loading && !selectedWork && visibleWorks.length > 0 && !isChef && (
             <p style={{ margin: '18px 0 0', color: 'var(--vp-text-muted)' }}>
               Seleciona uma obra para veres as pessoas atribuídas.
             </p>

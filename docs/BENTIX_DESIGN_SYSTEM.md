@@ -11,17 +11,18 @@
 - [7. Espaçamentos](#7-espaçamentos)
 - [8. Bordas e Sombras](#8-bordas-e-sombras)
 - [9. Botões](#9-botões)
-- [10. Cartões](#10-cartões)
-- [11. Etiquetas de Estado e Estados](#11-etiquetas-de-estado-e-estados)
-- [12. Formulários](#12-formulários)
-- [13. Calendário](#13-calendário)
-- [14. Estrutura e Organização de Página](#14-estrutura-e-organização-de-página)
-- [15. Responsividade / Estrutura Adaptativa](#15-responsividade--estrutura-adaptativa)
-- [16. Componentes Reutilizáveis](#16-componentes-reutilizáveis)
-- [17. Estados da Interface](#17-estados-da-interface)
-- [18. Acessibilidade](#18-acessibilidade)
-- [19. Nomenclatura](#19-nomenclatura)
-- [20. Regras de Evolução](#20-regras-de-evolução)
+- [10. Hierarquia de Ações](#10-hierarquia-de-ações)
+- [11. Cartões](#11-cartões)
+- [12. Etiquetas de Estado e Estados](#12-etiquetas-de-estado-e-estados)
+- [13. Formulários](#13-formulários)
+- [14. Calendário](#14-calendário)
+- [15. Estrutura e Organização de Página](#15-estrutura-e-organização-de-página)
+- [16. Responsividade / Estrutura Adaptativa](#16-responsividade--estrutura-adaptativa)
+- [17. Componentes Reutilizáveis](#17-componentes-reutilizáveis)
+- [18. Estados da Interface](#18-estados-da-interface)
+- [19. Acessibilidade](#19-acessibilidade)
+- [20. Nomenclatura](#20-nomenclatura)
+- [21. Regras de Evolução](#21-regras-de-evolução)
 
 ## 1. Objetivo
 
@@ -70,7 +71,7 @@ Todas as decisões de UI e UX devem respeitar estes princípios:
 - A interface deve adaptar-se ao ecrã disponível.
 - Nunca assumir um tamanho fixo de monitor.
 - Reduzir cliques sempre que possível.
-- Reduzir rolagem sempre que possível.
+- Reduzir scroll sempre que possível.
 - Mostrar primeiro o contexto principal.
 - Ações principais devem estar claras.
 - Ações secundárias não devem competir visualmente.
@@ -274,7 +275,116 @@ Aplicação prática:
 - ações como `Importar mensagem` devem parecer secundárias
 - grupos de ações devem ficar próximos do contexto a que pertencem
 
-## 10. Cartões
+## 10. Hierarquia de Ações
+
+A hierarquia de ações passa a ser uma regra oficial e obrigatória do sistema de design Bentix.
+
+Cada página deve comunicar imediatamente ao utilizador:
+
+- "Qual é a ação final desta página?"
+
+Se a interface não responder visualmente a esta pergunta, a hierarquia está errada.
+
+### Regra 1. Uma única ação primária por página
+
+Cada página deve ter apenas uma ação primária com maior destaque visual.
+
+Botão primário:
+
+- laranja Bentix preenchido
+- texto branco
+- maior ênfase visual
+
+Exemplos:
+
+- Planeamento -> `Publicar`
+- Pessoas -> `Guardar`
+- Clientes -> `Guardar`
+- Obras -> `Guardar`
+- Aprovação de horas -> `Aprovar`
+- Notificações -> `Enviar`
+
+### Regra 2. Todas as restantes são ações secundárias
+
+Todas as ações que apoiam o fluxo, mas não representam a decisão final da página, devem usar estilo secundário.
+
+Botão secundário:
+
+- fundo branco
+- contorno laranja
+- texto laranja
+
+Exemplos:
+
+- `Novo plano`
+- `Copiar anterior`
+- `Importar mensagem`
+- `Acessos às obras`
+- `Editar publicação`
+- `Cancelar`
+
+### Regra 3. Ações destrutivas
+
+Aparência destrutiva é reservada apenas a operações destrutivas.
+
+Exemplos:
+
+- `Eliminar pessoa`
+- `Eliminar obra`
+- `Eliminar cliente`
+
+Botão destrutivo:
+
+- contorno vermelho
+- ícone e/ou texto vermelho
+
+### Regra 4. Ações desativadas
+
+Estados desativados nunca devem manter cor laranja ativa.
+
+Botão desativado:
+
+- fundo cinzento
+- texto cinzento
+
+Regra:
+
+- nunca usar laranja para comunicar uma ação indisponível
+
+### Regra 5. Prioridade visual
+
+O olhar do utilizador deve seguir naturalmente esta ordem:
+
+- ações secundárias
+- ação primária
+- ações destrutivas, apenas quando existirem
+
+O objetivo não é esconder a ação principal. O objetivo é garantir que ela é percebida como o destino final do fluxo.
+
+### Regra 6. Consistência
+
+Toda a nova página ou página redesenhada deve respeitar esta hierarquia.
+
+Regras:
+
+- não criar exceções locais sem necessidade real
+- não promover ações secundárias ao mesmo nível da principal
+- não usar estilo destrutivo em ações neutras
+
+### Estratégia de Implementação
+
+Esta hierarquia não será aplicada globalmente numa única release.
+
+Estratégia oficial:
+
+- não redesenhar toda a aplicação de uma vez
+- aplicar a hierarquia progressivamente
+- obrigar cada futura refatoração UX/UI a adotar este padrão
+- melhorar consistência sem introduzir regressões visuais ou funcionais
+
+Isto permite evolução controlada e evita corrigir visualmente uma área enquanto se parte noutra.
+
+## 11. Cartões
 
 Os cartões são o principal bloco de construção visual da Bentix.
 
@@ -300,7 +410,7 @@ Regras:
 - conteúdo não deve partir quando a largura diminuir
 - o mesmo tipo de cartão deve manter comportamento visual consistente em toda a aplicação
 
-## 11. Etiquetas de Estado e Estados
+## 12. Etiquetas de Estado e Estados
 
 Etiquetas de estado e estados servem para comunicar situação sem ambiguidade.
 
@@ -327,7 +437,7 @@ Exemplos:
 - `Rascunho` deve indicar trabalho em preparação
 - `Sem planeamento` deve ser claramente legível e não parecer um erro visual
 
-## 12. Formulários
+## 13. Formulários
 
 Os formulários da Bentix devem privilegiar rapidez, clareza e baixo erro.
 
@@ -352,7 +462,7 @@ Campos obrigatórios:
 - devem ser consistentes
 - não devem surpreender o utilizador com regras invisíveis
 
-## 13. Calendário
+## 14. Calendário
 
 O padrão atual do calendário da Bentix é o painel flutuante acionado a partir da própria data.
 
@@ -375,7 +485,7 @@ Diretrizes visuais:
 - dia selecionado visível de imediato
 - dia atual indicado com subtileza
 
-## 14. Estrutura e Organização de Página
+## 15. Estrutura e Organização de Página
 
 A estrutura de página Bentix deve seguir uma ordem estável:
 
@@ -398,7 +508,7 @@ Princípio de contexto:
 - o utilizador deve perceber imediatamente que página está a ver
 - o utilizador deve perceber imediatamente a que dia, obra, cliente ou entidade a página se refere
 
-## 15. Responsividade / Estrutura Adaptativa
+## 16. Responsividade / Estrutura Adaptativa
 
 A responsividade não é uma melhoria opcional. Faz parte da qualidade funcional da Bentix.
 
@@ -424,7 +534,7 @@ Regras:
 - não criar barras de rolagem internas sem necessidade
 - preservar o conteúdo importante acima da dobra sempre que possível
 
-## 16. Componentes Reutilizáveis
+## 17. Componentes Reutilizáveis
 
 Os padrões visuais da Bentix devem consolidar-se em componentes reutilizáveis, mesmo quando a implementação ainda não esteja totalmente formalizada.
 
@@ -451,7 +561,7 @@ Regra:
 
 - sempre que um padrão se repetir em várias páginas, deve ser candidato a componente reutilizável
 
-## 17. Estados da Interface
+## 18. Estados da Interface
 
 Toda a página ou componente deve prever estados explícitos.
 
@@ -477,7 +587,7 @@ Bom estado vazio:
 - evita linguagem técnica
 - não mostra valores técnicos sem benefício para o utilizador
 
-## 18. Acessibilidade
+## 19. Acessibilidade
 
 A acessibilidade é um requisito estrutural da Bentix.
 
@@ -498,7 +608,7 @@ Aplicação prática:
 - elementos interativos devem reagir a `Enter` e `Espaço` quando aplicável
 - etiquetas de estado claras devem ser reforçadas com contraste e bordo
 
-## 19. Nomenclatura
+## 20. Nomenclatura
 
 O utilizador vê português. A interface comunica em português.
 
@@ -523,7 +633,7 @@ Regras adicionais:
 - nomes internos de código podem continuar técnicos quando não são visíveis ao utilizador
 - qualquer novo texto visível deve ser validado linguisticamente antes de ficar definitivo
 
-## 20. Regras de Evolução
+## 21. Regras de Evolução
 
 O Sistema de Design Bentix deve evoluir com o produto, mas de forma controlada.
 
@@ -545,7 +655,7 @@ Isto significa que futuras páginas devem observar, quando aplicável:
 - resumo antes do detalhe
 - cartões com alto contraste
 - calendário em painel flutuante
-- hierarquia clara entre ação principal e ação secundária
+- hierarquia clara entre a ação principal e a ação secundária
 - cartões operacionais responsivos
 
 Quando surgir um padrão melhor do que o atual, esse padrão deve ser documentado primeiro e só depois disseminado pelo produto.

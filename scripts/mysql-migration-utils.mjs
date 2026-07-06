@@ -50,6 +50,7 @@ export async function buildMysqlMigrationSnapshot() {
   const workAssignments = await readJsonArray('work-assignments.json')
   const planningWorkspaces = await readJsonArray('planning-workspaces.json')
   const planningWorkspaceAssignments = await readJsonArray('planning-workspace-assignments.json')
+  const workExtraAccessGrants = await readJsonArray('work-extra-access-grants.json')
   const dailyWorkNotes = await readJsonArray('daily-work-notes.json')
   const accessIdentities = await readJsonArray('access-identities.json')
   const admins = await readJsonArray('admins.json')
@@ -108,6 +109,11 @@ export async function buildMysqlMigrationSnapshot() {
       worksById,
       peopleById,
     ),
+    workExtraAccessGrants: buildWorkExtraAccessGrants(
+      workExtraAccessGrants,
+      worksById,
+      peopleById,
+    ),
     dailyWorkNotes: dailyWorkNotes.map(note => normalizeDailyWorkNote(note, peopleById)).filter(Boolean),
     loginEvents: buildLoginEvents(loginEvents, usersByUsername, usersByPersonId, peopleById),
     loginAttempts: loginAttempts.map(normalizeLoginAttempt).filter(Boolean),
@@ -138,6 +144,7 @@ export async function buildMysqlMigrationSnapshot() {
       workAssignments: workAssignments.length,
       planningWorkspaces: planningWorkspaces.length,
       planningWorkspaceAssignments: planningWorkspaceAssignments.length,
+      workExtraAccessGrants: workExtraAccessGrants.length,
       dailyWorkNotes: dailyWorkNotes.length,
       accessIdentities: accessIdentities.length,
       admins: admins.length,
@@ -800,6 +807,7 @@ function buildWorkAssignments(assignments, usersByUsername, usersByPersonId, peo
         manualHourlyCost: assignment?.manualHourlyCost === true,
         notes: String(assignment?.notes || '').trim() || null,
         hasWorkAccess: assignment?.hasWorkAccess === true,
+        assignmentPurpose: String(assignment?.assignmentPurpose || 'work').trim().toLowerCase() === 'access' ? 'access' : 'work',
         planningVisible: assignment?.planningVisible !== false,
       }
     })
@@ -830,8 +838,33 @@ function buildPlanningWorkspaceAssignments(assignments, planningWorkspacesById, 
         manualHourlyCost: assignment?.manualHourlyCost === true,
         notes: normalizeOptionalText(assignment?.notes),
         hasWorkAccess: assignment?.hasWorkAccess === true,
+        assignmentPurpose: String(assignment?.assignmentPurpose || 'work').trim().toLowerCase() === 'access' ? 'access' : 'work',
         createdAt: normalizeDateTime(assignment?.createdAt, new Date().toISOString()),
         updatedAt: normalizeDateTime(assignment?.updatedAt, assignment?.createdAt || new Date().toISOString()),
+      }
+    })
+    .filter(Boolean)
+}
+
+function buildWorkExtraAccessGrants(grants, worksById, peopleById) {
+  return grants
+    .map(grant => {
+      const id = normalizePositiveInt(grant?.id)
+      const personId = normalizePositiveInt(grant?.personId)
+      const workId = normalizePositiveInt(grant?.workId)
+      const person = personId ? peopleById.get(personId) : null
+      const work = workId ? worksById.get(workId) : null
+
+      if (!id || !person || !work) {
+        return null
+      }
+
+      return {
+        id,
+        personId,
+        workId,
+        createdAt: normalizeDateTime(grant?.createdAt, new Date().toISOString()),
+        updatedAt: normalizeDateTime(grant?.updatedAt, grant?.createdAt || new Date().toISOString()),
       }
     })
     .filter(Boolean)

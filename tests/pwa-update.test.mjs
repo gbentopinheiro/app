@@ -5,7 +5,12 @@ import { dirname, join } from 'node:path'
 import { test } from 'node:test'
 
 import { shouldApplyNoCache } from '../lib/cache-policy.js'
-import { buildPwaBootstrapScript, getPwaReloadGuardKey } from '../lib/pwa-bootstrap.js'
+import {
+  bootstrapPwa,
+  getPwaReloadGuardKey,
+  shouldEnablePwaBootstrap,
+} from '../lib/pwa-bootstrap.js'
+import { PWA_BUILD_VERSION, appendBuildVersion } from '../lib/pwa-version.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -13,16 +18,26 @@ const repoRoot = join(__dirname, '..')
 const serviceWorkerSource = readFileSync(join(repoRoot, 'public', 'sw.js'), 'utf8')
 
 test('bootstrap da PWA vigia updates e recarrega apenas uma vez por build', () => {
-  const script = buildPwaBootstrapScript({ buildVersion: 'build-123' })
+  const bootstrapSource = bootstrapPwa.toString()
 
   assert.equal(getPwaReloadGuardKey('build-123'), 'bentix:pwa:reload:build-123')
-  assert.match(script, /serviceWorker[\s\S]*\.register\(serviceWorkerUrl/)
-  assert.match(script, /\/sw\.js\?v=build-123/)
-  assert.match(script, /updatefound/)
-  assert.match(script, /controllerchange/)
-  assert.match(script, /sessionStorage/)
-  assert.match(script, /location\.reload\(\)/)
-  assert.match(script, /SKIP_WAITING/)
+  assert.match(bootstrapSource, /appendBuildVersion\(serviceWorkerPath, buildVersion\)/)
+  assert.match(bootstrapSource, /navigator\.serviceWorker\.addEventListener\('controllerchange', reloadOnce\)/)
+  assert.match(bootstrapSource, /navigator\.serviceWorker[\s\S]*\.register\(serviceWorkerUrl/)
+  assert.match(bootstrapSource, /updatefound/)
+  assert.match(bootstrapSource, /window\.location\.reload\(\)/)
+  assert.match(bootstrapSource, /bootstrapState\.initialized && bootstrapState\.fingerprint === fingerprint/)
+})
+
+test('PWA fica desativada em localhost e em next dev para evitar reloads locais', () => {
+  assert.equal(shouldEnablePwaBootstrap({ hostname: 'localhost', nodeEnv: 'development' }), false)
+  assert.equal(shouldEnablePwaBootstrap({ hostname: '127.0.0.1', nodeEnv: 'production' }), false)
+  assert.equal(shouldEnablePwaBootstrap({ hostname: 'dev.bentixapp.com', nodeEnv: 'production' }), true)
+})
+
+test('fallback local da versão PWA é estável e não muda a cada reload', () => {
+  assert.equal(PWA_BUILD_VERSION, 'local-development')
+  assert.equal(appendBuildVersion('/sw.js'), '/sw.js?v=local-development')
 })
 
 test('service worker limpa caches antigos e força network no-store para app shell', () => {

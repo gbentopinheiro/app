@@ -1,0 +1,9 @@
+⚠ Port 3000 is in use by process 7440, using available port 3001 instead.
+⨯ Another next dev server is already running.
+
+- Local:        http://localhost:3000
+- PID:          7440
+- Dir:          C:\Users\gbent\OneDrive\Ambiente de Trabalho\VILAPLANO\app
+- Log:          .next\dev\logs\next-development.log
+
+Run taskkill /PID 7440 /F to stop it.

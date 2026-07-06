@@ -1,7 +1,7 @@
 ﻿import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import LogoutButton from './components/LogoutButton'
-import { ViewportPage, ViewportScrollArea, ViewportShell } from './components/ViewportLayout.js'
+import { BentixContent, BentixPage, BentixResponsiveGrid } from './components/ViewportLayout.js'
 import { isFeatureEnabled } from '../lib/feature-flags.js'
 import { getServerSession } from '../lib/server-session.js'
 import { isChefRole, isResponsavelRole } from '../lib/roles.js'
@@ -48,23 +48,13 @@ const modules = [
 ]
 
 const pageStyle = {
-  height: '100vh',
-  overflow: 'hidden',
-  padding: 'clamp(14px, 2vw, 24px) 24px',
-  boxSizing: 'border-box',
   background: 'var(--vp-page-background)',
   color: 'var(--vp-text)',
   fontFamily: '"Avenir Next", "Segoe UI", "-apple-system", "BlinkMacSystemFont", sans-serif',
 }
 
 const containerStyle = {
-  maxWidth: '1180px',
-  margin: '0 auto',
-  height: '100%',
-  display: 'grid',
-  gridTemplateRows: 'auto minmax(0, 1fr)',
-  gap: '16px',
-  minHeight: 0,
+  '--btx-content-gap': '16px',
 }
 
 const heroStyle = {
@@ -265,7 +255,7 @@ const heroGridStyle = {
 const heroCopyStyle = {
   display: 'grid',
   gap: '16px',
-  maxWidth: '720px',
+  width: 'min(100%, clamp(34rem, 58vw, 50rem))',
 }
 
 const heroKickerStyle = {
@@ -287,7 +277,7 @@ const heroTitleStyle = {
 
 const heroDescriptionStyle = {
   margin: 0,
-  maxWidth: '620px',
+  width: 'min(100%, clamp(28rem, 52vw, 42rem))',
   color: 'rgba(226, 232, 240, 0.84)',
   fontSize: '17px',
   lineHeight: 1.7,
@@ -340,23 +330,17 @@ const dashboardDateStyle = {
 }
 
 const dashboardGridStyle = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
   gap: '14px',
 }
 
 const dashboardBodyStyle = {
-  display: 'grid',
-  gridTemplateColumns: 'minmax(0, 1.35fr) minmax(300px, 0.85fr)',
   gap: '14px',
-  minHeight: 0,
+  alignItems: 'start',
 }
 
 const responsavelDashboardBodyStyle = {
-  display: 'grid',
-  gridTemplateColumns: 'minmax(0, 1.55fr) minmax(260px, 0.65fr)',
   gap: '14px',
-  minHeight: 0,
+  alignItems: 'start',
 }
 
 const dashboardCardStyle = {
@@ -702,9 +686,6 @@ const responsavelCalendarCardStyle = {
   ...calendarCardStyle,
   position: 'relative',
   gridColumn: '1 / -1',
-  display: 'grid',
-  gridTemplateColumns: 'minmax(0, 1fr) minmax(180px, 220px)',
-  gap: '16px',
   padding: '18px',
   minHeight: '218px',
   alignItems: 'stretch',
@@ -878,11 +859,8 @@ const heroMetaValueStyle = {
 }
 
 const cardsStyle = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
   gap: '14px',
   alignItems: 'stretch',
-  minHeight: 0,
 }
 
 const cardStyle = accent => ({
@@ -1225,8 +1203,8 @@ export default async function Home() {
     : modules
 
   return (
-    <ViewportPage lockViewport style={pageStyle}>
-      <ViewportShell fillHeight style={containerStyle}>
+    <BentixPage padding="tight" style={pageStyle}>
+      <BentixContent width="dashboard" gap="md" style={containerStyle}>
         <section style={heroStyle}>
           <div style={heroBlueGlowStyle} />
           <div style={heroOrangeGlowStyle} />
@@ -1284,7 +1262,7 @@ export default async function Home() {
           </div>
         </section>
 
-        <ViewportScrollArea style={{ '--vp-page-scroll-gap': '16px' }}>
+        <div style={{ display: 'grid', gap: '16px' }}>
         <section style={dashboardSectionStyle}>
           <div style={dashboardHeaderStyle}>
             <div>
@@ -1292,8 +1270,8 @@ export default async function Home() {
             </div>
           </div>
 
-          <div className="vp-responsive-split-grid-sm" style={isResponsavel ? responsavelDashboardBodyStyle : dashboardBodyStyle}>
-            <div className="vp-responsive-dashboard-grid" style={dashboardGridStyle}>
+          <BentixResponsiveGrid preset="dashboard-main" style={isResponsavel ? responsavelDashboardBodyStyle : dashboardBodyStyle}>
+            <BentixResponsiveGrid preset="dashboard-cards" style={dashboardGridStyle}>
               {!isResponsavel && (
                 <div style={workStatusTableStyle}>
                   <h3 style={workStatusTitleStyle}>Estado operacional</h3>
@@ -1316,7 +1294,11 @@ export default async function Home() {
               )}
 
               {isResponsavel && calendarManagementEnabled ? (
-                <Link href="/calendar" style={{ ...responsavelCalendarCardStyle, textDecoration: 'none', color: 'inherit' }}>
+                <Link
+                  href="/calendar"
+                  className="btx-dashboard-responsavel-calendar"
+                  style={{ ...responsavelCalendarCardStyle, textDecoration: 'none', color: 'inherit' }}
+                >
                   <div style={responsavelCalendarBadgeWrapStyle}>
                     <span style={notificationBadgeStyle}>{calendarOverview.unseenEventsCount}</span>
                   </div>
@@ -1390,7 +1372,7 @@ export default async function Home() {
                   <p style={dashboardCardTextStyle}>{item.text}</p>
                 </article>
               ))}
-            </div>
+            </BentixResponsiveGrid>
 
             <div style={sidePanelStackStyle}>
               {notificationsCenterEnabled ? (
@@ -1474,10 +1456,10 @@ export default async function Home() {
                 </div>
               ) : null}
             </div>
-          </div>
+          </BentixResponsiveGrid>
         </section>
 
-        <section style={cardsStyle}>
+        <BentixResponsiveGrid as="section" preset="cards" style={cardsStyle}>
           {visibleModules.map(module => (
             <Link
               key={module.href}
@@ -1494,9 +1476,9 @@ export default async function Home() {
               </div>
             </Link>
           ))}
-        </section>
-        </ViewportScrollArea>
-      </ViewportShell>
-    </ViewportPage>
+        </BentixResponsiveGrid>
+        </div>
+      </BentixContent>
+    </BentixPage>
   )
 }

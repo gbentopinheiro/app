@@ -3,7 +3,12 @@
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import EditPencilIcon, { editPencilButtonStyle } from '../components/EditPencilIcon'
-import { ViewportPage, ViewportScrollArea, ViewportShell } from '../components/ViewportLayout.js'
+import {
+  BentixContent,
+  BentixPage,
+  BentixResponsiveGrid,
+  BentixSection,
+} from '../components/ViewportLayout.js'
 import {
   deleteClient,
   listClients,
@@ -11,18 +16,13 @@ import {
 } from '../../frontend/controllers/clients-controller.js'
 
 const pageStyle = {
-  minHeight: '100vh',
-  padding: '40px 24px 60px',
   background: 'var(--vp-page-background)',
   color: 'var(--vp-text)',
   fontFamily: '"Avenir Next", "Segoe UI", "-apple-system", "BlinkMacSystemFont", sans-serif',
 }
 
 const shellStyle = {
-  maxWidth: '1240px',
-  margin: '0 auto',
-  display: 'grid',
-  gap: '24px',
+  '--btx-content-gap': '24px',
 }
 
 const heroStyle = {
@@ -246,8 +246,8 @@ export default function ClientsPage() {
   const selectedClient = clients.find(client => client.id === selectedClientId) || null
 
   return (
-    <ViewportPage lockViewport style={pageStyle}>
-      <ViewportShell fillHeight style={shellStyle}>
+    <BentixPage style={pageStyle}>
+      <BentixContent width="app" gap="lg" style={shellStyle}>
         <section style={heroStyle}>
           <Link href="/" style={{ color: 'var(--vp-accent)', textDecoration: 'none', fontWeight: 700 }}>
             Voltar ao menu
@@ -261,12 +261,12 @@ export default function ClientsPage() {
 
         </section>
 
-        <ViewportScrollArea style={{ '--vp-page-scroll-gap': '24px' }}>
+        <div style={{ display: 'grid', gap: '24px' }}>
         <section style={{ display: 'flex', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' }}>
-          <div style={panelStyle}>
+          <BentixSection as="div">
             <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>Clientes totais</div>
             <div style={{ marginTop: '8px', fontSize: '32px', fontWeight: 700 }}>{clients.length}</div>
-          </div>
+          </BentixSection>
           <button type="button" onClick={startCreate} style={primaryButtonStyle}>
             Adicionar cliente
           </button>
@@ -340,10 +340,7 @@ export default function ClientsPage() {
           </section>
         )}
 
-        <section
-          className="vp-responsive-split-grid"
-          style={{ display: 'grid', gridTemplateColumns: 'minmax(320px, 0.95fr) minmax(0, 1.3fr)', gap: '24px' }}
-        >
+        <BentixResponsiveGrid as="section" preset="split" style={{ gap: '24px' }}>
           <section style={panelStyle}>
             <h2 style={{ marginTop: 0 }}>Lista de clientes</h2>
             {loading && <p>A carregar clientes...</p>}
@@ -405,9 +402,9 @@ export default function ClientsPage() {
               </div>
             )}
           </section>
-        </section>
-        </ViewportScrollArea>
-      </ViewportShell>
-    </ViewportPage>
+        </BentixResponsiveGrid>
+        </div>
+      </BentixContent>
+    </BentixPage>
   )
 }
