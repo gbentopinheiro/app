@@ -9,6 +9,7 @@ import {
   BentixOverflowX,
   BentixPage,
   BentixResponsiveGrid,
+  BentixSection,
 } from '../components/ViewportLayout.js'
 import {
   deleteClient as deleteClientRequest,
@@ -35,6 +36,12 @@ const shellStyle = {
   '--btx-content-gap': '24px',
 }
 
+const contentFlowStyle = {
+  display: 'grid',
+  gap: '24px',
+  minWidth: 0,
+}
+
 const heroStyle = {
   position: 'relative',
   overflow: 'hidden',
@@ -51,11 +58,9 @@ const heroStyle = {
 }
 
 const topBarStyle = {
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center',
+  display: 'grid',
   gap: '16px',
-  flexWrap: 'wrap',
+  alignItems: 'start',
 }
 
 const statGridStyle = {
@@ -77,6 +82,7 @@ const panelStyle = {
   borderRadius: '24px',
   padding: '24px',
   boxShadow: 'var(--vp-shadow-panel)',
+  minWidth: 0,
 }
 
 const clientOverviewGridStyle = {
@@ -128,7 +134,6 @@ const clientCardContentStyle = {
 }
 
 const annualSummaryTableWrapStyle = {
-  overflowX: 'auto',
   borderRadius: '18px',
   border: '1px solid var(--vp-border)',
 }
@@ -1649,12 +1654,13 @@ export function WorksPageView({ forcedClientId = '', dedicatedClientView = false
           display: 'flex',
           justifyContent: 'space-between',
           gap: '16px',
-          alignItems: 'center',
+          alignItems: 'flex-start',
           cursor: 'pointer',
         }}
+        className="btx-works-work-row"
       >
-        <div>
-          <strong>#{work.number} - {work.name}</strong>
+        <div style={{ minWidth: 0 }}>
+          <strong style={{ overflowWrap: 'anywhere' }}>#{work.number} - {work.name}</strong>
           <p style={{ margin: '6px 0 0', color: 'var(--vp-text-muted)' }}>{work.client?.name || 'Sem cliente'}</p>
           <p style={{ margin: '6px 0 0', color: 'var(--vp-text-muted)' }}>Estado: {getWorkStatusLabel(work.status)}</p>
           <p style={{ margin: '6px 0 0', color: 'var(--vp-text-muted)' }}>
@@ -1669,7 +1675,10 @@ export function WorksPageView({ forcedClientId = '', dedicatedClientView = false
             </p>
           )}
         </div>
-        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+        <div
+          className="btx-works-work-row-actions"
+          style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'flex-end' }}
+        >
           <button
             type="button"
             onClick={(event) => {
@@ -1697,11 +1706,14 @@ export function WorksPageView({ forcedClientId = '', dedicatedClientView = false
           >
             {dedicatedClientView ? 'Voltar aos clientes' : 'Voltar ao menu'}
           </Link>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', flexWrap: 'wrap', marginTop: '10px' }}>
+          <div
+            className="btx-works-hero-head"
+            style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', flexWrap: 'wrap', marginTop: '10px' }}
+          >
             <h1 style={{ margin: '0 0 12px', fontSize: '46px', lineHeight: 1.05 }}>
               {dedicatedClientView && selectedClient ? selectedClient.name : 'Clientes e obras'}
             </h1>
-            <div style={{ display: 'grid', gap: '10px', justifyItems: 'end' }}>
+            <div className="btx-works-hero-actions" style={{ display: 'grid', gap: '10px', justifyItems: 'end' }}>
               <button type="button" onClick={startCreateClient} style={heroPrimaryButtonStyle}>
                 Adicionar cliente
               </button>
@@ -1713,8 +1725,8 @@ export function WorksPageView({ forcedClientId = '', dedicatedClientView = false
 
         </section>
 
-        <div style={{ display: 'grid', gap: '24px' }}>
-        <section style={topBarStyle}>
+        <div style={contentFlowStyle}>
+        <section style={topBarStyle} className="btx-works-toolbar">
           <BentixResponsiveGrid preset="stats" style={statGridStyle}>
             <article style={statCardStyle}>
               <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>Clientes</div>
@@ -1730,7 +1742,10 @@ export function WorksPageView({ forcedClientId = '', dedicatedClientView = false
             </article>
           </BentixResponsiveGrid>
 
-          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'flex-end', alignItems: 'flex-start' }}>
+          <div
+            className="btx-works-toolbar-actions"
+            style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'flex-end', alignItems: 'flex-start' }}
+          >
             {dedicatedClientView ? (
               <>
                 <div style={{ display: 'grid', gap: '10px' }}>
@@ -1776,7 +1791,7 @@ export function WorksPageView({ forcedClientId = '', dedicatedClientView = false
         </section>
 
         {!dedicatedClientView && showGeneralAnnualSummary && (
-          <section style={panelStyle}>
+          <BentixSection style={panelStyle}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
               <div>
                 <h2 style={{ margin: 0 }}>Resumo anual geral</h2>
@@ -1827,12 +1842,12 @@ export function WorksPageView({ forcedClientId = '', dedicatedClientView = false
                 </table>
               </BentixOverflowX>
             )}
-          </section>
+          </BentixSection>
         )}
 
         <section style={isClientWorksView ? { display: 'grid', gap: '24px' } : { display: 'grid', gap: '24px' }}>
           {!dedicatedClientView && (
-          <section style={panelStyle}>
+          <BentixSection style={panelStyle}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
               <div>
                 <h2 style={{ margin: 0 }}>Clientes</h2>
@@ -1850,7 +1865,7 @@ export function WorksPageView({ forcedClientId = '', dedicatedClientView = false
                   const isSelected = String(client.id) === String(selectedClientId)
 
                   return (
-                    <div key={client.id} style={getClientCardStyle(isSelected)}>
+                    <div key={client.id} style={getClientCardStyle(isSelected)} className="btx-works-client-card">
                       <button
                         type="button"
                         onClick={() => openClientWorks(String(client.id))}
@@ -1875,11 +1890,11 @@ export function WorksPageView({ forcedClientId = '', dedicatedClientView = false
                 })}
               </div>
             )}
-          </section>
+          </BentixSection>
           )}
 
           {dedicatedClientView && (
-          <section style={clientSummaryPanelStyle}>
+          <BentixSection style={clientSummaryPanelStyle}>
             {selectedClient ? (
               <>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px', flexWrap: 'wrap' }}>
@@ -1927,12 +1942,12 @@ export function WorksPageView({ forcedClientId = '', dedicatedClientView = false
                 <p style={{ margin: 0, color: '#b42318' }}>Cliente não encontrado.</p>
               </>
             )}
-          </section>
+          </BentixSection>
           )}
         </section>
 
         {dedicatedClientView && selectedClient && showAnnualSummary && (
-          <section style={panelStyle}>
+          <BentixSection style={panelStyle}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
               <div>
                 <h2 style={{ margin: 0, fontFamily: 'Segoe UI, system-ui, -apple-system, sans-serif' }}>Resumo anual de {selectedClient.name}</h2>
@@ -1976,41 +1991,41 @@ export function WorksPageView({ forcedClientId = '', dedicatedClientView = false
                 </table>
               </BentixOverflowX>
             )}
-          </section>
+          </BentixSection>
         )}
 
         {dedicatedClientView && selectedClient && (
-        <section style={panelStyle}>
-          <h2 style={{ marginTop: 0 }}>
-            {selectedClient ? `Obras ativas de ${selectedClient.name}` : 'Obras ativas'}
-          </h2>
-          {loading && <p>A carregar obras...</p>}
-          {!loading && error && <p style={{ color: '#b42318' }}>{error}</p>}
-          {!loading && !error && activeWorks.length === 0 && (
-            <p>{selectedClient ? 'Sem obras ativas para este cliente.' : 'Sem obras ativas.'}</p>
-          )}
-          {!loading && !error && activeWorks.length > 0 && (
-            <div style={{ display: 'grid', gap: '12px' }}>
-              {activeWorks.map(renderWorkRow)}
-            </div>
-          )}
-        </section>
-        )}
+        <BentixResponsiveGrid preset="split" className="btx-works-lists-grid" style={{ '--vp-grid-gap': '24px' }}>
+          <BentixSection style={panelStyle}>
+            <h2 style={{ marginTop: 0 }}>
+              {selectedClient ? `Obras ativas de ${selectedClient.name}` : 'Obras ativas'}
+            </h2>
+            {loading && <p>A carregar obras...</p>}
+            {!loading && error && <p style={{ color: '#b42318' }}>{error}</p>}
+            {!loading && !error && activeWorks.length === 0 && (
+              <p>{selectedClient ? 'Sem obras ativas para este cliente.' : 'Sem obras ativas.'}</p>
+            )}
+            {!loading && !error && activeWorks.length > 0 && (
+              <div style={{ display: 'grid', gap: '12px' }}>
+                {activeWorks.map(renderWorkRow)}
+              </div>
+            )}
+          </BentixSection>
 
-        {dedicatedClientView && selectedClient && (
-        <section style={panelStyle}>
-          <h2 style={{ marginTop: 0 }}>
-            {selectedClient ? `Obras antigas de ${selectedClient.name}` : 'Obras antigas com resumo'}
-          </h2>
-          {!loading && archivedWorks.length === 0 && (
-            <p>{selectedClient ? 'Sem obras antigas para este cliente.' : 'Sem obras antigas.'}</p>
-          )}
-          {!loading && archivedWorks.length > 0 && (
-            <div style={{ display: 'grid', gap: '12px' }}>
-              {archivedWorks.map(renderWorkRow)}
-            </div>
-          )}
-        </section>
+          <BentixSection style={panelStyle}>
+            <h2 style={{ marginTop: 0 }}>
+              {selectedClient ? `Obras antigas de ${selectedClient.name}` : 'Obras antigas com resumo'}
+            </h2>
+            {!loading && archivedWorks.length === 0 && (
+              <p>{selectedClient ? 'Sem obras antigas para este cliente.' : 'Sem obras antigas.'}</p>
+            )}
+            {!loading && archivedWorks.length > 0 && (
+              <div style={{ display: 'grid', gap: '12px' }}>
+                {archivedWorks.map(renderWorkRow)}
+              </div>
+            )}
+          </BentixSection>
+        </BentixResponsiveGrid>
         )}
         </div>
       </BentixContent>

@@ -425,6 +425,8 @@ test('páginas principais migradas usam primitivas adaptativas sem listas princi
   assert.match(clientsPageSource, /<BentixResponsiveGrid as="section" preset="split"/)
   assert.match(clientsPageSource, /<BentixSection as="div"/)
   assert.match(worksPageSource, /<BentixOverflowX/)
+  assert.match(worksPageSource, /<BentixSection style=\{panelStyle\}>/)
+  assert.match(worksPageSource, /className="btx-works-toolbar"/)
   assert.match(materialsPageSource, /<BentixResponsiveGrid as="section" preset="split"/)
   assert.match(loginPageSource, /<BentixPage padding="none"/)
 })
@@ -1307,4 +1309,14 @@ test('People page aplica a split grid adaptativa e headers internos responsivos'
   assert.match(peoplePageSource, /className="btx-people-list-row-head"/)
   assert.match(globalCssSource, /\.btx-people-detail-actions\s*\{/)
   assert.match(globalCssSource, /\.btx-people-list-row-head\s*\{/)
+})
+
+test('Works page aplica toolbar, listas e rows responsivas do sistema adaptativo', () => {
+  assert.match(worksPageSource, /className="btx-works-toolbar"/)
+  assert.match(worksPageSource, /className="btx-works-toolbar-actions"/)
+  assert.match(worksPageSource, /className="btx-works-hero-actions"/)
+  assert.match(worksPageSource, /className="btx-works-work-row"/)
+  assert.match(worksPageSource, /className="btx-works-lists-grid"/)
+  assert.match(globalCssSource, /\.btx-works-work-row\s*\{/)
+  assert.match(globalCssSource, /\.btx-works-toolbar\s*\{/)
 })

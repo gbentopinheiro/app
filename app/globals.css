@@ -451,6 +451,58 @@ body > * {
   flex: 1 1 220px;
 }
 
+.btx-works-toolbar {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.btx-works-toolbar-actions {
+  width: 100%;
+  justify-content: flex-start;
+}
+
+.btx-works-hero-head {
+  align-items: flex-start;
+}
+
+.btx-works-hero-actions {
+  width: 100%;
+  justify-items: stretch;
+}
+
+.btx-works-hero-actions > * {
+  width: 100% !important;
+  max-width: 240px;
+}
+
+.btx-works-client-card {
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.btx-works-client-card > *:first-child {
+  min-width: 0;
+  flex: 1 1 220px;
+}
+
+.btx-works-work-row {
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.btx-works-work-row > *:first-child {
+  min-width: 0;
+  flex: 1 1 260px;
+}
+
+.btx-works-work-row-actions {
+  width: 100%;
+  justify-content: flex-start;
+}
+
+.btx-works-lists-grid > * {
+  min-width: 0;
+}
+
 @media (min-width: 640px) {
   .vp-grid--summary {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -480,6 +532,29 @@ body > * {
   }
 
   .btx-people-detail-actions {
+    width: auto;
+    justify-content: flex-end;
+  }
+
+  .btx-works-toolbar {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .btx-works-toolbar-actions {
+    width: auto;
+    justify-content: flex-end;
+  }
+
+  .btx-works-hero-actions {
+    width: auto;
+    justify-items: end;
+  }
+
+  .btx-works-hero-actions > * {
+    width: 188px !important;
+  }
+
+  .btx-works-work-row-actions {
     width: auto;
     justify-content: flex-end;
   }
