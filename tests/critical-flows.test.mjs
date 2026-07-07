@@ -385,6 +385,8 @@ test('Adaptive Layout System expõe primitivas reutilizáveis e classes globais 
   assert.match(viewportLayoutSource, /export function BentixOverflowX/)
   assert.match(globalCssSource, /\.vp-content-frame--app\s*\{/)
   assert.match(globalCssSource, /\.vp-content-frame--dashboard\s*\{/)
+  assert.match(globalCssSource, /\.vp-content-frame--ultra\s*\{/)
+  assert.match(globalCssSource, /--vp-frame-max:\s*clamp\(/)
   assert.match(globalCssSource, /\.btx-page--default\s*\{/)
   assert.match(globalCssSource, /\.btx-content--lg\s*\{/)
   assert.match(globalCssSource, /\.btx-responsive-grid--split\s*\{/)
@@ -412,7 +414,10 @@ test('páginas principais migradas usam primitivas adaptativas sem listas princi
   assert.match(homePageSource, /<BentixResponsiveGrid preset="dashboard-main"/)
   assert.match(homePageSource, /className="btx-dashboard-responsavel-calendar"/)
   assert.match(peoplePageSource, /<BentixContent width="app"/)
-  assert.match(peoplePageSource, /btx-responsive-grid--split/)
+  assert.match(peoplePageSource, /<BentixSection style=\{panelStyle\}>/)
+  assert.match(peoplePageSource, /<BentixResponsiveGrid[\s\S]*preset=\{canManagePeople \? 'split' : 'cards'\}/)
+  assert.match(peoplePageSource, /className="btx-people-toolbar"/)
+  assert.match(globalCssSource, /\.btx-people-toolbar\s*\{/)
   assert.match(
     peoplePageSource,
     /const peopleListStyle = \{\s*display: 'grid',\s*gap: '12px',\s*\}/,
@@ -1295,4 +1300,11 @@ test('Registo diário do admin mostra apenas obras com afetações na data selec
   assert.match(dailyHoursPageSource, /const visibleWorks = isChef \? activeWorks : adminAssignedWorks/)
   assert.match(dailyHoursPageSource, /visibleWorks\.map\(work => \(/)
   assert.match(dailyHoursPageSource, /Não existem obras atribuídas para a data selecionada\./)
+})
+test('People page aplica a split grid adaptativa e headers internos responsivos', () => {
+  assert.match(peoplePageSource, /className=\{canManagePeople \? 'btx-people-main-grid' : ''\}/)
+  assert.match(peoplePageSource, /className="btx-people-detail-header"/)
+  assert.match(peoplePageSource, /className="btx-people-list-row-head"/)
+  assert.match(globalCssSource, /\.btx-people-detail-actions\s*\{/)
+  assert.match(globalCssSource, /\.btx-people-list-row-head\s*\{/)
 })

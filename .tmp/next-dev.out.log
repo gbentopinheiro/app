@@ -1,0 +1,16 @@
+
+> app@1.0.0 dev
+> next dev
+
+▲ Next.js 16.2.0 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://10.5.0.2:3000
+- Environments: .env
+✓ Ready in 1012ms
+Creating turbopack project {
+  dir: 'C:\\Users\\gbent\\OneDrive\\Ambiente de Trabalho\\VILAPLANO\\app',
+  testMode: true
+}
+
+ GET /login 200 in 783ms (next.js: 195ms, proxy.ts: 272ms, application-code: 315ms)
+[?25h

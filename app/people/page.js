@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 import * as XLSX from 'xlsx'
 import EditPencilIcon, { editPencilButtonStyle } from '../components/EditPencilIcon'
-import { BentixContent, BentixPage, BentixResponsiveGrid } from '../components/ViewportLayout.js'
+import { BentixContent, BentixPage, BentixResponsiveGrid, BentixSection } from '../components/ViewportLayout.js'
 import {
   deletePerson,
   listPeople,
@@ -47,6 +47,12 @@ const shellStyle = {
   '--btx-content-gap': '24px',
 }
 
+const contentFlowStyle = {
+  display: 'grid',
+  gap: '24px',
+  minWidth: 0,
+}
+
 const heroStyle = {
   position: 'relative',
   overflow: 'hidden',
@@ -63,11 +69,9 @@ const heroStyle = {
 }
 
 const topBarStyle = {
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center',
+  display: 'grid',
   gap: '16px',
-  flexWrap: 'wrap',
+  alignItems: 'start',
 }
 
 const statGridStyle = {
@@ -86,6 +90,7 @@ const statCardStyle = {
 const layoutStyle = {
   gap: '24px',
   alignItems: 'start',
+  minWidth: 0,
 }
 
 const panelStyle = {
@@ -296,7 +301,7 @@ const buttonGroupStyle = {
   display: 'flex',
   gap: '10px',
   flexWrap: 'wrap',
-  justifyContent: 'flex-end',
+  justifyContent: 'flex-start',
 }
 
 const mutedButtonStyle = {
@@ -2413,8 +2418,11 @@ export default function PeoplePage() {
           cursor: 'pointer',
         }}
         >
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center' }}>
-          <strong>{person.name}</strong>
+        <div
+          className="btx-people-list-row-head"
+          style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'flex-start' }}
+        >
+          <strong style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{person.name}</strong>
           {!isWorkerRole(person.role) && (
             <span
               style={{
@@ -2456,9 +2464,9 @@ export default function PeoplePage() {
           </h1>
         </section>
 
-        <div style={{ display: 'grid', gap: '24px' }}>
+        <div style={contentFlowStyle}>
         {canManagePeople && (
-          <section style={topBarStyle}>
+          <section style={topBarStyle} className="btx-people-toolbar">
             <BentixResponsiveGrid preset="stats" style={statGridStyle}>
               <article style={statCardStyle}>
                 <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>Pessoas totais</div>
@@ -2474,7 +2482,7 @@ export default function PeoplePage() {
               </article>
             </BentixResponsiveGrid>
 
-            <div style={buttonGroupStyle}>
+            <div style={buttonGroupStyle} className="btx-people-toolbar-actions">
               <label style={{ display: 'none', gap: '6px', fontSize: '12px', color: 'var(--vp-text-soft)' }}>
                 Mês da exportação
                 <input
@@ -2498,8 +2506,12 @@ export default function PeoplePage() {
         {!showForm && error && <p style={{ margin: 0, color: '#b42318' }}>{error}</p>}
         {!showForm && success && <p style={{ margin: 0, color: '#1f7a45' }}>{success}</p>}
 
-        <div className={canManagePeople ? 'vp-grid btx-responsive-grid btx-responsive-grid--split' : ''} style={canManagePeople ? layoutStyle : { display: 'grid' }}>
-          <section style={panelStyle}>
+        <BentixResponsiveGrid
+          preset={canManagePeople ? 'split' : 'cards'}
+          className={canManagePeople ? 'btx-people-main-grid' : ''}
+          style={canManagePeople ? layoutStyle : { display: 'grid', gap: '24px', minWidth: 0 }}
+        >
+          <BentixSection style={panelStyle}>
             <div style={isResponsavelView ? responsavelListHeaderStyle : {}}>
               <h2 style={{ marginTop: 0, marginBottom: isResponsavelView ? 0 : undefined }}>Lista de pessoas</h2>
             </div>
@@ -2544,25 +2556,36 @@ export default function PeoplePage() {
                 {filteredPeople.length === 0 ? (
                   <p style={{ margin: 0, color: 'var(--vp-text-muted)' }}>Nenhuma pessoa encontrada com esse nome.</p>
                 ) : (
-                  <div style={isResponsavelView ? responsavelPeopleListStyle : peopleListStyle}>
+                  <div
+                    style={{
+                      ...(isResponsavelView ? responsavelPeopleListStyle : peopleListStyle),
+                      minWidth: 0,
+                    }}
+                  >
                     {filteredPeople.map(renderPersonRow)}
                   </div>
                 )}
               </>
             )}
-          </section>
+          </BentixSection>
 
           {canManagePeople && (
-            <section style={panelStyle}>
+            <BentixSection style={panelStyle}>
               <h2 style={{ marginTop: 0 }}>Detalhe da pessoa</h2>
               {!selectedPerson && <p>Seleciona uma pessoa para veres o detalhe.</p>}
               {selectedPerson && (
                 <div style={{ display: 'grid', gap: '16px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'flex-start' }}>
-                    <div>
-                      <h3 style={{ margin: 0, fontSize: '30px' }}>{selectedPerson.name}</h3>
+                  <div
+                    className="btx-people-detail-header"
+                    style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'flex-start' }}
+                  >
+                    <div style={{ minWidth: 0 }}>
+                      <h3 style={{ margin: 0, fontSize: '30px', overflowWrap: 'anywhere' }}>{selectedPerson.name}</h3>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                    <div
+                      className="btx-people-detail-actions"
+                      style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', justifyContent: 'flex-end' }}
+                    >
                       <button
                         type="button"
                         onClick={() => startEdit(selectedPerson)}
@@ -2690,9 +2713,9 @@ export default function PeoplePage() {
                   </div>
                 </div>
               )}
-            </section>
+            </BentixSection>
           )}
-        </div>
+        </BentixResponsiveGrid>
         </div>
       </BentixContent>
 
@@ -2878,15 +2901,15 @@ export default function PeoplePage() {
               </button>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px', marginTop: '18px' }}>
-              <label style={{ ...labelStyle, maxWidth: '200px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: '14px', marginTop: '18px' }}>
+              <label style={{ ...labelStyle, width: '100%', maxWidth: '220px' }}>
                 Mês da folha
                 <input
                   type="month"
                   value={exportMonthKey}
                   onChange={event => setExportMonthKey(event.target.value || getCurrentMonthKey())}
                   onClick={openNativeMonthPicker}
-                  style={{ ...inputStyle, minHeight: '52px', fontSize: '16px', width: '200px' }}
+                  style={{ ...inputStyle, minHeight: '52px', fontSize: '16px', width: '100%' }}
                 />
               </label>
 
