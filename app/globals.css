@@ -451,6 +451,31 @@ body > * {
   flex: 1 1 220px;
 }
 
+.btx-clients-toolbar {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.btx-clients-toolbar-actions {
+  width: 100%;
+  min-width: 0;
+  justify-content: flex-start;
+}
+
+.btx-clients-main-grid > * {
+  min-width: 0;
+}
+
+.btx-clients-form-header,
+.btx-clients-detail-header {
+  flex-wrap: wrap;
+}
+
+.btx-clients-form-header > *:first-child,
+.btx-clients-detail-header > *:first-child {
+  min-width: 0;
+  flex: 1 1 240px;
+}
+
 .btx-works-toolbar {
   grid-template-columns: minmax(0, 1fr);
 }
@@ -532,6 +557,15 @@ body > * {
   }
 
   .btx-people-detail-actions {
+    width: auto;
+    justify-content: flex-end;
+  }
+
+  .btx-clients-toolbar {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .btx-clients-toolbar-actions {
     width: auto;
     justify-content: flex-end;
   }

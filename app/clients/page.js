@@ -25,6 +25,12 @@ const shellStyle = {
   '--btx-content-gap': '24px',
 }
 
+const contentFlowStyle = {
+  display: 'grid',
+  gap: '24px',
+  minWidth: 0,
+}
+
 const heroStyle = {
   position: 'relative',
   overflow: 'hidden',
@@ -46,6 +52,7 @@ const panelStyle = {
   borderRadius: '24px',
   padding: '24px',
   boxShadow: 'var(--vp-shadow-panel)',
+  minWidth: 0,
 }
 
 const inputStyle = {
@@ -62,6 +69,69 @@ const labelStyle = {
   display: 'block',
   fontSize: '14px',
   fontWeight: 700,
+}
+
+const topBarStyle = {
+  display: 'grid',
+  gap: '16px',
+  alignItems: 'start',
+}
+
+const statGridStyle = {
+  '--vp-grid-gap': '16px',
+}
+
+const buttonGroupStyle = {
+  display: 'flex',
+  gap: '10px',
+  flexWrap: 'wrap',
+  justifyContent: 'flex-start',
+  alignItems: 'flex-start',
+  minWidth: 0,
+}
+
+const panelHeaderStyle = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  gap: '12px',
+  alignItems: 'center',
+}
+
+const formStyle = {
+  display: 'grid',
+  gap: '14px',
+  marginTop: '18px',
+  minWidth: 0,
+}
+
+const formFieldsGridStyle = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))',
+  gap: '14px',
+}
+
+const clientListStyle = {
+  display: 'grid',
+  gap: '12px',
+  minWidth: 0,
+}
+
+const detailBodyStyle = {
+  display: 'grid',
+  gap: '12px',
+  marginTop: '18px',
+  color: 'var(--vp-text-muted)',
+  minWidth: 0,
+}
+
+const detailLineStyle = {
+  margin: 0,
+  minWidth: 0,
+}
+
+const detailValueStyle = {
+  overflowWrap: 'anywhere',
+  wordBreak: 'break-word',
 }
 
 const primaryButtonStyle = {
@@ -112,6 +182,19 @@ const emptyClientForm = {
   email: '',
   phone: '',
   notes: '',
+}
+
+function getClientListButtonStyle(isSelected) {
+  return {
+    width: '100%',
+    minWidth: 0,
+    textAlign: 'left',
+    padding: '16px',
+    borderRadius: '16px',
+    border: isSelected ? '1px solid var(--vp-accent)' : '1px solid var(--vp-border)',
+    background: isSelected ? 'var(--vp-highlight)' : 'var(--vp-surface)',
+    cursor: 'pointer',
+  }
 }
 
 export default function ClientsPage() {
@@ -261,20 +344,25 @@ export default function ClientsPage() {
 
         </section>
 
-        <div style={{ display: 'grid', gap: '24px' }}>
-        <section style={{ display: 'flex', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' }}>
-          <BentixSection as="div">
-            <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>Clientes totais</div>
-            <div style={{ marginTop: '8px', fontSize: '32px', fontWeight: 700 }}>{clients.length}</div>
-          </BentixSection>
-          <button type="button" onClick={startCreate} style={primaryButtonStyle}>
-            Adicionar cliente
-          </button>
+        <div style={contentFlowStyle}>
+        <section style={topBarStyle} className="btx-clients-toolbar">
+          <BentixResponsiveGrid preset="stats" style={statGridStyle}>
+            <BentixSection as="div">
+              <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>Clientes totais</div>
+              <div style={{ marginTop: '8px', fontSize: '32px', fontWeight: 700 }}>{clients.length}</div>
+            </BentixSection>
+          </BentixResponsiveGrid>
+
+          <div style={buttonGroupStyle} className="btx-clients-toolbar-actions">
+            <button type="button" onClick={startCreate} style={primaryButtonStyle}>
+              Adicionar cliente
+            </button>
+          </div>
         </section>
 
         {showForm && (
-          <section style={panelStyle}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center' }}>
+          <BentixSection style={panelStyle}>
+            <div style={panelHeaderStyle} className="btx-clients-form-header">
               <div>
                 <h2 style={{ margin: 0 }}>{form.id ? 'Editar cliente' : 'Adicionar cliente'}</h2>
                 <p style={{ margin: '8px 0 0', color: 'var(--vp-text-muted)' }}>
@@ -286,8 +374,8 @@ export default function ClientsPage() {
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} style={{ display: 'grid', gap: '14px', marginTop: '18px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
+            <form onSubmit={handleSubmit} style={formStyle}>
+              <div style={formFieldsGridStyle}>
                 <label style={labelStyle}>
                   Nome
                   <input type="text" name="name" value={form.name} onChange={handleChange} style={inputStyle} />
@@ -313,7 +401,7 @@ export default function ClientsPage() {
 
               <label style={labelStyle}>
                 Notas
-                <textárea name="notes" value={form.notes} onChange={handleChange} rows={4} style={inputStyle} />
+                <textarea name="notes" value={form.notes} onChange={handleChange} rows={4} style={inputStyle} />
               </label>
 
               {error && <p style={{ margin: 0, color: '#b42318' }}>{error}</p>}
@@ -337,16 +425,16 @@ export default function ClientsPage() {
                 )}
               </div>
             </form>
-          </section>
+          </BentixSection>
         )}
 
-        <BentixResponsiveGrid as="section" preset="split" style={{ gap: '24px' }}>
-          <section style={panelStyle}>
+        <BentixResponsiveGrid as="section" preset="split" className="btx-clients-main-grid" style={{ gap: '24px' }}>
+          <BentixSection style={panelStyle}>
             <h2 style={{ marginTop: 0 }}>Lista de clientes</h2>
             {loading && <p>A carregar clientes...</p>}
             {!loading && !error && clients.length === 0 && <p>Sem clientes registados.</p>}
             {!loading && clients.length > 0 && (
-              <div style={{ display: 'grid', gap: '12px' }}>
+              <div style={clientListStyle}>
                 {clients.map(client => {
                   const isSelected = client.id === selectedClientId
 
@@ -355,26 +443,21 @@ export default function ClientsPage() {
                       key={client.id}
                       type="button"
                       onClick={() => setSelectedClientId(client.id)}
-                      style={{
-                        textAlign: 'left',
-                        padding: '16px',
-                        borderRadius: '16px',
-                        border: isSelected ? '1px solid var(--vp-accent)' : '1px solid var(--vp-border)',
-                        background: isSelected ? 'var(--vp-highlight)' : 'var(--vp-surface)',
-                        cursor: 'pointer',
-                      }}
+                      style={getClientListButtonStyle(isSelected)}
                     >
-                      <strong>{client.name}</strong>
-                      <p style={{ margin: '6px 0 0', color: 'var(--vp-text-muted)' }}>{client.contactName || 'Sem contacto definido'}</p>
+                      <strong style={detailValueStyle}>{client.name}</strong>
+                      <p style={{ margin: '6px 0 0', color: 'var(--vp-text-muted)', ...detailValueStyle }}>
+                        {client.contactName || 'Sem contacto definido'}
+                      </p>
                     </button>
                   )
                 })}
               </div>
             )}
-          </section>
+          </BentixSection>
 
-          <section style={panelStyle}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <BentixSection style={panelStyle}>
+            <div style={panelHeaderStyle} className="btx-clients-detail-header">
               <h2 style={{ margin: 0 }}>Detalhe do cliente</h2>
               {selectedClient && (
                 <button
@@ -392,16 +475,16 @@ export default function ClientsPage() {
             {!selectedClient && <p style={{ marginTop: '18px' }}>Seleciona um cliente para ver os detalhes.</p>}
 
             {selectedClient && (
-              <div style={{ display: 'grid', gap: '12px', marginTop: '18px', color: 'var(--vp-text-muted)' }}>
-                <p style={{ margin: 0 }}><strong>Nome:</strong> {selectedClient.name}</p>
-                <p style={{ margin: 0 }}><strong>NIF:</strong> {selectedClient.vatNumber || 'Sem NIF'}</p>
-                <p style={{ margin: 0 }}><strong>Contacto:</strong> {selectedClient.contactName || 'Sem contacto'}</p>
-                <p style={{ margin: 0 }}><strong>Email:</strong> {selectedClient.email || 'Sem email'}</p>
-                <p style={{ margin: 0 }}><strong>Telefone:</strong> {selectedClient.phone || 'Sem telefone'}</p>
-                <p style={{ margin: 0 }}><strong>Notas:</strong> {selectedClient.notes || 'Sem notas'}</p>
+              <div style={detailBodyStyle}>
+                <p style={detailLineStyle}><strong>Nome:</strong> <span style={detailValueStyle}>{selectedClient.name}</span></p>
+                <p style={detailLineStyle}><strong>NIF:</strong> <span style={detailValueStyle}>{selectedClient.vatNumber || 'Sem NIF'}</span></p>
+                <p style={detailLineStyle}><strong>Contacto:</strong> <span style={detailValueStyle}>{selectedClient.contactName || 'Sem contacto'}</span></p>
+                <p style={detailLineStyle}><strong>Email:</strong> <span style={detailValueStyle}>{selectedClient.email || 'Sem email'}</span></p>
+                <p style={detailLineStyle}><strong>Telefone:</strong> <span style={detailValueStyle}>{selectedClient.phone || 'Sem telefone'}</span></p>
+                <p style={detailLineStyle}><strong>Notas:</strong> <span style={{ ...detailValueStyle, whiteSpace: 'pre-wrap' }}>{selectedClient.notes || 'Sem notas'}</span></p>
               </div>
             )}
-          </section>
+          </BentixSection>
         </BentixResponsiveGrid>
         </div>
       </BentixContent>
