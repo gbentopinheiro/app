@@ -7,6 +7,7 @@ import {
   BentixContent,
   BentixPage,
   BentixResponsiveGrid,
+  BentixSection,
 } from '../components/ViewportLayout.js'
 import {
   deleteMaterial,
@@ -21,7 +22,7 @@ const unitOptions = [
   { value: 'l', label: 'Litro' },
   { value: 'm', label: 'Metro' },
   { value: 'm2', label: 'Metro quadrado' },
-  { value: 'm3', label: 'Metro cubico' },
+  { value: 'm3', label: 'Metro cúbico' },
 ]
 
 const emptyMaterialForm = {
@@ -45,6 +46,12 @@ const pageStyle = {
 
 const shellStyle = {
   '--btx-content-gap': '24px',
+}
+
+const contentFlowStyle = {
+  display: 'grid',
+  gap: '24px',
+  minWidth: 0,
 }
 
 const heroStyle = {
@@ -167,6 +174,7 @@ const panelStyle = {
   borderRadius: '26px',
   padding: '24px',
   boxShadow: '0 24px 54px rgba(24, 58, 110, 0.08)',
+  minWidth: 0,
 }
 
 const toolbarStyle = {
@@ -260,11 +268,6 @@ const layoutStyle = {
   gap: '24px',
 }
 
-const listHeaderStyle = {
-  display: 'grid',
-  gap: '14px',
-}
-
 const searchInputStyle = {
   ...inputStyle,
   marginTop: 0,
@@ -274,9 +277,12 @@ const materialListStyle = {
   display: 'grid',
   gap: '12px',
   marginTop: '18px',
+  minWidth: 0,
 }
 
 const materialCardStyle = isSelected => ({
+  width: '100%',
+  minWidth: 0,
   textAlign: 'left',
   padding: '16px',
   borderRadius: '18px',
@@ -300,6 +306,8 @@ const materialCardNameStyle = {
   fontSize: '16px',
   lineHeight: 1.2,
   fontWeight: 900,
+  overflowWrap: 'anywhere',
+  wordBreak: 'break-word',
 }
 
 const materialCardRefStyle = {
@@ -308,6 +316,8 @@ const materialCardRefStyle = {
   fontSize: '12px',
   lineHeight: 1.4,
   fontWeight: 800,
+  overflowWrap: 'anywhere',
+  wordBreak: 'break-word',
 }
 
 const materialCardMetaStyle = {
@@ -316,6 +326,8 @@ const materialCardMetaStyle = {
   fontSize: '13px',
   lineHeight: 1.45,
   fontWeight: 700,
+  overflowWrap: 'anywhere',
+  wordBreak: 'break-word',
 }
 
 const statusBadgeStyle = tone => ({
@@ -351,7 +363,7 @@ const detailHeaderStyle = {
 
 const detailGridStyle = {
   display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 180px), 1fr))',
   gap: '14px',
   marginTop: '18px',
 }
@@ -378,6 +390,8 @@ const detailValueStyle = {
   fontSize: '16px',
   lineHeight: 1.35,
   fontWeight: 800,
+  overflowWrap: 'anywhere',
+  wordBreak: 'break-word',
 }
 
 function getStockStatus(material) {
@@ -392,7 +406,7 @@ function getStockStatus(material) {
     return { label: 'Stock baixo', tone: 'warning' }
   }
 
-  return { label: 'Disponivel', tone: 'success' }
+  return { label: 'Disponível', tone: 'success' }
 }
 
 function formatMaterialQuantity(material) {
@@ -491,7 +505,7 @@ export default function MaterialsClient() {
     const minimumQuantity = Number.parseFloat(String(form.minimumQuantity || '').replace(',', '.'))
 
     if (!form.name.trim()) {
-      nextErrors.name = 'O nome do material e obrigatorio.'
+      nextErrors.name = 'O nome do material é obrigatório.'
     }
 
     if (!Number.isFinite(quantity) || quantity < 0) {
@@ -499,7 +513,7 @@ export default function MaterialsClient() {
     }
 
     if (!Number.isFinite(minimumQuantity) || minimumQuantity < 0) {
-      nextErrors.minimumQuantity = 'O stock minimo tem de ser igual ou superior a zero.'
+      nextErrors.minimumQuantity = 'O stock mínimo tem de ser igual ou superior a zero.'
     }
 
     setFormErrors(nextErrors)
@@ -613,16 +627,18 @@ export default function MaterialsClient() {
               <Link href="/" style={backLinkStyle}>
                 Voltar ao painel
               </Link>
-              <button type="button" onClick={startCreate} style={primaryButtonStyle}>
-                Adicionar material
-              </button>
+              <div className="btx-materials-toolbar-actions">
+                <button type="button" onClick={startCreate} style={primaryButtonStyle}>
+                  Adicionar material
+                </button>
+              </div>
             </div>
 
             <div>
-              <p style={eyebrowStyle}>Armazem e equipamentos</p>
-              <h1 style={titleStyle}>Gestao de material</h1>
+              <p style={eyebrowStyle}>Armazém e equipamentos</p>
+              <h1 style={titleStyle}>Gestão de material</h1>
               <p style={introStyle}>
-                Controla artigos, stock minimo, localizacao e fornecedor num so sitio, com uma consulta rapida do estado atual.
+                Controla artigos, stock mínimo, localização e fornecedor num só sítio, com uma consulta rápida do estado atual.
               </p>
             </div>
 
@@ -630,30 +646,30 @@ export default function MaterialsClient() {
               <article style={heroStatCardStyle}>
                 <p style={heroStatLabelStyle}>Materiais totais</p>
                 <p style={heroStatValueStyle}>{materials.length}</p>
-                <p style={heroStatTextStyle}>artigos registados no armazem</p>
+                <p style={heroStatTextStyle}>artigos registados no armazém</p>
               </article>
               <article style={heroStatCardStyle}>
                 <p style={heroStatLabelStyle}>Stock baixo</p>
                 <p style={heroStatValueStyle}>{lowStockCount}</p>
-                <p style={heroStatTextStyle}>precisam de reposicao em breve</p>
+                <p style={heroStatTextStyle}>precisam de reposição em breve</p>
               </article>
               <article style={heroStatCardStyle}>
                 <p style={heroStatLabelStyle}>Sem stock</p>
                 <p style={heroStatValueStyle}>{noStockCount}</p>
-                <p style={heroStatTextStyle}>ja estao esgotados</p>
+                <p style={heroStatTextStyle}>já estão esgotados</p>
               </article>
             </BentixResponsiveGrid>
           </div>
         </section>
 
-        <div style={{ display: 'grid', gap: '24px' }}>
+        <div style={contentFlowStyle}>
         {showForm && (
-          <section style={panelStyle}>
-            <div style={toolbarStyle}>
+          <BentixSection style={panelStyle}>
+            <div style={toolbarStyle} className="btx-materials-form-header">
               <div>
                 <h2 style={{ margin: 0, color: '#10233e' }}>{form.id ? 'Editar material' : 'Adicionar material'}</h2>
                 <p style={{ margin: '8px 0 0', color: '#49627f', fontWeight: 700 }}>
-                  Mantem o stock, a referencia e a localizacao de cada artigo atualizados.
+                  Mantém o stock, a referência e a localização de cada artigo atualizados.
                 </p>
               </div>
               <button type="button" onClick={cancelForm} style={secondaryButtonStyle}>
@@ -669,7 +685,7 @@ export default function MaterialsClient() {
                   {formErrors.name ? <span style={messageErrorStyle}>{formErrors.name}</span> : null}
                 </label>
                 <label style={labelStyle}>
-                  Referencia
+                  Referência
                   <input type="text" name="reference" value={form.reference} onChange={handleChange} style={inputStyle} />
                 </label>
                 <label style={labelStyle}>
@@ -692,7 +708,7 @@ export default function MaterialsClient() {
                   {formErrors.quantity ? <span style={messageErrorStyle}>{formErrors.quantity}</span> : null}
                 </label>
                 <label style={labelStyle}>
-                  Stock minimo
+                  Stock mínimo
                   <input
                     type="number"
                     min="0"
@@ -705,7 +721,7 @@ export default function MaterialsClient() {
                   {formErrors.minimumQuantity ? <span style={messageErrorStyle}>{formErrors.minimumQuantity}</span> : null}
                 </label>
                 <label style={labelStyle}>
-                  Localizacao
+                  Localização
                   <input type="text" name="location" value={form.location} onChange={handleChange} style={inputStyle} />
                 </label>
                 <label style={labelStyle}>
@@ -724,7 +740,7 @@ export default function MaterialsClient() {
 
               <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                 <button type="submit" disabled={submitting} style={primaryButtonStyle}>
-                  {submitting ? 'A gravar...' : form.id ? 'Guardar alteracoes' : 'Criar material'}
+                  {submitting ? 'A gravar...' : form.id ? 'Guardar alterações' : 'Criar material'}
                 </button>
                 {form.id ? (
                   <button
@@ -740,23 +756,20 @@ export default function MaterialsClient() {
                 ) : null}
               </div>
             </form>
-          </section>
+          </BentixSection>
         )}
 
-        <BentixResponsiveGrid as="section" preset="split" style={layoutStyle}>
-          <section style={panelStyle}>
-            <div style={listHeaderStyle}>
+        <BentixResponsiveGrid as="section" preset="split" className="btx-materials-main-grid" style={layoutStyle}>
+          <BentixSection style={panelStyle}>
+            <div className="btx-materials-list-header">
               <div style={toolbarStyle}>
                 <h2 style={{ margin: 0, color: '#10233e' }}>Lista de materiais</h2>
-                <button type="button" onClick={startCreate} style={secondaryButtonStyle}>
-                  Novo
-                </button>
               </div>
               <input
                 type="search"
                 value={searchTerm}
                 onChange={event => setSearchTerm(event.target.value)}
-                placeholder="Pesquisar por nome, referencia, categoria ou localizacao"
+                placeholder="Pesquisar por nome, referência, categoria ou localização"
                 style={searchInputStyle}
               />
             </div>
@@ -779,30 +792,30 @@ export default function MaterialsClient() {
                       onClick={() => setSelectedMaterialId(material.id)}
                       style={materialCardStyle(material.id === selectedMaterialId)}
                     >
-                      <div style={materialCardTopStyle}>
-                        <div>
+                      <div style={materialCardTopStyle} className="btx-materials-detail-header">
+                        <div className="btx-materials-wrap-text">
                           <p style={materialCardNameStyle}>{material.name}</p>
-                          <p style={materialCardRefStyle}>{material.reference || 'Sem referencia'}</p>
+                          <p style={materialCardRefStyle}>{material.reference || 'Sem referência'}</p>
                         </div>
                         <span style={statusBadgeStyle(status.tone)}>{status.label}</span>
                       </div>
                       <p style={materialCardMetaStyle}>{formatMaterialQuantity(material)} em stock</p>
                       <p style={materialCardMetaStyle}>
-                        {material.category || 'Sem categoria'} · {material.location || 'Sem localizacao'}
+                        {material.category || 'Sem categoria'} · {material.location || 'Sem localização'}
                       </p>
                     </button>
                   )
                 })}
               </div>
             ) : null}
-          </section>
+          </BentixSection>
 
-          <section style={panelStyle}>
-            <div style={detailHeaderStyle}>
+          <BentixSection style={panelStyle}>
+            <div style={detailHeaderStyle} className="btx-materials-detail-header">
               <div>
                 <h2 style={{ margin: 0, color: '#10233e' }}>Detalhe do material</h2>
                 <p style={{ margin: '8px 0 0', color: '#49627f', fontWeight: 700 }}>
-                  Consulta rapida do stock, reposicao minima e informacao operacional.
+                  Consulta rápida do stock, reposição mínima e informação operacional.
                 </p>
               </div>
               {selectedMaterial ? (
@@ -829,8 +842,8 @@ export default function MaterialsClient() {
 
                 <div style={detailGridStyle}>
                   <article style={detailCardStyle}>
-                    <p style={detailLabelStyle}>Referencia</p>
-                    <p style={detailValueStyle}>{selectedMaterial.reference || 'Sem referencia'}</p>
+                    <p style={detailLabelStyle}>Referência</p>
+                    <p style={detailValueStyle}>{selectedMaterial.reference || 'Sem referência'}</p>
                   </article>
                   <article style={detailCardStyle}>
                     <p style={detailLabelStyle}>Categoria</p>
@@ -841,14 +854,14 @@ export default function MaterialsClient() {
                     <p style={detailValueStyle}>{formatMaterialQuantity(selectedMaterial)}</p>
                   </article>
                   <article style={detailCardStyle}>
-                    <p style={detailLabelStyle}>Stock minimo</p>
+                    <p style={detailLabelStyle}>Stock mínimo</p>
                     <p style={detailValueStyle}>
                       {new Intl.NumberFormat('pt-PT', { maximumFractionDigits: 2 }).format(Number(selectedMaterial.minimumQuantity || 0))} {selectedMaterial.unit}
                     </p>
                   </article>
                   <article style={detailCardStyle}>
-                    <p style={detailLabelStyle}>Localizacao</p>
-                    <p style={detailValueStyle}>{selectedMaterial.location || 'Sem localizacao'}</p>
+                    <p style={detailLabelStyle}>Localização</p>
+                    <p style={detailValueStyle}>{selectedMaterial.location || 'Sem localização'}</p>
                   </article>
                   <article style={detailCardStyle}>
                     <p style={detailLabelStyle}>Fornecedor</p>
@@ -870,7 +883,7 @@ export default function MaterialsClient() {
                 </article>
               </>
             ) : null}
-          </section>
+          </BentixSection>
         </BentixResponsiveGrid>
 
         {!showForm && error ? <p style={messageErrorStyle}>{error}</p> : null}

@@ -3,7 +3,13 @@
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import EditPencilIcon, { editPencilButtonStyle } from '../components/EditPencilIcon'
-import { ViewportPage, ViewportScrollArea, ViewportShell } from '../components/ViewportLayout.js'
+import {
+  BentixContent,
+  BentixOverflowX,
+  BentixPage,
+  BentixResponsiveGrid,
+  BentixSection,
+} from '../components/ViewportLayout.js'
 import { fetchAuthSession } from '../../frontend/controllers/auth-controller.js'
 import {
   fetchDailyWorkNotes,
@@ -30,7 +36,6 @@ import { isAssignmentApproved } from '../../lib/work-assignment-approval.js'
 import LogoutButton from '../components/LogoutButton'
 
 const pageStyle = {
-  minHeight: '100vh',
   padding: 'clamp(18px, 4vw, 40px) clamp(14px, 3vw, 24px) 60px',
   background: 'var(--vp-page-background)',
   color: 'var(--vp-text)',
@@ -38,10 +43,7 @@ const pageStyle = {
 }
 
 const shellStyle = {
-  maxWidth: '1180px',
-  margin: '0 auto',
-  display: 'grid',
-  gap: '24px',
+  '--btx-content-gap': '24px',
 }
 
 const heroStyle = {
@@ -67,12 +69,17 @@ const topBarStyle = {
   flexWrap: 'wrap',
 }
 
-const statGridStyle = {
+const contentFlowStyle = {
   display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 120px), 1fr))',
-  gap: '14px',
-  flex: 1,
-  width: '100%',
+  gap: '24px',
+  minWidth: 0,
+}
+
+const statGridStyle = {
+  '--vp-grid-gap': '14px',
+}
+
+const statsSectionStyle = {
   minWidth: 0,
 }
 
@@ -320,6 +327,16 @@ const accountMenuLinkStyle = {
 }
 
 const adminEntryGridTemplate = 'minmax(180px, 1.4fr) minmax(170px, 1fr) minmax(150px, 0.9fr) minmax(170px, 1fr)'
+const adminEntriesWrapStyle = {
+  marginTop: '22px',
+}
+
+const adminEntriesTableStyle = {
+  display: 'grid',
+  gap: '12px',
+  minWidth: '720px',
+}
+
 const REMINDER_SETTINGS_STORAGE_KEY = 'benpin:daily-hours-reminder-settings'
 const DEFAULT_REMINDER_SETTINGS = {
   weekday: '17:25',
@@ -1077,10 +1094,10 @@ export default function DailyHoursPage() {
   }
 
   return (
-    <ViewportPage lockViewport style={pageStyle}>
-      <ViewportShell fillHeight style={shellStyle}>
+    <BentixPage style={pageStyle}>
+      <BentixContent width="app" gap="lg" style={shellStyle}>
         <section style={heroStyle}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }} className="btx-daily-hours-detail-header">
             <div>
               {!isChef ? (
                 <>
@@ -1091,7 +1108,7 @@ export default function DailyHoursPage() {
               ) : (
                 null
               )}
-              <h1 style={{ margin: !isChef ? '18px 0 12px' : '0 0 12px', fontSize: '52px', lineHeight: 1.05 }}>
+              <h1 style={{ margin: !isChef ? '18px 0 12px' : '0 0 12px', fontSize: 'clamp(38px, 6vw, 52px)', lineHeight: 1.05 }}>
                 Registo Diário
               </h1>
             </div>
@@ -1126,64 +1143,64 @@ export default function DailyHoursPage() {
           </div>
         </section>
 
-        <ViewportScrollArea style={{ '--vp-page-scroll-gap': '24px' }}>
-          <section style={topBarStyle}>
-          <div className="vp-responsive-stat-grid" style={statGridStyle}>
-            <article style={{ ...statCardStyle, gridColumn: 'span 2' }}>
-              <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>
-                {isChef ? 'Obras do dia' : 'Obras atribuídas'}
-              </div>
-              {isChef ? (
-                <div style={{ marginTop: '8px', display: 'grid', gap: '6px' }}>
-                  {activeWorks.length > 0 ? (
-                    activeWorks.map(work => (
-                      <div key={work.id} style={{ fontSize: 'clamp(16px, 2.6vw, 20px)', fontWeight: 700, lineHeight: 1.25 }}>
-                        {work.name}
+        <div style={contentFlowStyle} className="btx-daily-hours-main-grid">
+          <section style={statsSectionStyle} className="btx-daily-hours-toolbar">
+            <BentixResponsiveGrid preset="stats" style={statGridStyle}>
+              <article style={{ ...statCardStyle, gridColumn: 'span 2' }}>
+                <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>
+                  {isChef ? 'Obras do dia' : 'Obras atribuídas'}
+                </div>
+                {isChef ? (
+                  <div style={{ marginTop: '8px', display: 'grid', gap: '6px' }}>
+                    {activeWorks.length > 0 ? (
+                      activeWorks.map(work => (
+                        <div key={work.id} style={{ fontSize: 'clamp(16px, 2.6vw, 20px)', fontWeight: 700, lineHeight: 1.25 }}>
+                          {work.name}
+                        </div>
+                      ))
+                    ) : (
+                      <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--vp-text-soft)' }}>
+                        Sem obras
                       </div>
-                    ))
-                  ) : (
-                    <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--vp-text-soft)' }}>
-                      Sem obras
-                    </div>
-                  )}
+                    )}
+                  </div>
+                ) : (
+                  <select name="workId" value={selectedWorkId} onChange={handleWorkChange} style={inputStyle}>
+                    <option value="">Seleciona uma obra</option>
+                    {visibleWorks.map(work => (
+                      <option key={work.id} value={work.id}>
+                        {work.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </article>
+              <article style={statCardStyle}>
+                <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>Data</div>
+                {isChef ? (
+                  <div style={{ marginTop: '8px', fontSize: 'clamp(20px, 4vw, 24px)', fontWeight: 700 }}>
+                    {formatDateLabel(selectedDate)}
+                  </div>
+                ) : (
+                  <input
+                    type="date"
+                    value={selectedDate}
+                    onChange={(event) => setSelectedDate(event.target.value)}
+                    onClick={openNativeDatePicker}
+                    style={{ ...inputStyle, marginTop: '8px', fontSize: '14px', width: '100%' }}
+                  />
+                )}
+              </article>
+              <article style={statCardStyle}>
+                <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>Pessoas atribuídas</div>
+                <div style={{ marginTop: '8px', fontSize: 'clamp(24px, 5vw, 32px)', fontWeight: 700 }}>
+                  {visibleChefEntriesCount}
                 </div>
-              ) : (
-                <select name="workId" value={selectedWorkId} onChange={handleWorkChange} style={inputStyle}>
-                  <option value="">Seleciona uma obra</option>
-                  {visibleWorks.map(work => (
-                    <option key={work.id} value={work.id}>
-                      {work.name}
-                    </option>
-                  ))}
-                </select>
-              )}
-            </article>
-            <article style={statCardStyle}>
-              <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>Data</div>
-              {isChef ? (
-                <div style={{ marginTop: '8px', fontSize: 'clamp(20px, 4vw, 24px)', fontWeight: 700 }}>
-                  {formatDateLabel(selectedDate)}
-                </div>
-              ) : (
-                <input
-                  type="date"
-                  value={selectedDate}
-                  onChange={(event) => setSelectedDate(event.target.value)}
-                  onClick={openNativeDatePicker}
-                  style={{ ...inputStyle, marginTop: '8px', fontSize: '14px', width: '100%' }}
-                />
-              )}
-            </article>
-            <article style={statCardStyle}>
-              <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>Pessoas atribuídas</div>
-              <div style={{ marginTop: '8px', fontSize: 'clamp(24px, 5vw, 32px)', fontWeight: 700 }}>
-                {visibleChefEntriesCount}
-              </div>
-            </article>
-          </div>
-        </section>
+              </article>
+            </BentixResponsiveGrid>
+          </section>
 
-        <section style={panelStyle}>
+        <BentixSection style={panelStyle}>
           {shouldShowReminderCard && (
             <div style={reminderCardStyle}>
               <div style={{ fontSize: '12px', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
@@ -1204,7 +1221,7 @@ export default function DailyHoursPage() {
               )}
               {notificationPermission === 'unsupported' && (
                 <span style={{ fontSize: '13px' }}>
-                  Este navegador não suporta notificações automaticas, mas o aviso continua visivel dentro da pagina.
+                  Este navegador não suporta notificações automáticas, mas o aviso continua visível dentro da página.
                 </span>
               )}
             </div>
@@ -1246,6 +1263,7 @@ export default function DailyHoursPage() {
                   return (
                     <section
                       key={work.id}
+                      className="btx-daily-hours-work-card"
                       style={{
                         display: 'grid',
                         gap: '12px',
@@ -1255,7 +1273,7 @@ export default function DailyHoursPage() {
                         background: 'var(--vp-surface)',
                       }}
                     >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }} className="btx-daily-hours-detail-header">
                         <div>
                           <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase', fontWeight: 800 }}>
                             Obra
@@ -1479,41 +1497,43 @@ export default function DailyHoursPage() {
           )}
 
           {!loading && !isChef && selectedWorkEntries.length > 0 && (
-            <div style={{ display: 'grid', gap: '12px', marginTop: '22px' }}>
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: isChef ? '1fr 120px' : adminEntryGridTemplate,
-                  gap: '12px',
-                  alignItems: 'center',
-                  padding: '0 12px',
-                  color: 'var(--vp-text-soft)',
-                  fontSize: '12px',
-                  fontWeight: 700,
-                  letterSpacing: '0.08em',
-                  textTransform: 'uppercase',
-                }}
-              >
-                <div>Pessoa</div>
-                <div style={{ textAlign: 'center' }}>Status</div>
-                {!isChef && <div style={{ textAlign: 'center' }}>Horas</div>}
-                {!isChef && <div style={{ textAlign: 'center' }}>Aprovadas</div>}
-              </div>
-
-              {selectedWorkEntries.map(entry => (
-                <article
-                  key={entry.id}
+            <BentixOverflowX style={adminEntriesWrapStyle}>
+              <div className="btx-daily-hours-entry-grid" style={adminEntriesTableStyle}>
+                <div
                   style={{
                     display: 'grid',
                     gridTemplateColumns: isChef ? '1fr 120px' : adminEntryGridTemplate,
                     gap: '12px',
-                    border: '1px solid var(--vp-border)',
-                    borderRadius: '18px',
-                    padding: '16px',
-                    background: entry.submitted ? 'var(--vp-highlight)' : 'var(--vp-surface)',
                     alignItems: 'center',
+                    padding: '0 12px',
+                    color: 'var(--vp-text-soft)',
+                    fontSize: '12px',
+                    fontWeight: 700,
+                    letterSpacing: '0.08em',
+                    textTransform: 'uppercase',
                   }}
                 >
+                  <div>Pessoa</div>
+                  <div style={{ textAlign: 'center' }}>Status</div>
+                  {!isChef && <div style={{ textAlign: 'center' }}>Horas</div>}
+                  {!isChef && <div style={{ textAlign: 'center' }}>Aprovadas</div>}
+                </div>
+
+                {selectedWorkEntries.map(entry => (
+                  <article
+                    key={entry.id}
+                    className="btx-daily-hours-entry-grid"
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: isChef ? '1fr 120px' : adminEntryGridTemplate,
+                      gap: '12px',
+                      border: '1px solid var(--vp-border)',
+                      borderRadius: '18px',
+                      padding: '16px',
+                      background: entry.submitted ? 'var(--vp-highlight)' : 'var(--vp-surface)',
+                      alignItems: 'center',
+                    }}
+                  >
                   <div style={{ minWidth: 0 }}>
                     <strong>{entry.person?.name || `Pessoa ${entry.personId}`}</strong>
                     {entry.notes && (
@@ -1682,55 +1702,56 @@ export default function DailyHoursPage() {
                       </div>
                     </>
                   )}
-                </article>
-              ))}
+                  </article>
+                ))}
 
-              {isChef ? (
-                <>
-                  <button
-                    type="button"
-                    onClick={handleSaveAllHours}
-                    disabled={savingAll || selectedWorkEntries.every(e => e.submitted)}
-                    style={
-                      savingAll || selectedWorkEntries.every(e => e.submitted)
-                        ? { ...primaryButtonStyle, background: 'var(--vp-disabled)', cursor: 'not-allowed' }
-                        : { ...primaryButtonStyle, background: '#1f7a45' }
-                    }
-                  >
-                    {savingAll ? 'A guardar e submeter...' : 'Submeter'}
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button
-                    type="button"
-                    onClick={handleApproveAllHours}
-                    disabled={
-                      approvingAll ||
-                      selectedWorkEntries.length === 0 ||
-                      selectedWorkEntries.every(e => isAssignmentApproved(e))
-                    }
-                    style={
-                      approvingAll ||
-                      selectedWorkEntries.length === 0 ||
-                      selectedWorkEntries.every(e => isAssignmentApproved(e))
-                        ? { ...primaryButtonStyle, background: 'var(--vp-disabled)', cursor: 'not-allowed' }
-                        : { ...primaryButtonStyle, background: '#1f7a45' }
-                    }
-                  >
-                    {approvingAll ? 'A aprovar todas...' : 'Aprovar todas'}
-                  </button>
-                </>
-              )}
-            </div>
+                {isChef ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={handleSaveAllHours}
+                      disabled={savingAll || selectedWorkEntries.every(e => e.submitted)}
+                      style={
+                        savingAll || selectedWorkEntries.every(e => e.submitted)
+                          ? { ...primaryButtonStyle, background: 'var(--vp-disabled)', cursor: 'not-allowed' }
+                          : { ...primaryButtonStyle, background: '#1f7a45' }
+                      }
+                    >
+                      {savingAll ? 'A guardar e submeter...' : 'Submeter'}
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      onClick={handleApproveAllHours}
+                      disabled={
+                        approvingAll ||
+                        selectedWorkEntries.length === 0 ||
+                        selectedWorkEntries.every(e => isAssignmentApproved(e))
+                      }
+                      style={
+                        approvingAll ||
+                        selectedWorkEntries.length === 0 ||
+                        selectedWorkEntries.every(e => isAssignmentApproved(e))
+                          ? { ...primaryButtonStyle, background: 'var(--vp-disabled)', cursor: 'not-allowed' }
+                          : { ...primaryButtonStyle, background: '#1f7a45' }
+                      }
+                    >
+                      {approvingAll ? 'A aprovar todas...' : 'Aprovar todas'}
+                    </button>
+                  </>
+                )}
+              </div>
+            </BentixOverflowX>
           )}
 
           {error && <p style={{ margin: '18px 0 0', color: '#b42318' }}>{error}</p>}
           {success && <p style={{ margin: '18px 0 0', color: '#1f7a45' }}>{success}</p>}
-        </section>
-        </ViewportScrollArea>
-      </ViewportShell>
-    </ViewportPage>
+        </BentixSection>
+        </div>
+      </BentixContent>
+    </BentixPage>
   )
 }
 

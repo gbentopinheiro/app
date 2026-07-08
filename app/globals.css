@@ -476,6 +476,124 @@ body > * {
   flex: 1 1 240px;
 }
 
+.btx-materials-main-grid > * {
+  min-width: 0;
+}
+
+.btx-materials-form-header,
+.btx-materials-detail-header {
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.btx-materials-form-header > *:first-child,
+.btx-materials-detail-header > *:first-child {
+  min-width: 0;
+  flex: 1 1 240px;
+}
+
+.btx-materials-list-header {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+.btx-materials-list-header > * {
+  min-width: 0;
+}
+
+.btx-materials-toolbar-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  width: 100%;
+  min-width: 0;
+  justify-content: flex-start;
+}
+
+.btx-materials-wrap-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.btx-daily-hours-main-grid,
+.btx-daily-hours-main-grid > * {
+  min-width: 0;
+}
+
+.btx-daily-hours-toolbar {
+  display: grid;
+  gap: 24px;
+  min-width: 0;
+}
+
+.btx-daily-hours-toolbar > * {
+  min-width: 0;
+}
+
+.btx-daily-hours-work-card,
+.btx-daily-hours-work-card > * {
+  min-width: 0;
+}
+
+.btx-daily-hours-entry-grid {
+  min-width: 0;
+}
+
+.btx-daily-hours-entry-grid > * {
+  min-width: 0;
+}
+
+.btx-daily-hours-detail-header {
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.btx-daily-hours-detail-header > *:first-child {
+  min-width: 0;
+  flex: 1 1 240px;
+}
+
+.btx-hours-approval-main-grid,
+.btx-hours-approval-main-grid > * {
+  min-width: 0;
+}
+
+.btx-hours-approval-toolbar {
+  display: grid;
+  gap: 24px;
+  min-width: 0;
+}
+
+.btx-hours-approval-toolbar > * {
+  min-width: 0;
+}
+
+.btx-hours-approval-entry-grid {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
+  gap: 12px;
+  align-items: center;
+}
+
+.btx-hours-approval-entry-grid > * {
+  min-width: 0;
+}
+
+.btx-hours-approval-detail-header {
+  min-width: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.btx-hours-approval-wrap-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
 .btx-works-toolbar {
   grid-template-columns: minmax(0, 1fr);
 }
@@ -566,6 +684,11 @@ body > * {
   }
 
   .btx-clients-toolbar-actions {
+    width: auto;
+    justify-content: flex-end;
+  }
+
+  .btx-materials-toolbar-actions {
     width: auto;
     justify-content: flex-end;
   }

@@ -7,21 +7,22 @@ import {
   listWorkAssignments,
 } from '../../frontend/controllers/work-assignments-controller.js'
 import { isAssignmentApproved } from '../../lib/work-assignment-approval.js'
-import { ViewportPage, ViewportScrollArea, ViewportShell } from '../components/ViewportLayout.js'
+import {
+  BentixContent,
+  BentixPage,
+  BentixResponsiveGrid,
+  BentixSection,
+} from '../components/ViewportLayout.js'
 
 const pageStyle = {
-  minHeight: '100vh',
-  padding: '40px 24px 60px',
+  padding: 'clamp(18px, 4vw, 40px) clamp(14px, 3vw, 24px) 60px',
   background: 'var(--vp-page-background)',
   color: 'var(--vp-text)',
   fontFamily: '"Avenir Next", "Segoe UI", "-apple-system", "BlinkMacSystemFont", sans-serif',
 }
 
 const shellStyle = {
-  maxWidth: '1240px',
-  margin: '0 auto',
-  display: 'grid',
-  gap: '24px',
+  '--btx-content-gap': '24px',
 }
 
 const heroStyle = {
@@ -30,7 +31,7 @@ const heroStyle = {
   background: 'var(--vp-module-hero)',
   border: '1px solid var(--vp-module-hero-border)',
   borderRadius: '32px',
-  padding: '28px',
+  padding: 'clamp(20px, 4vw, 28px)',
   boxShadow: 'var(--vp-hero-shadow-strong)',
   color: '#ffffff',
   '--vp-text-muted': 'var(--vp-hero-text-muted)',
@@ -39,19 +40,14 @@ const heroStyle = {
   '--vp-border': 'var(--vp-hero-border)',
 }
 
-const topBarStyle = {
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  gap: '16px',
-  flexWrap: 'wrap',
+const contentFlowStyle = {
+  display: 'grid',
+  gap: '24px',
+  minWidth: 0,
 }
 
 const statGridStyle = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
-  gap: '14px',
-  flex: 1,
+  '--vp-grid-gap': '14px',
 }
 
 const statCardStyle = {
@@ -68,6 +64,18 @@ const panelStyle = {
   borderRadius: '24px',
   padding: '24px',
   boxShadow: 'var(--vp-shadow-panel)',
+}
+
+const rowCardStyle = {
+  border: '1px solid var(--vp-border)',
+  borderRadius: '12px',
+  padding: '16px',
+  background: 'var(--vp-surface)',
+}
+
+const rowListStyle = {
+  display: 'grid',
+  gap: '12px',
 }
 
 const inputStyle = {
@@ -97,15 +105,8 @@ const primaryButtonStyle = {
   fontSize: '13px',
 }
 
-const secondaryButtonStyle = {
-  border: '1px solid var(--vp-accent)',
-  borderRadius: '999px',
-  padding: '10px 16px',
-  background: 'transparent',
-  color: 'var(--vp-accent)',
-  fontWeight: 700,
-  cursor: 'pointer',
-  fontSize: '13px',
+const sectionTitleStyle = {
+  margin: '0 0 18px',
 }
 
 export default function HoursApprovalPage() {
@@ -136,8 +137,8 @@ export default function HoursApprovalPage() {
       const data = await listWorkAssignments({}, 'Erro ao carregar afetações')
 
       setAssignments(data)
-      
-      // Initialize approval values with the chef-reported hours
+
+      // Initialize approval values with the chef-reported hours.
       const initialValues = {}
       data.forEach(a => {
         initialValues[a.id] = a.approvedHours ?? a.hours ?? a.dailyHours
@@ -190,25 +191,17 @@ export default function HoursApprovalPage() {
     return (
       <article
         key={assignment.id}
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-          gap: '12px',
-          border: '1px solid var(--vp-border)',
-          borderRadius: '12px',
-          padding: '16px',
-          background: 'var(--vp-surface)',
-          alignItems: 'center',
-        }}
+        className="btx-hours-approval-entry-grid"
+        style={rowCardStyle}
       >
-        <div>
+        <div className="btx-hours-approval-wrap-text">
           <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>
             Pessoa
           </div>
           <div style={{ fontWeight: 700 }}>{assignment.person?.name || `#${assignment.personId}`}</div>
         </div>
 
-        <div>
+        <div className="btx-hours-approval-wrap-text">
           <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>
             Obra
           </div>
@@ -247,7 +240,11 @@ export default function HoursApprovalPage() {
           type="button"
           onClick={() => handleApproveHours(assignment.id)}
           disabled={approvingId === assignment.id}
-          style={approvingId === assignment.id ? { ...primaryButtonStyle, background: 'var(--vp-disabled)', cursor: 'not-allowed' } : primaryButtonStyle}
+          style={
+            approvingId === assignment.id
+              ? { ...primaryButtonStyle, background: 'var(--vp-disabled)', cursor: 'not-allowed' }
+              : primaryButtonStyle
+          }
         >
           {approvingId === assignment.id ? 'A aprovar...' : 'Aprovar'}
         </button>
@@ -256,136 +253,137 @@ export default function HoursApprovalPage() {
   }
 
   return (
-    <ViewportPage lockViewport style={pageStyle}>
-      <ViewportShell fillHeight style={shellStyle}>
+    <BentixPage style={pageStyle}>
+      <BentixContent width="app" gap="lg" style={shellStyle}>
         <section style={heroStyle}>
-          <Link href="/" style={{ color: 'var(--vp-accent)', textDecoration: 'none', fontWeight: 700 }}>
-            Voltar ao menu
-          </Link>
-          <p style={{ margin: '18px 0 0', textTransform: 'uppercase', letterSpacing: '0.12em', fontSize: '12px', color: 'var(--vp-text-soft)' }}>
-            Gestão de Horas
-          </p>
-          <h1 style={{ margin: '10px 0 12px', fontSize: '46px', lineHeight: 1.05 }}>
-            Aprovação de Horas
-          </h1>
-
-        </section>
-
-        <ViewportScrollArea style={{ '--vp-page-scroll-gap': '24px' }}>
-          <section style={topBarStyle}>
-          <div className="vp-responsive-stat-grid" style={statGridStyle}>
-            <article style={statCardStyle}>
-              <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>
-                Pendentes de Aprovação
-              </div>
-              <div style={{ marginTop: '8px', fontSize: '32px', fontWeight: 700 }}>
-                {pendingApprovals.length}
-              </div>
-            </article>
-            <article style={statCardStyle}>
-              <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>
-                Aprovadas
-              </div>
-              <div style={{ marginTop: '8px', fontSize: '32px', fontWeight: 700 }}>
-                {approvedAssignments.length}
-              </div>
-            </article>
-            <article style={statCardStyle}>
-              <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>
-                Total
-              </div>
-              <div style={{ marginTop: '8px', fontSize: '32px', fontWeight: 700 }}>
-                {assignments.length}
-              </div>
-            </article>
+          <div className="btx-hours-approval-detail-header">
+            <Link href="/" style={{ color: 'var(--vp-accent)', textDecoration: 'none', fontWeight: 700 }}>
+              Voltar ao menu
+            </Link>
+            <p
+              style={{
+                margin: '18px 0 0',
+                textTransform: 'uppercase',
+                letterSpacing: '0.12em',
+                fontSize: '12px',
+                color: 'var(--vp-text-soft)',
+              }}
+            >
+              Gestão de Horas
+            </p>
+            <h1 style={{ margin: '10px 0 12px', fontSize: 'clamp(38px, 5.5vw, 46px)', lineHeight: 1.05 }}>
+              Aprovação de Horas
+            </h1>
           </div>
         </section>
 
-        {error && <p style={{ margin: 0, color: '#b42318' }}>{error}</p>}
-        {success && <p style={{ margin: 0, color: '#1f7a45' }}>{success}</p>}
-
-        {loading && (
-          <section style={panelStyle}>
-            <p>A carregar afetações...</p>
+        <div style={contentFlowStyle} className="btx-hours-approval-main-grid">
+          <section className="btx-hours-approval-toolbar">
+            <BentixResponsiveGrid preset="stats" style={statGridStyle}>
+              <article style={statCardStyle}>
+                <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>
+                  Pendentes de Aprovação
+                </div>
+                <div style={{ marginTop: '8px', fontSize: '32px', fontWeight: 700 }}>
+                  {pendingApprovals.length}
+                </div>
+              </article>
+              <article style={statCardStyle}>
+                <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>
+                  Aprovadas
+                </div>
+                <div style={{ marginTop: '8px', fontSize: '32px', fontWeight: 700 }}>
+                  {approvedAssignments.length}
+                </div>
+              </article>
+              <article style={statCardStyle}>
+                <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>
+                  Total
+                </div>
+                <div style={{ marginTop: '8px', fontSize: '32px', fontWeight: 700 }}>
+                  {assignments.length}
+                </div>
+              </article>
+            </BentixResponsiveGrid>
           </section>
-        )}
 
-        {!loading && pendingApprovals.length > 0 && (
-          <section style={panelStyle}>
-            <h2 style={{ margin: '0 0 18px' }}>Pendentes de Aprovação</h2>
-            <div style={{ display: 'grid', gap: '12px' }}>
-              {pendingApprovals.map(renderAssignmentRow)}
-            </div>
-          </section>
-        )}
+          {error && <p style={{ margin: 0, color: '#b42318' }}>{error}</p>}
+          {success && <p style={{ margin: 0, color: '#1f7a45' }}>{success}</p>}
 
-        {!loading && pendingApprovals.length === 0 && (
-          <section style={panelStyle}>
-            <p style={{ margin: 0, color: 'var(--vp-text-muted)' }}>
-              Nenhuma afetação pendente de aprovação.
-            </p>
-          </section>
-        )}
+          {loading && (
+            <BentixSection style={panelStyle}>
+              <p>A carregar afetações...</p>
+            </BentixSection>
+          )}
 
-        {!loading && approvedAssignments.length > 0 && (
-          <section style={panelStyle}>
-            <h2 style={{ margin: '0 0 18px' }}>Aprovadas</h2>
-            <div style={{ display: 'grid', gap: '12px' }}>
-              {approvedAssignments.map(assignment => (
-                <article
-                  key={assignment.id}
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-                    gap: '12px',
-                    border: '1px solid var(--vp-border)',
-                    borderRadius: '12px',
-                    padding: '16px',
-                    background: 'var(--vp-surface)',
-                    alignItems: 'center',
-                  }}
-                >
-                  <div>
-                    <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>
-                      Pessoa
+          {!loading && pendingApprovals.length > 0 && (
+            <BentixSection style={panelStyle}>
+              <h2 style={sectionTitleStyle}>Pendentes de Aprovação</h2>
+              <div style={rowListStyle}>
+                {pendingApprovals.map(renderAssignmentRow)}
+              </div>
+            </BentixSection>
+          )}
+
+          {!loading && pendingApprovals.length === 0 && (
+            <BentixSection style={panelStyle}>
+              <p style={{ margin: 0, color: 'var(--vp-text-muted)' }}>
+                Nenhuma afetação pendente de aprovação.
+              </p>
+            </BentixSection>
+          )}
+
+          {!loading && approvedAssignments.length > 0 && (
+            <BentixSection style={panelStyle}>
+              <h2 style={sectionTitleStyle}>Aprovadas</h2>
+              <div style={rowListStyle}>
+                {approvedAssignments.map(assignment => (
+                  <article
+                    key={assignment.id}
+                    className="btx-hours-approval-entry-grid"
+                    style={rowCardStyle}
+                  >
+                    <div className="btx-hours-approval-wrap-text">
+                      <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>
+                        Pessoa
+                      </div>
+                      <div style={{ fontWeight: 700 }}>{assignment.person?.name || `#${assignment.personId}`}</div>
                     </div>
-                    <div style={{ fontWeight: 700 }}>{assignment.person?.name || `#${assignment.personId}`}</div>
-                  </div>
 
-                  <div>
-                    <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>
-                      Obra
+                    <div className="btx-hours-approval-wrap-text">
+                      <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>
+                        Obra
+                      </div>
+                      <div style={{ fontWeight: 700 }}>{assignment.work?.name || `#${assignment.workId}`}</div>
                     </div>
-                    <div style={{ fontWeight: 700 }}>{assignment.work?.name || `#${assignment.workId}`}</div>
-                  </div>
 
-                  <div>
-                    <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>
-                      Horas Reais
+                    <div>
+                      <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>
+                        Horas Reais
+                      </div>
+                      <div style={{ fontWeight: 700 }}>{assignment.hours}h</div>
                     </div>
-                    <div style={{ fontWeight: 700 }}>{assignment.hours}h</div>
-                  </div>
 
-                  <div>
-                    <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>
-                      Horas Diárias
+                    <div>
+                      <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>
+                        Horas Diárias
+                      </div>
+                      <div style={{ fontWeight: 700 }}>{assignment.hours ?? assignment.dailyHours}h</div>
                     </div>
-                    <div style={{ fontWeight: 700 }}>{assignment.hours ?? assignment.dailyHours}h</div>
-                  </div>
 
-                  <div>
-                    <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>
-                      Horas Aprovadas
+                    <div>
+                      <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>
+                        Horas Aprovadas
+                      </div>
+                      <div style={{ fontWeight: 700, color: '#1f7a45' }}>{assignment.approvedHours}h ✓</div>
                     </div>
-                    <div style={{ fontWeight: 700, color: '#1f7a45' }}>{assignment.approvedHours}h ✓</div>
-                  </div>
-                </article>
-              ))}
-            </div>
-          </section>
-        )}
-        </ViewportScrollArea>
-      </ViewportShell>
-    </ViewportPage>
+                  </article>
+                ))}
+              </div>
+            </BentixSection>
+          )}
+        </div>
+      </BentixContent>
+    </BentixPage>
   )
 }

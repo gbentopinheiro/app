@@ -397,6 +397,7 @@ test('Adaptive Layout System expõe primitivas reutilizáveis e classes globais 
 test('páginas de maior risco usam scroll principal da página sem ViewportScrollArea nem lockViewport', () => {
   for (const source of [
     homePageSource,
+    dailyHoursPageSource,
     peoplePageSource,
     clientsPageSource,
     worksPageSource,
@@ -424,6 +425,11 @@ test('páginas principais migradas usam primitivas adaptativas sem listas princi
   )
   assert.match(clientsPageSource, /<BentixResponsiveGrid as="section" preset="split"/)
   assert.match(clientsPageSource, /<BentixSection as="div"/)
+  assert.match(dailyHoursPageSource, /<BentixPage style=\{pageStyle\}>/)
+  assert.match(dailyHoursPageSource, /<BentixContent width="app"/)
+  assert.match(dailyHoursPageSource, /<BentixSection style=\{panelStyle\}>/)
+  assert.match(dailyHoursPageSource, /<BentixOverflowX/)
+  assert.match(dailyHoursPageSource, /className="btx-daily-hours-main-grid"/)
   assert.match(worksPageSource, /<BentixOverflowX/)
   assert.match(worksPageSource, /<BentixSection style=\{panelStyle\}>/)
   assert.match(worksPageSource, /className="btx-works-toolbar"/)
