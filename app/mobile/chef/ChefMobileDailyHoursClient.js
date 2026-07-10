@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
@@ -37,7 +37,7 @@ const pageStyle = {
   padding: `${mobileSafeTopInset} 14px calc(120px + ${mobileSafeBottomInset})`,
   boxSizing: 'border-box',
   color: 'var(--vp-text)',
-  fontFamily: '"Avenir Next", "Segoe UI", "-apple-system", "BlinkMacSystemFont", sans-serif',
+  fontFamily: 'var(--btx-font-family)',
 }
 
 const phoneShellStyle = {
@@ -538,15 +538,15 @@ export default function ChefMobileDailyHoursClient({ initialSession, previewMode
         )
         const baseBody =
           pendingEntries.length === 1
-            ? 'Tens 1 registo por submeter no Registo diário.'
-            : `Tens ${pendingEntries.length} registos por submeter no Registo diário.`
+            ? 'Tens 1 registo por submeter no Registo diÃ¡rio.'
+            : `Tens ${pendingEntries.length} registos por submeter no Registo diÃ¡rio.`
 
         const body =
           pendingWorks.size > 0
             ? `${baseBody} Obras: ${Array.from(pendingWorks).join(', ')}.`
             : baseBody
 
-        const notification = new window.Notification('Registo diário por completar', { body })
+        const notification = new window.Notification('Registo diÃ¡rio por completar', { body })
         notification.onclick = () => window.focus()
       }
 
@@ -605,10 +605,10 @@ export default function ChefMobileDailyHoursClient({ initialSession, previewMode
         date,
         previewQuerySuffix,
         cache: 'no-store',
-        loadErrorMessage: 'NÃ£o foi possÃ­vel carregar os registos diÃ¡rios.',
+        loadErrorMessage: 'NÃƒÂ£o foi possÃƒÂ­vel carregar os registos diÃƒÂ¡rios.',
       })
 
-        throw new Error(data.error || 'Não foi possível carregar os registos diários.')
+        throw new Error(data.error || 'NÃ£o foi possÃ­vel carregar os registos diÃ¡rios.')
 
       setDefaults(data.defaults)
       setDailyEntries(data.items)
@@ -714,7 +714,7 @@ export default function ChefMobileDailyHoursClient({ initialSession, previewMode
   async function handleEnableNotifications() {
     if (typeof window === 'undefined' || !('Notification' in window)) {
       setNotificationPermission('unsupported')
-      setError('Este dispositivo não suporta notificações.')
+      setError('Este dispositivo nÃ£o suporta notificaÃ§Ãµes.')
       return
     }
 
@@ -728,13 +728,13 @@ export default function ChefMobileDailyHoursClient({ initialSession, previewMode
       if (permission === 'granted') {
         window.localStorage.removeItem(MOBILE_NOTIFICATION_PROMPT_DISMISSED_KEY)
         setShowNotificationPrompt(false)
-        setSuccess(`Notificações ativadas. O lembrete vai usar a hora ${getReminderCutoffLabel(new Date(), reminderSettings)}.`)
+        setSuccess(`NotificaÃ§Ãµes ativadas. O lembrete vai usar a hora ${getReminderCutoffLabel(new Date(), reminderSettings)}.`)
       } else if (permission === 'denied') {
         dismissNotificationPrompt()
-        setError('As notificações foram bloqueadas no navegador.')
+        setError('As notificaÃ§Ãµes foram bloqueadas no navegador.')
       }
     } catch (currentError) {
-      setError('Não foi possível ativar as notificações.')
+      setError('NÃ£o foi possÃ­vel ativar as notificaÃ§Ãµes.')
     }
   }
 
@@ -759,7 +759,7 @@ export default function ChefMobileDailyHoursClient({ initialSession, previewMode
 
     try {
       const savedNote = await saveChefWorkNote({
-        saveErrorMessage: 'NÃ£o foi possÃ­vel guardar a nota da obra.',
+        saveErrorMessage: 'NÃƒÂ£o foi possÃƒÂ­vel guardar a nota da obra.',
         
           date: selectedDate,
           workId: selectedWork.id,
@@ -768,7 +768,7 @@ export default function ChefMobileDailyHoursClient({ initialSession, previewMode
       })
 
       if (!response.ok) {
-        throw new Error(data.error || 'Não foi possível guardar a nota da obra.')
+        throw new Error(data.error || 'NÃ£o foi possÃ­vel guardar a nota da obra.')
       }
 
       setWorkNotes(current => ({
@@ -798,7 +798,7 @@ export default function ChefMobileDailyHoursClient({ initialSession, previewMode
     }
 
     if (pendingEntries.length === 0) {
-      setError('Esta obra já não tem registos pendentes para submeter.')
+      setError('Esta obra jÃ¡ nÃ£o tem registos pendentes para submeter.')
       return
     }
 
@@ -833,7 +833,7 @@ export default function ChefMobileDailyHoursClient({ initialSession, previewMode
           const data = await response.json().catch(() => ({}))
 
           if (!response.ok) {
-            throw new Error(data.error || 'Não foi possível atualizar as horas.')
+            throw new Error(data.error || 'NÃ£o foi possÃ­vel atualizar as horas.')
           }
         }),
       )
@@ -847,7 +847,7 @@ export default function ChefMobileDailyHoursClient({ initialSession, previewMode
           const data = await response.json().catch(() => ({}))
 
           if (!response.ok) {
-            throw new Error(data.error || 'Não foi possível submeter as horas.')
+            throw new Error(data.error || 'NÃ£o foi possÃ­vel submeter as horas.')
           }
         }),
       )
@@ -870,7 +870,7 @@ export default function ChefMobileDailyHoursClient({ initialSession, previewMode
         date,
         previewQuerySuffix,
         cache: 'no-store',
-        loadErrorMessage: 'NÃ£o foi possÃ­vel carregar os registos diÃ¡rios.',
+        loadErrorMessage: 'NÃƒÂ£o foi possÃƒÂ­vel carregar os registos diÃƒÂ¡rios.',
       })
 
       setDefaults(data.defaults)
@@ -921,7 +921,7 @@ export default function ChefMobileDailyHoursClient({ initialSession, previewMode
         date: selectedDate,
         workId: selectedWork.id,
         note: workNotes[String(selectedWork.id)] || '',
-        saveErrorMessage: 'NÃ£o foi possÃ­vel guardar a nota da obra.',
+        saveErrorMessage: 'NÃƒÂ£o foi possÃƒÂ­vel guardar a nota da obra.',
       })
 
       setWorkNotes(current => ({
@@ -950,7 +950,7 @@ export default function ChefMobileDailyHoursClient({ initialSession, previewMode
     }
 
     if (pendingEntries.length === 0) {
-      setError('Esta obra jÃ¡ nÃ£o tem registos pendentes para submeter.')
+      setError('Esta obra jÃƒÂ¡ nÃƒÂ£o tem registos pendentes para submeter.')
       return
     }
 
@@ -967,8 +967,8 @@ export default function ChefMobileDailyHoursClient({ initialSession, previewMode
       await submitChefEntries({
         entries: pendingEntries,
         entryHours,
-        updateErrorMessage: 'NÃ£o foi possÃ­vel atualizar as horas.',
-        submitErrorMessage: 'NÃ£o foi possÃ­vel submeter as horas.',
+        updateErrorMessage: 'NÃƒÂ£o foi possÃƒÂ­vel atualizar as horas.',
+        submitErrorMessage: 'NÃƒÂ£o foi possÃƒÂ­vel submeter as horas.',
       })
 
       await loadPageDataShared(selectedDate)
@@ -984,13 +984,13 @@ export default function ChefMobileDailyHoursClient({ initialSession, previewMode
     <ViewportPage lockViewport style={pageStyle}>
       <ViewportShell fillHeight style={phoneShellStyle}>
         <section style={heroStyle}>
-          <h1 style={titleStyle}>Registo Diário</h1>
+          <h1 style={titleStyle}>Registo DiÃ¡rio</h1>
 
           <div style={topActionsStyle}>
             <div style={datePillStyle}>{formatDateLabel(selectedDate)}</div>
             <div style={accountActionsStyle}>
               <Link href="/mobile/chef/settings" style={topLinkButtonStyle}>
-                Definições
+                DefiniÃ§Ãµes
               </Link>
               <LogoutButton
                 redirectTo={mobileLogoutRedirectPath}
@@ -1012,14 +1012,14 @@ export default function ChefMobileDailyHoursClient({ initialSession, previewMode
 
         {showNotificationPrompt ? (
           <section style={notificationPromptStyle}>
-            <h2 style={sectionTitleStyle}>Ativar notificações</h2>
+            <h2 style={sectionTitleStyle}>Ativar notificaÃ§Ãµes</h2>
 
             <div style={notificationPromptActionsStyle}>
               <button type="button" onClick={handleEnableNotifications} style={primaryButtonStyle(false)}>
                 Ativar
               </button>
               <button type="button" onClick={dismissNotificationPrompt} style={notificationSecondaryButtonStyle}>
-                Agora não
+                Agora nÃ£o
               </button>
             </div>
           </section>
@@ -1070,7 +1070,7 @@ export default function ChefMobileDailyHoursClient({ initialSession, previewMode
                   color: 'var(--vp-text)',
                 }}
               >
-                Sem obras disponíveis para este dia.
+                Sem obras disponÃ­veis para este dia.
               </div>
             ) : null}
           </div>
@@ -1084,7 +1084,7 @@ export default function ChefMobileDailyHoursClient({ initialSession, previewMode
                 style={navigationButtonStyle(selectedWorkIndex <= 0)}
                 aria-label="Obra anterior"
               >
-                ‹
+                â€¹
               </button>
               <div style={navigationSummaryStyle}>
                 {selectedWorkIndex >= 0 ? `Obra ${selectedWorkIndex + 1} de ${activeWorks.length}` : 'Escolhe uma obra'}
@@ -1094,9 +1094,9 @@ export default function ChefMobileDailyHoursClient({ initialSession, previewMode
                 onClick={() => goToAdjacentWork(1)}
                 disabled={selectedWorkIndex === -1 || selectedWorkIndex >= activeWorks.length - 1}
                 style={navigationButtonStyle(selectedWorkIndex === -1 || selectedWorkIndex >= activeWorks.length - 1)}
-                aria-label="Próxima obra"
+                aria-label="PrÃ³xima obra"
               >
-                ›
+                â€º
               </button>
             </div>
           ) : null}
@@ -1199,7 +1199,7 @@ export default function ChefMobileDailyHoursClient({ initialSession, previewMode
           <div style={{ marginTop: '16px', display: 'grid', gap: '12px' }}>
             {!loading && selectedWorkEntries.length === 0 ? (
               <div style={{ ...entryCardStyle(false), color: '#5d7391' }}>
-                Ainda não existem pessoas atribuídas a esta obra para a data escolhida.
+                Ainda nÃ£o existem pessoas atribuÃ­das a esta obra para a data escolhida.
               </div>
             ) : null}
 
@@ -1267,7 +1267,7 @@ export default function ChefMobileDailyHoursClient({ initialSession, previewMode
                     ) : null}
                     {isSubmitted && submittedTime ? (
                       <span style={{ color: '#166534', fontSize: '12px', fontWeight: 700 }}>
-                        Submetido às {submittedTime}
+                        Submetido Ã s {submittedTime}
                       </span>
                     ) : null}
                   </div>
@@ -1292,3 +1292,4 @@ export default function ChefMobileDailyHoursClient({ initialSession, previewMode
     </ViewportPage>
   )
 }
+

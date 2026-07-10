@@ -1,6 +1,14 @@
 import './globals.css'
+import { Inter } from 'next/font/google'
 import PwaSetupClient from './components/PwaSetupClient'
 import { appendBuildVersion } from '../lib/pwa-version.js'
+
+const inter = Inter({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-inter',
+  fallback: ['system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
+})
 
 const manifestPath = appendBuildVersion('/manifest.webmanifest')
 
@@ -79,6 +87,7 @@ const bodyStyle = {
   '--vp-text': '#14243d',
   '--vp-text-muted': '#5d7391',
   '--vp-text-soft': '#7991b2',
+  '--btx-font-family': 'var(--font-inter)',
   '--vp-shadow-soft': '0 18px 44px rgba(24, 58, 110, 0.1)',
   '--vp-shadow-panel': '0 16px 40px rgba(24, 58, 110, 0.1)',
   '--vp-shadow-hero': '0 24px 60px rgba(24, 58, 110, 0.12)',
@@ -90,7 +99,7 @@ const bodyStyle = {
 export default function RootLayout({ children }) {
   return (
     <html lang="pt" data-scroll-behavior="smooth">
-      <body style={bodyStyle}>
+      <body className={inter.variable} style={bodyStyle}>
         <PwaSetupClient />
         {children}
       </body>

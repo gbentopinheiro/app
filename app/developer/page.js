@@ -1,4 +1,4 @@
-import Link from 'next/link'
+﻿import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import LogoutButton from '../components/LogoutButton'
 import DashboardExportButton from './DashboardExportButton'
@@ -24,7 +24,7 @@ const pageStyle = {
   padding: 'clamp(20px, 4vw, 42px) 22px 56px',
   background: 'linear-gradient(180deg, #081224 0%, #0d1b35 54%, #eaf0f8 54%, #f5f7fb 100%)',
   color: '#10233e',
-  fontFamily: '"Avenir Next", "Segoe UI", "-apple-system", "BlinkMacSystemFont", sans-serif',
+  fontFamily: 'var(--btx-font-family)',
 }
 
 const shellStyle = {
@@ -606,3 +606,4 @@ export default async function DeveloperPage() {
     </ViewportPage>
   )
 }
+

@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
@@ -18,7 +18,7 @@ import {
 const pageStyle = {
   background: 'var(--vp-page-background)',
   color: 'var(--vp-text)',
-  fontFamily: '"Avenir Next", "Segoe UI", "-apple-system", "BlinkMacSystemFont", sans-serif',
+  fontFamily: 'var(--btx-font-family)',
 }
 
 const shellStyle = {
@@ -230,7 +230,7 @@ export default function ClientsPage() {
   function validateForm() {
     const nextErrors = {}
 
-    if (!form.name.trim()) nextErrors.name = 'O nome do cliente é obrigatório.'
+    if (!form.name.trim()) nextErrors.name = 'O nome do cliente Ã© obrigatÃ³rio.'
 
     setFormErrors(nextErrors)
     return Object.keys(nextErrors).length === 0
@@ -336,7 +336,7 @@ export default function ClientsPage() {
             Voltar ao menu
           </Link>
           <p style={{ margin: '18px 0 0', textTransform: 'uppercase', letterSpacing: '0.12em', fontSize: '12px', color: 'var(--vp-text-soft)' }}>
-            Gestão de clientes
+            GestÃ£o de clientes
           </p>
           <h1 style={{ margin: '10px 0 12px', fontSize: '46px', lineHeight: 1.05 }}>
             Clientes
@@ -366,7 +366,7 @@ export default function ClientsPage() {
               <div>
                 <h2 style={{ margin: 0 }}>{form.id ? 'Editar cliente' : 'Adicionar cliente'}</h2>
                 <p style={{ margin: '8px 0 0', color: 'var(--vp-text-muted)' }}>
-                  Mantém a ficha de cliente usada depois na relação N para 1 com as obras.
+                  MantÃ©m a ficha de cliente usada depois na relaÃ§Ã£o N para 1 com as obras.
                 </p>
               </div>
               <button type="button" onClick={cancelForm} style={secondaryButtonStyle}>
@@ -409,7 +409,7 @@ export default function ClientsPage() {
 
               <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                 <button type="submit" disabled={submitting} style={primaryButtonStyle}>
-                  {submitting ? 'A gravar...' : form.id ? 'Guardar alterações' : 'Criar cliente'}
+                  {submitting ? 'A gravar...' : form.id ? 'Guardar alteraÃ§Ãµes' : 'Criar cliente'}
                 </button>
                 {form.id && (
                   <button
@@ -420,7 +420,7 @@ export default function ClientsPage() {
                     title="Eliminar cliente"
                     aria-label="Eliminar cliente"
                   >
-                    🗑
+                    ðŸ—‘
                   </button>
                 )}
               </div>
@@ -491,3 +491,4 @@ export default function ClientsPage() {
     </BentixPage>
   )
 }
+

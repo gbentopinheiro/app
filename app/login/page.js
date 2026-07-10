@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
@@ -10,7 +10,7 @@ import { BentixPage, ViewportShell } from '../components/ViewportLayout.js'
 
 const pageStyle = {
   background: '#071226',
-  fontFamily: '"Avenir Next", "Segoe UI", "-apple-system", "BlinkMacSystemFont", sans-serif',
+  fontFamily: 'var(--btx-font-family)',
 }
 
 const shellStyle = {
@@ -334,7 +334,7 @@ export default function LoginPage() {
 
       const data = await loginWithProtectedPayload(
         protectedPayload,
-        'Não foi possível iniciar sessão.',
+        'NÃ£o foi possÃ­vel iniciar sessÃ£o.',
       )
 
       router.push(redirectTo || data.redirectTo || '/')
@@ -367,7 +367,7 @@ export default function LoginPage() {
                 <div>
                   <h1 style={heroTitleStyle}>Bentix</h1>
                   <p style={heroSubtitleStyle}>
-                    GESTÃO <span style={heroSubtitleAccentStyle}>INTELIGENTE</span> DE OBRAS
+                    GESTÃƒO <span style={heroSubtitleAccentStyle}>INTELIGENTE</span> DE OBRAS
                   </p>
                 </div>
               </div>
@@ -375,7 +375,7 @@ export default function LoginPage() {
 
             <div className="feature-grid" style={featureGridStyle}>
               <Feature icon={<Building2Icon />} title="Planeamento" text="e controlo" />
-              <Feature icon={<BarChart3Icon />} title="Gestão financeira" text="em tempo real" bordered />
+              <Feature icon={<BarChart3Icon />} title="GestÃ£o financeira" text="em tempo real" bordered />
               <Feature icon={<UsersRoundIcon />} title="Equipas" text="conectadas" bordered />
             </div>
           </div>
@@ -433,13 +433,13 @@ export default function LoginPage() {
               ) : null}
 
               <button type="submit" disabled={submitting} className="submit-button" style={{ ...submitButtonStyle, opacity: submitting ? 0.82 : 1 }}>
-                {submitting ? 'A iniciar sessão...' : 'Iniciar sessão'}
+                {submitting ? 'A iniciar sessÃ£o...' : 'Iniciar sessÃ£o'}
               </button>
 
             </form>
 
             <p style={footerStyle}>
-              Não tem conta?{' '}
+              NÃ£o tem conta?{' '}
               <a href="#" style={footerLinkStyle} onClick={event => event.preventDefault()}>
                 Fale connosco
               </a>
@@ -611,4 +611,5 @@ function UsersRoundIcon({ size = 30 }) {
     </svg>
   )
 }
+
 

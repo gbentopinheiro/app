@@ -734,7 +734,7 @@ function buildWeekPrintDocument(weekDays, weekdays, eventsByDate, monthLabel) {
           -webkit-print-color-adjust: exact;
           print-color-adjust: exact;
         }
-        body { margin: 0; font-family: "Segoe UI", Arial, sans-serif; color: #10233e; background: #ffffff; }
+        body { margin: 0; font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #10233e; background: #ffffff; }
         .shell { padding: 18px; }
         .header { text-align: center; margin-bottom: 18px; }
         .header h1 { margin: 0; font-size: 28px; }
@@ -1621,3 +1621,4 @@ export default function CalendarClient({ initialMonthKey, weekdays, initialEvent
     </>
   )
 }
+

@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -29,7 +29,7 @@ import { buildWorkPricingSnapshot, hasWorkPricingChanges } from '../../lib/work-
 const pageStyle = {
   background: 'var(--vp-page-background)',
   color: 'var(--vp-text)',
-  fontFamily: '"Avenir Next", "Segoe UI", "-apple-system", "BlinkMacSystemFont", sans-serif',
+  fontFamily: 'var(--btx-font-family)',
 }
 
 const shellStyle = {
@@ -278,11 +278,11 @@ const iconButtonStyle = editPencilButtonStyle
 
 const workDayOptions = [
   { value: 'monday', label: 'Segunda' },
-  { value: 'tuesday', label: 'Terça' },
+  { value: 'tuesday', label: 'TerÃ§a' },
   { value: 'wednesday', label: 'Quarta' },
   { value: 'thursday', label: 'Quinta' },
   { value: 'friday', label: 'Sexta' },
-  { value: 'saturday', label: 'Sábado' },
+  { value: 'saturday', label: 'SÃ¡bado' },
   { value: 'sunday', label: 'Domingo' },
 ]
 
@@ -300,7 +300,7 @@ const workStatusLabels = {
   planned: 'Planeada',
   in_progress: 'Em curso',
   paused: 'Em pausa',
-  completed: 'Concluída',
+  completed: 'ConcluÃ­da',
 }
 
 const workingDaysGridStyle = {
@@ -560,7 +560,7 @@ function buildClientAnnualSummaryPrintDocument(client, year, rows, totals) {
           body {
             margin: 0;
             padding: 32px;
-            font-family: "Avenir Next", "Segoe UI", Arial, sans-serif;
+            font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
             color: #10233e;
             background: #ffffff;
           }
@@ -652,7 +652,7 @@ function buildClientAnnualSummaryPrintDocument(client, year, rows, totals) {
               <p class="meta-value">${escapeHtml(String(year))}</p>
             </article>
             <article class="meta-card">
-              <p class="meta-label">Data de emissão</p>
+              <p class="meta-label">Data de emissÃ£o</p>
               <p class="meta-value">${escapeHtml(issuedAt)}</p>
             </article>
             <article class="meta-card">
@@ -664,7 +664,7 @@ function buildClientAnnualSummaryPrintDocument(client, year, rows, totals) {
           <table>
             <thead>
               <tr>
-                <th>Mês</th>
+                <th>MÃªs</th>
                 <th>Total de horas</th>
                 <th>Custo estimado</th>
                 <th>Obras envolvidas</th>
@@ -730,7 +730,7 @@ function buildGeneralAnnualSummaryPrintDocument(year, monthHeaders, rows, grandT
           body {
             margin: 0;
             padding: 24px;
-            font-family: "Avenir Next", "Segoe UI", Arial, sans-serif;
+            font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
             color: #10233e;
             background: #ffffff;
           }
@@ -839,7 +839,7 @@ function buildGeneralAnnualSummaryPrintDocument(year, monthHeaders, rows, grandT
         <section class="sheet">
           <section class="meta">
             <article class="meta-card">
-              <p class="meta-label">Ano de referência</p>
+              <p class="meta-label">Ano de referÃªncia</p>
               <p class="meta-value">${escapeHtml(String(year))}</p>
             </article>
           </section>
@@ -1323,15 +1323,15 @@ export function WorksPageView({ forcedClientId = '', dedicatedClientView = false
   function validateForm() {
     const nextErrors = {}
 
-    if (!form.name.trim()) nextErrors.name = 'O nome da obra é obrigatório.'
+    if (!form.name.trim()) nextErrors.name = 'O nome da obra Ã© obrigatÃ³rio.'
     if (!form.clientId) nextErrors.clientId = 'Seleciona um cliente.'
-    if (form.defaultHourlyCost !== '' && Number(form.defaultHourlyCost) < 0) nextErrors.defaultHourlyCost = 'O preço hora não pode ser negativo.'
-    if (form.budget !== '' && Number(form.budget) < 0) nextErrors.budget = 'O orçamento não pode ser negativo.'
-    if (form.startDate && Number.isNaN(new Date(form.startDate).getTime())) nextErrors.startDate = 'A data de começo é inválida.'
-    if (form.endDate && Number.isNaN(new Date(form.endDate).getTime())) nextErrors.endDate = 'A data de finalização é inválida.'
+    if (form.defaultHourlyCost !== '' && Number(form.defaultHourlyCost) < 0) nextErrors.defaultHourlyCost = 'O preÃ§o hora nÃ£o pode ser negativo.'
+    if (form.budget !== '' && Number(form.budget) < 0) nextErrors.budget = 'O orÃ§amento nÃ£o pode ser negativo.'
+    if (form.startDate && Number.isNaN(new Date(form.startDate).getTime())) nextErrors.startDate = 'A data de comeÃ§o Ã© invÃ¡lida.'
+    if (form.endDate && Number.isNaN(new Date(form.endDate).getTime())) nextErrors.endDate = 'A data de finalizaÃ§Ã£o Ã© invÃ¡lida.'
 
     if (form.startDate && form.endDate && new Date(form.endDate) < new Date(form.startDate)) {
-      nextErrors.endDate = 'A data de finalização não pode ser anterior ao começo.'
+      nextErrors.endDate = 'A data de finalizaÃ§Ã£o nÃ£o pode ser anterior ao comeÃ§o.'
     }
 
     setFormErrors(nextErrors)
@@ -1356,7 +1356,7 @@ export function WorksPageView({ forcedClientId = '', dedicatedClientView = false
     const nextErrors = {}
 
     if (!clientForm.name.trim()) {
-      nextErrors.name = 'O nome do cliente é obrigatório.'
+      nextErrors.name = 'O nome do cliente Ã© obrigatÃ³rio.'
     }
 
     setClientFormErrors(nextErrors)
@@ -1496,7 +1496,7 @@ export function WorksPageView({ forcedClientId = '', dedicatedClientView = false
       const updatedCount = Number(data.repricedAssignmentsCount) || 0
       setSuccess(
         updatedCount > 0
-          ? `Obra atualizada e ${updatedCount} afetações ficaram com a nova tarifa.`
+          ? `Obra atualizada e ${updatedCount} afetaÃ§Ãµes ficaram com a nova tarifa.`
           : 'Obra atualizada com a nova tarifa. Nao houve afetacoes elegiveis para atualizar.',
       )
       return
@@ -1671,7 +1671,7 @@ export function WorksPageView({ forcedClientId = '', dedicatedClientView = false
           </p>
           {work.roleHourlyCosts && Object.keys(work.roleHourlyCosts).length > 0 && (
             <p style={{ margin: '6px 0 0', color: 'var(--vp-text-muted)' }}>
-              Preços por role definidos: {Object.keys(work.roleHourlyCosts).length}
+              PreÃ§os por role definidos: {Object.keys(work.roleHourlyCosts).length}
             </p>
           )}
         </div>
@@ -1733,7 +1733,7 @@ export function WorksPageView({ forcedClientId = '', dedicatedClientView = false
               <div style={{ marginTop: '8px', fontSize: '32px', fontWeight: 700 }}>{clients.length}</div>
             </article>
             <article style={statCardStyle}>
-              <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>Obras visíveis</div>
+              <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>Obras visÃ­veis</div>
               <div style={{ marginTop: '8px', fontSize: '32px', fontWeight: 700 }}>{visibleWorks.length}</div>
             </article>
             <article style={statCardStyle}>
@@ -1762,7 +1762,7 @@ export function WorksPageView({ forcedClientId = '', dedicatedClientView = false
                     style={primaryButtonStyle}
                     disabled={exportingClientPdf}
                   >
-                    {exportingClientPdf ? 'A preparar exportação...' : 'Exportar'}
+                    {exportingClientPdf ? 'A preparar exportaÃ§Ã£o...' : 'Exportar'}
                   </button>
                 </div>
               </>
@@ -1782,7 +1782,7 @@ export function WorksPageView({ forcedClientId = '', dedicatedClientView = false
                     style={primaryButtonStyle}
                     disabled={exportingGeneralAnnualPdf}
                   >
-                    {exportingGeneralAnnualPdf ? 'A preparar exportação...' : 'Exportar'}
+                    {exportingGeneralAnnualPdf ? 'A preparar exportaÃ§Ã£o...' : 'Exportar'}
                   </button>
                 </div>
               </>
@@ -1796,7 +1796,7 @@ export function WorksPageView({ forcedClientId = '', dedicatedClientView = false
               <div>
                 <h2 style={{ margin: 0 }}>Resumo anual geral</h2>
                 <p style={{ margin: '8px 0 0', color: 'var(--vp-text-muted)' }}>
-                  Ano de referência: <strong>{summaryYear}</strong>
+                  Ano de referÃªncia: <strong>{summaryYear}</strong>
                 </p>
               </div>
             </div>
@@ -1822,7 +1822,7 @@ export function WorksPageView({ forcedClientId = '', dedicatedClientView = false
                     {generalAnnualSummaryRows.map(row => (
                       <tr key={row.client.id}>
                         <td style={annualSummaryCellStyle}>
-                          <strong style={{ color: 'var(--vp-text)', fontFamily: 'Segoe UI, system-ui, -apple-system, sans-serif', fontSize: '16px' }}>{row.client.name}</strong>
+                          <strong style={{ color: 'var(--vp-text)', fontFamily: 'var(--btx-font-family)', fontSize: '16px' }}>{row.client.name}</strong>
                         </td>
                         {row.months.map(month => (
                           <td key={month.monthKey} style={annualSummaryCellStyle}>
@@ -1871,9 +1871,9 @@ export function WorksPageView({ forcedClientId = '', dedicatedClientView = false
                         onClick={() => openClientWorks(String(client.id))}
                         style={getClientFilterButtonStyle()}
                       >
-                        <strong style={{ fontFamily: 'Segoe UI, system-ui, -apple-system, sans-serif', fontSize: '16px' }}>{client.name}</strong>
+                        <strong style={{ fontFamily: 'var(--btx-font-family)', fontSize: '16px' }}>{client.name}</strong>
                         <span style={{ display: 'none', color: 'var(--vp-text-muted)', fontSize: '13px' }}>
-                        {workCounts.total} obra(s) · {workCounts.active} ativa(s)
+                        {workCounts.total} obra(s) Â· {workCounts.active} ativa(s)
                         </span>
                       </button>
                       <button
@@ -1899,7 +1899,7 @@ export function WorksPageView({ forcedClientId = '', dedicatedClientView = false
               <>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px', flexWrap: 'wrap' }}>
                   <div style={{ display: 'grid', gap: '8px' }}>
-                    <h3 style={{ margin: 0, fontSize: '28px', lineHeight: 1.1, fontFamily: 'Segoe UI, system-ui, -apple-system, sans-serif' }}>{selectedClient.name}</h3>
+                    <h3 style={{ margin: 0, fontSize: '28px', lineHeight: 1.1, fontFamily: 'var(--btx-font-family)' }}>{selectedClient.name}</h3>
                   </div>
                   <div style={{ ...clientHeaderActionsStyle, justifyContent: 'flex-end' }}>
                     <button
@@ -1939,7 +1939,7 @@ export function WorksPageView({ forcedClientId = '', dedicatedClientView = false
             ) : (
               <>
                 <h2 style={{ margin: 0 }}>Cliente</h2>
-                <p style={{ margin: 0, color: '#b42318' }}>Cliente não encontrado.</p>
+                <p style={{ margin: 0, color: '#b42318' }}>Cliente nÃ£o encontrado.</p>
               </>
             )}
           </BentixSection>
@@ -1950,9 +1950,9 @@ export function WorksPageView({ forcedClientId = '', dedicatedClientView = false
           <BentixSection style={panelStyle}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
               <div>
-                <h2 style={{ margin: 0, fontFamily: 'Segoe UI, system-ui, -apple-system, sans-serif' }}>Resumo anual de {selectedClient.name}</h2>
+                <h2 style={{ margin: 0, fontFamily: 'var(--btx-font-family)' }}>Resumo anual de {selectedClient.name}</h2>
                 <p style={{ margin: '8px 0 0', color: 'var(--vp-text-muted)' }}>
-                  Ano de referência: <strong>{summaryYear}</strong>
+                  Ano de referÃªncia: <strong>{summaryYear}</strong>
                 </p>
               </div>
             </div>
@@ -1966,7 +1966,7 @@ export function WorksPageView({ forcedClientId = '', dedicatedClientView = false
                 <table style={annualSummaryTableStyle}>
                   <thead>
                     <tr>
-                      <th style={annualSummaryHeaderCellStyle}>Mês</th>
+                      <th style={annualSummaryHeaderCellStyle}>MÃªs</th>
                       <th style={annualSummaryHeaderCellStyle}>Total de horas</th>
                       <th style={annualSummaryHeaderCellStyle}>Custo estimado</th>
                       <th style={annualSummaryHeaderCellStyle}>Obras envolvidas</th>
@@ -2038,7 +2038,7 @@ export function WorksPageView({ forcedClientId = '', dedicatedClientView = false
                 <h2 style={{ margin: 0 }}>{form.id ? 'Editar obra' : 'Adicionar nova obra'}</h2>
                 {!form.id && selectedClient && (
                   <p style={{ margin: '8px 0 0', color: 'var(--vp-text-muted)' }}>
-                    Cliente pré-selecionado: <strong>{selectedClient.name}</strong>
+                    Cliente prÃ©-selecionado: <strong>{selectedClient.name}</strong>
                   </p>
                 )}
               </div>
@@ -2050,7 +2050,7 @@ export function WorksPageView({ forcedClientId = '', dedicatedClientView = false
             <form onSubmit={handleSubmit} style={{ display: 'grid', gap: '20px', marginTop: '18px' }}>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '20px' }}>
                 <label style={{ ...labelStyle, maxWidth: '110px' }}>
-                  Número
+                  NÃºmero
                   <input type="number" name="number" value={form.number} onChange={handleChange} style={inputStyle} />
                 </label>
                 <label style={labelStyle}>
@@ -2071,7 +2071,7 @@ export function WorksPageView({ forcedClientId = '', dedicatedClientView = false
                   {formErrors.clientId && <span style={{ color: '#b42318', fontSize: '13px' }}>{formErrors.clientId}</span>}
                 </label>
                 <label style={labelStyle}>
-                  Localização
+                  LocalizaÃ§Ã£o
                   <input type="text" name="location" value={form.location} onChange={handleChange} style={inputStyle} />
                 </label>
                 <label style={labelStyle}>
@@ -2080,16 +2080,16 @@ export function WorksPageView({ forcedClientId = '', dedicatedClientView = false
                     <option value="planned">Planeada</option>
                     <option value="in_progress">Em curso</option>
                     <option value="paused">Em pausa</option>
-                    <option value="completed">Concluída</option>
+                    <option value="completed">ConcluÃ­da</option>
                   </select>
                 </label>
                 <label style={labelStyle}>
-                  Orçamento
+                  OrÃ§amento
                   <input type="number" name="budget" min="0" step="0.01" value={form.budget} onChange={handleChange} style={inputStyle} />
                   {formErrors.budget && <span style={{ color: '#b42318', fontSize: '13px' }}>{formErrors.budget}</span>}
                 </label>
                 <label style={labelStyle}>
-                  Preço hora por defeito
+                  PreÃ§o hora por defeito
                   <input
                     type="number"
                     name="defaultHourlyCost"
@@ -2102,12 +2102,12 @@ export function WorksPageView({ forcedClientId = '', dedicatedClientView = false
                   {formErrors.defaultHourlyCost && <span style={{ color: '#b42318', fontSize: '13px' }}>{formErrors.defaultHourlyCost}</span>}
                 </label>
                 <label style={labelStyle}>
-                  Data de começo
+                  Data de comeÃ§o
                   <input type="date" name="startDate" value={form.startDate} onChange={handleChange} style={inputStyle} />
                   {formErrors.startDate && <span style={{ color: '#b42318', fontSize: '13px' }}>{formErrors.startDate}</span>}
                 </label>
                 <label style={labelStyle}>
-                  Data de finalização
+                  Data de finalizaÃ§Ã£o
                   <input type="date" name="endDate" value={form.endDate} onChange={handleChange} style={inputStyle} />
                   {formErrors.endDate && <span style={{ color: '#b42318', fontSize: '13px' }}>{formErrors.endDate}</span>}
                 </label>
@@ -2131,7 +2131,7 @@ export function WorksPageView({ forcedClientId = '', dedicatedClientView = false
               </fieldset>
 
               <fieldset style={{ border: '1px solid var(--vp-border)', borderRadius: '18px', padding: '16px', margin: 0 }}>
-                <legend style={{ padding: '0 8px', fontWeight: 800 }}>Preço por role no plano diário</legend>
+                <legend style={{ padding: '0 8px', fontWeight: 800 }}>PreÃ§o por role no plano diÃ¡rio</legend>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '12px', marginTop: '8px' }}>
                   {rolePriceOptions.map(option => (
                     <label key={option.value} style={labelStyle}>
@@ -2156,7 +2156,7 @@ export function WorksPageView({ forcedClientId = '', dedicatedClientView = false
                         name={`roleHourlyCost-${option.value}`}
                         value={form.roleHourlyCosts?.[option.value] ?? ''}
                         onChange={handleRoleHourlyCostChange}
-                        placeholder="Usar preço por defeito"
+                        placeholder="Usar preÃ§o por defeito"
                         style={inputStyle}
                       />
                     </label>
@@ -2187,7 +2187,7 @@ export function WorksPageView({ forcedClientId = '', dedicatedClientView = false
 
               <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
                 <button type="submit" disabled={submitting} style={primaryButtonStyle}>
-                  {submitting ? 'A gravar...' : form.id ? 'Guardar alterações' : 'Criar obra'}
+                  {submitting ? 'A gravar...' : form.id ? 'Guardar alteraÃ§Ãµes' : 'Criar obra'}
                 </button>
                 {form.id && (
                   <button
@@ -2308,3 +2308,4 @@ export function WorksPageView({ forcedClientId = '', dedicatedClientView = false
 export default function WorksPage() {
   return <WorksPageView />
 }
+

@@ -18,7 +18,7 @@ const pageStyle = {
   padding: '40px 24px 60px',
   background: 'var(--vp-page-background)',
   color: 'var(--vp-text)',
-  fontFamily: '"Avenir Next", "Segoe UI", "-apple-system", "BlinkMacSystemFont", sans-serif',
+  fontFamily: 'var(--btx-font-family)',
 }
 
 const shellStyle = {
@@ -534,6 +534,7 @@ export default async function PersonDetailPage({ params }) {
     </ViewportPage>
   )
 }
+
 
 
 

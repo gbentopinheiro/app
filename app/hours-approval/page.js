@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
@@ -18,7 +18,7 @@ const pageStyle = {
   padding: 'clamp(18px, 4vw, 40px) clamp(14px, 3vw, 24px) 60px',
   background: 'var(--vp-page-background)',
   color: 'var(--vp-text)',
-  fontFamily: '"Avenir Next", "Segoe UI", "-apple-system", "BlinkMacSystemFont", sans-serif',
+  fontFamily: 'var(--btx-font-family)',
 }
 
 const shellStyle = {
@@ -134,7 +134,7 @@ export default function HoursApprovalPage() {
     setError('')
 
     try {
-      const data = await listWorkAssignments({}, 'Erro ao carregar afetações')
+      const data = await listWorkAssignments({}, 'Erro ao carregar afetaÃ§Ãµes')
 
       setAssignments(data)
 
@@ -167,7 +167,7 @@ export default function HoursApprovalPage() {
       const hoursValue = Number(approvalValues[assignmentId])
 
       if (Number.isNaN(hoursValue) || hoursValue < 0) {
-        setError('Horas têm de ser um número igual ou maior que 0.')
+        setError('Horas tÃªm de ser um nÃºmero igual ou maior que 0.')
         setApprovingId(null)
         return
       }
@@ -217,7 +217,7 @@ export default function HoursApprovalPage() {
 
         <div>
           <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>
-            Horas Diárias
+            Horas DiÃ¡rias
           </div>
           <div style={{ fontWeight: 700 }}>{assignment.hours ?? assignment.dailyHours}h</div>
         </div>
@@ -269,10 +269,10 @@ export default function HoursApprovalPage() {
                 color: 'var(--vp-text-soft)',
               }}
             >
-              Gestão de Horas
+              GestÃ£o de Horas
             </p>
             <h1 style={{ margin: '10px 0 12px', fontSize: 'clamp(38px, 5.5vw, 46px)', lineHeight: 1.05 }}>
-              Aprovação de Horas
+              AprovaÃ§Ã£o de Horas
             </h1>
           </div>
         </section>
@@ -282,7 +282,7 @@ export default function HoursApprovalPage() {
             <BentixResponsiveGrid preset="stats" style={statGridStyle}>
               <article style={statCardStyle}>
                 <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>
-                  Pendentes de Aprovação
+                  Pendentes de AprovaÃ§Ã£o
                 </div>
                 <div style={{ marginTop: '8px', fontSize: '32px', fontWeight: 700 }}>
                   {pendingApprovals.length}
@@ -312,13 +312,13 @@ export default function HoursApprovalPage() {
 
           {loading && (
             <BentixSection style={panelStyle}>
-              <p>A carregar afetações...</p>
+              <p>A carregar afetaÃ§Ãµes...</p>
             </BentixSection>
           )}
 
           {!loading && pendingApprovals.length > 0 && (
             <BentixSection style={panelStyle}>
-              <h2 style={sectionTitleStyle}>Pendentes de Aprovação</h2>
+              <h2 style={sectionTitleStyle}>Pendentes de AprovaÃ§Ã£o</h2>
               <div style={rowListStyle}>
                 {pendingApprovals.map(renderAssignmentRow)}
               </div>
@@ -328,7 +328,7 @@ export default function HoursApprovalPage() {
           {!loading && pendingApprovals.length === 0 && (
             <BentixSection style={panelStyle}>
               <p style={{ margin: 0, color: 'var(--vp-text-muted)' }}>
-                Nenhuma afetação pendente de aprovação.
+                Nenhuma afetaÃ§Ã£o pendente de aprovaÃ§Ã£o.
               </p>
             </BentixSection>
           )}
@@ -366,7 +366,7 @@ export default function HoursApprovalPage() {
 
                     <div>
                       <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>
-                        Horas Diárias
+                        Horas DiÃ¡rias
                       </div>
                       <div style={{ fontWeight: 700 }}>{assignment.hours ?? assignment.dailyHours}h</div>
                     </div>
@@ -375,7 +375,7 @@ export default function HoursApprovalPage() {
                       <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>
                         Horas Aprovadas
                       </div>
-                      <div style={{ fontWeight: 700, color: '#1f7a45' }}>{assignment.approvedHours}h ✓</div>
+                      <div style={{ fontWeight: 700, color: '#1f7a45' }}>{assignment.approvedHours}h âœ“</div>
                     </div>
                   </article>
                 ))}
@@ -387,3 +387,4 @@ export default function HoursApprovalPage() {
     </BentixPage>
   )
 }
+

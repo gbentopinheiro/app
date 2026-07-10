@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
@@ -15,7 +15,7 @@ const pageStyle = {
   padding: `${mobileSafeTopInset} 14px calc(24px + ${mobileSafeBottomInset})`,
   boxSizing: 'border-box',
   color: 'var(--vp-text)',
-  fontFamily: '"Avenir Next", "Segoe UI", "-apple-system", "BlinkMacSystemFont", sans-serif',
+  fontFamily: 'var(--btx-font-family)',
 }
 
 const shellStyle = {
@@ -272,3 +272,4 @@ export default function MobileLoginClient({ initialRedirectTo = null }) {
     </ViewportPage>
   )
 }
+

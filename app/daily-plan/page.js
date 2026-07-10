@@ -39,7 +39,7 @@ const pageStyle = {
   padding: '32px clamp(16px, 3vw, 32px) 56px',
   background: 'var(--vp-page-background)',
   color: 'var(--vp-text)',
-  fontFamily: '"Avenir Next", "Segoe UI", "-apple-system", "BlinkMacSystemFont", sans-serif',
+  fontFamily: 'var(--btx-font-family)',
   fontWeight: 600,
 }
 
@@ -2250,7 +2250,7 @@ export default function DailyPlanPage() {
                 readOnly
                 value={generatedMessage}
                 rows={12}
-                style={{ ...inputStyle, resize: 'vertical', fontFamily: 'monospace' }}
+                style={{ ...inputStyle, resize: 'vertical', fontFamily: 'var(--btx-font-family)' }}
               />
             </label>
 
@@ -2303,4 +2303,6 @@ export default function DailyPlanPage() {
     </ViewportPage>
   )
 }
+
+
 

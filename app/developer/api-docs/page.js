@@ -1,4 +1,4 @@
-import { readFile } from 'fs/promises'
+﻿import { readFile } from 'fs/promises'
 import { join } from 'path'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
@@ -22,7 +22,7 @@ const pageStyle = {
   padding: 'clamp(20px, 4vw, 42px) 22px 56px',
   background: 'linear-gradient(180deg, #081224 0%, #0d1b35 30%, #edf3fb 30%, #f7f8fb 100%)',
   color: '#10233e',
-  fontFamily: '"Avenir Next", "Segoe UI", "-apple-system", "BlinkMacSystemFont", sans-serif',
+  fontFamily: 'var(--btx-font-family)',
 }
 
 const shellStyle = {
@@ -166,3 +166,4 @@ export default async function DeveloperApiDocsPage() {
     </>
   )
 }
+

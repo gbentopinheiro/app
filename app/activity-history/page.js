@@ -1,4 +1,4 @@
-import Link from 'next/link'
+﻿import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import {
   ACTIVITY_HISTORY_PERIOD_OPTIONS,
@@ -19,7 +19,7 @@ const pageStyle = {
   padding: 'clamp(22px, 4vw, 42px) 24px 56px',
   background: 'var(--vp-page-background)',
   color: 'var(--vp-text)',
-  fontFamily: '"Avenir Next", "Segoe UI", "-apple-system", "BlinkMacSystemFont", sans-serif',
+  fontFamily: 'var(--btx-font-family)',
 }
 
 const shellStyle = {
@@ -301,12 +301,12 @@ export default async function ActivityHistoryPage({ searchParams }) {
         <ViewportScrollArea style={{ '--vp-page-scroll-gap': '22px' }}>
           <section style={panelStyle}>
           <h2 style={sectionTitleStyle}>Filtros</h2>
-          <p style={sectionMetaStyle}>Escolhe o período, a data de referência, uma pessoa ou uma obra e exporta exatamente esse resultado.</p>
+          <p style={sectionMetaStyle}>Escolhe o perÃ­odo, a data de referÃªncia, uma pessoa ou uma obra e exporta exatamente esse resultado.</p>
 
           <form method="GET">
             <div style={filterGridStyle}>
               <label style={labelStyle}>
-                Período
+                PerÃ­odo
                 <select name="period" defaultValue={history.filters.period} style={inputStyle}>
                   {ACTIVITY_HISTORY_PERIOD_OPTIONS.map(option => (
                     <option key={option.value} value={option.value}>
@@ -395,13 +395,13 @@ export default async function ActivityHistoryPage({ searchParams }) {
         <section style={sectionGridStyle}>
           <EventSection
             title="Horas submetidas"
-            helper={`${history.submittedEvents.length} registos nesta seleção`}
+            helper={`${history.submittedEvents.length} registos nesta seleÃ§Ã£o`}
             events={history.submittedEvents}
             emptyText="Sem horas submetidas para os filtros escolhidos."
           />
           <EventSection
             title="Horas aprovadas"
-            helper={`${history.approvedEvents.length} registos nesta seleção`}
+            helper={`${history.approvedEvents.length} registos nesta seleÃ§Ã£o`}
             events={history.approvedEvents}
             emptyText="Sem horas aprovadas para os filtros escolhidos."
           />
@@ -409,7 +409,7 @@ export default async function ActivityHistoryPage({ searchParams }) {
 
         <EventSection
           title="Notas da obra"
-          helper={`${history.noteEvents.length} notas nesta seleção`}
+          helper={`${history.noteEvents.length} notas nesta seleÃ§Ã£o`}
           events={history.noteEvents}
           emptyText="Sem notas para os filtros escolhidos."
         />
@@ -418,3 +418,4 @@ export default async function ActivityHistoryPage({ searchParams }) {
     </ViewportPage>
   )
 }
+

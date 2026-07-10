@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
@@ -22,7 +22,7 @@ const unitOptions = [
   { value: 'l', label: 'Litro' },
   { value: 'm', label: 'Metro' },
   { value: 'm2', label: 'Metro quadrado' },
-  { value: 'm3', label: 'Metro cúbico' },
+  { value: 'm3', label: 'Metro cÃºbico' },
 ]
 
 const emptyMaterialForm = {
@@ -41,7 +41,7 @@ const emptyMaterialForm = {
 const pageStyle = {
   background: 'var(--vp-page-background)',
   color: 'var(--vp-text)',
-  fontFamily: '"Avenir Next", "Segoe UI", "-apple-system", "BlinkMacSystemFont", sans-serif',
+  fontFamily: 'var(--btx-font-family)',
 }
 
 const shellStyle = {
@@ -406,7 +406,7 @@ function getStockStatus(material) {
     return { label: 'Stock baixo', tone: 'warning' }
   }
 
-  return { label: 'Disponível', tone: 'success' }
+  return { label: 'DisponÃ­vel', tone: 'success' }
 }
 
 function formatMaterialQuantity(material) {
@@ -505,7 +505,7 @@ export default function MaterialsClient() {
     const minimumQuantity = Number.parseFloat(String(form.minimumQuantity || '').replace(',', '.'))
 
     if (!form.name.trim()) {
-      nextErrors.name = 'O nome do material é obrigatório.'
+      nextErrors.name = 'O nome do material Ã© obrigatÃ³rio.'
     }
 
     if (!Number.isFinite(quantity) || quantity < 0) {
@@ -513,7 +513,7 @@ export default function MaterialsClient() {
     }
 
     if (!Number.isFinite(minimumQuantity) || minimumQuantity < 0) {
-      nextErrors.minimumQuantity = 'O stock mínimo tem de ser igual ou superior a zero.'
+      nextErrors.minimumQuantity = 'O stock mÃ­nimo tem de ser igual ou superior a zero.'
     }
 
     setFormErrors(nextErrors)
@@ -635,10 +635,10 @@ export default function MaterialsClient() {
             </div>
 
             <div>
-              <p style={eyebrowStyle}>Armazém e equipamentos</p>
-              <h1 style={titleStyle}>Gestão de material</h1>
+              <p style={eyebrowStyle}>ArmazÃ©m e equipamentos</p>
+              <h1 style={titleStyle}>GestÃ£o de material</h1>
               <p style={introStyle}>
-                Controla artigos, stock mínimo, localização e fornecedor num só sítio, com uma consulta rápida do estado atual.
+                Controla artigos, stock mÃ­nimo, localizaÃ§Ã£o e fornecedor num sÃ³ sÃ­tio, com uma consulta rÃ¡pida do estado atual.
               </p>
             </div>
 
@@ -646,17 +646,17 @@ export default function MaterialsClient() {
               <article style={heroStatCardStyle}>
                 <p style={heroStatLabelStyle}>Materiais totais</p>
                 <p style={heroStatValueStyle}>{materials.length}</p>
-                <p style={heroStatTextStyle}>artigos registados no armazém</p>
+                <p style={heroStatTextStyle}>artigos registados no armazÃ©m</p>
               </article>
               <article style={heroStatCardStyle}>
                 <p style={heroStatLabelStyle}>Stock baixo</p>
                 <p style={heroStatValueStyle}>{lowStockCount}</p>
-                <p style={heroStatTextStyle}>precisam de reposição em breve</p>
+                <p style={heroStatTextStyle}>precisam de reposiÃ§Ã£o em breve</p>
               </article>
               <article style={heroStatCardStyle}>
                 <p style={heroStatLabelStyle}>Sem stock</p>
                 <p style={heroStatValueStyle}>{noStockCount}</p>
-                <p style={heroStatTextStyle}>já estão esgotados</p>
+                <p style={heroStatTextStyle}>jÃ¡ estÃ£o esgotados</p>
               </article>
             </BentixResponsiveGrid>
           </div>
@@ -669,7 +669,7 @@ export default function MaterialsClient() {
               <div>
                 <h2 style={{ margin: 0, color: '#10233e' }}>{form.id ? 'Editar material' : 'Adicionar material'}</h2>
                 <p style={{ margin: '8px 0 0', color: '#49627f', fontWeight: 700 }}>
-                  Mantém o stock, a referência e a localização de cada artigo atualizados.
+                  MantÃ©m o stock, a referÃªncia e a localizaÃ§Ã£o de cada artigo atualizados.
                 </p>
               </div>
               <button type="button" onClick={cancelForm} style={secondaryButtonStyle}>
@@ -685,7 +685,7 @@ export default function MaterialsClient() {
                   {formErrors.name ? <span style={messageErrorStyle}>{formErrors.name}</span> : null}
                 </label>
                 <label style={labelStyle}>
-                  Referência
+                  ReferÃªncia
                   <input type="text" name="reference" value={form.reference} onChange={handleChange} style={inputStyle} />
                 </label>
                 <label style={labelStyle}>
@@ -708,7 +708,7 @@ export default function MaterialsClient() {
                   {formErrors.quantity ? <span style={messageErrorStyle}>{formErrors.quantity}</span> : null}
                 </label>
                 <label style={labelStyle}>
-                  Stock mínimo
+                  Stock mÃ­nimo
                   <input
                     type="number"
                     min="0"
@@ -721,7 +721,7 @@ export default function MaterialsClient() {
                   {formErrors.minimumQuantity ? <span style={messageErrorStyle}>{formErrors.minimumQuantity}</span> : null}
                 </label>
                 <label style={labelStyle}>
-                  Localização
+                  LocalizaÃ§Ã£o
                   <input type="text" name="location" value={form.location} onChange={handleChange} style={inputStyle} />
                 </label>
                 <label style={labelStyle}>
@@ -740,7 +740,7 @@ export default function MaterialsClient() {
 
               <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                 <button type="submit" disabled={submitting} style={primaryButtonStyle}>
-                  {submitting ? 'A gravar...' : form.id ? 'Guardar alterações' : 'Criar material'}
+                  {submitting ? 'A gravar...' : form.id ? 'Guardar alteraÃ§Ãµes' : 'Criar material'}
                 </button>
                 {form.id ? (
                   <button
@@ -769,7 +769,7 @@ export default function MaterialsClient() {
                 type="search"
                 value={searchTerm}
                 onChange={event => setSearchTerm(event.target.value)}
-                placeholder="Pesquisar por nome, referência, categoria ou localização"
+                placeholder="Pesquisar por nome, referÃªncia, categoria ou localizaÃ§Ã£o"
                 style={searchInputStyle}
               />
             </div>
@@ -795,13 +795,13 @@ export default function MaterialsClient() {
                       <div style={materialCardTopStyle} className="btx-materials-detail-header">
                         <div className="btx-materials-wrap-text">
                           <p style={materialCardNameStyle}>{material.name}</p>
-                          <p style={materialCardRefStyle}>{material.reference || 'Sem referência'}</p>
+                          <p style={materialCardRefStyle}>{material.reference || 'Sem referÃªncia'}</p>
                         </div>
                         <span style={statusBadgeStyle(status.tone)}>{status.label}</span>
                       </div>
                       <p style={materialCardMetaStyle}>{formatMaterialQuantity(material)} em stock</p>
                       <p style={materialCardMetaStyle}>
-                        {material.category || 'Sem categoria'} · {material.location || 'Sem localização'}
+                        {material.category || 'Sem categoria'} Â· {material.location || 'Sem localizaÃ§Ã£o'}
                       </p>
                     </button>
                   )
@@ -815,7 +815,7 @@ export default function MaterialsClient() {
               <div>
                 <h2 style={{ margin: 0, color: '#10233e' }}>Detalhe do material</h2>
                 <p style={{ margin: '8px 0 0', color: '#49627f', fontWeight: 700 }}>
-                  Consulta rápida do stock, reposição mínima e informação operacional.
+                  Consulta rÃ¡pida do stock, reposiÃ§Ã£o mÃ­nima e informaÃ§Ã£o operacional.
                 </p>
               </div>
               {selectedMaterial ? (
@@ -842,8 +842,8 @@ export default function MaterialsClient() {
 
                 <div style={detailGridStyle}>
                   <article style={detailCardStyle}>
-                    <p style={detailLabelStyle}>Referência</p>
-                    <p style={detailValueStyle}>{selectedMaterial.reference || 'Sem referência'}</p>
+                    <p style={detailLabelStyle}>ReferÃªncia</p>
+                    <p style={detailValueStyle}>{selectedMaterial.reference || 'Sem referÃªncia'}</p>
                   </article>
                   <article style={detailCardStyle}>
                     <p style={detailLabelStyle}>Categoria</p>
@@ -854,14 +854,14 @@ export default function MaterialsClient() {
                     <p style={detailValueStyle}>{formatMaterialQuantity(selectedMaterial)}</p>
                   </article>
                   <article style={detailCardStyle}>
-                    <p style={detailLabelStyle}>Stock mínimo</p>
+                    <p style={detailLabelStyle}>Stock mÃ­nimo</p>
                     <p style={detailValueStyle}>
                       {new Intl.NumberFormat('pt-PT', { maximumFractionDigits: 2 }).format(Number(selectedMaterial.minimumQuantity || 0))} {selectedMaterial.unit}
                     </p>
                   </article>
                   <article style={detailCardStyle}>
-                    <p style={detailLabelStyle}>Localização</p>
-                    <p style={detailValueStyle}>{selectedMaterial.location || 'Sem localização'}</p>
+                    <p style={detailLabelStyle}>LocalizaÃ§Ã£o</p>
+                    <p style={detailValueStyle}>{selectedMaterial.location || 'Sem localizaÃ§Ã£o'}</p>
                   </article>
                   <article style={detailCardStyle}>
                     <p style={detailLabelStyle}>Fornecedor</p>
@@ -893,3 +893,4 @@ export default function MaterialsClient() {
     </BentixPage>
   )
 }
+

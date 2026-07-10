@@ -1,4 +1,4 @@
-import Link from 'next/link'
+﻿import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import CalendarClient from './CalendarClient.js'
 import { getAllCalendarEvents } from '../../lib/calendar-events.js'
@@ -14,7 +14,7 @@ const pageStyle = {
   padding: 'clamp(22px, 4vw, 42px) 24px 56px',
   background: 'var(--vp-page-background)',
   color: 'var(--vp-text)',
-  fontFamily: '"Avenir Next", "Segoe UI", "-apple-system", "BlinkMacSystemFont", sans-serif',
+  fontFamily: 'var(--btx-font-family)',
 }
 
 const shellStyle = {
@@ -68,7 +68,7 @@ export default async function CalendarPage() {
 
   await markCalendarNotificationsSeen(session.username)
 
-  const weekdays = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo']
+  const weekdays = ['Segunda', 'TerÃ§a', 'Quarta', 'Quinta', 'Sexta', 'SÃ¡bado', 'Domingo']
   const today = new Date()
   const currentYear = today.getFullYear()
   const currentMonth = today.getMonth() + 1
@@ -87,7 +87,7 @@ export default async function CalendarPage() {
           <Link href="/" style={backLinkStyle}>
             Voltar ao menu
           </Link>
-          <h1 style={titleStyle}>Calendário</h1>
+          <h1 style={titleStyle}>CalendÃ¡rio</h1>
         </section>
 
         <ViewportScrollArea style={{ '--vp-page-scroll-gap': '22px' }}>
@@ -103,3 +103,4 @@ export default async function CalendarPage() {
     </ViewportPage>
   )
 }
+

@@ -40,7 +40,7 @@ import {
 const pageStyle = {
   background: 'var(--vp-page-background)',
   color: 'var(--vp-text)',
-  fontFamily: '"Avenir Next", "Segoe UI", "-apple-system", "BlinkMacSystemFont", sans-serif',
+  fontFamily: 'var(--btx-font-family)',
 }
 
 const shellStyle = {
@@ -597,7 +597,7 @@ function buildPeoplePrintDocument(rows, summary, exportDateLabel, hoursGrid) {
             margin: 8mm 8mm 8mm 4mm;
           }
           body {
-            font-family: Arial, sans-serif;
+            font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
             margin: 0;
             color: #17211c;
             background: #fff;
@@ -796,7 +796,7 @@ function buildResponsavelDocumentReviewPrintDocument(alertPeople, exportDateLabe
           }
           body {
             margin: 0;
-            font-family: Arial, sans-serif;
+            font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
             color: #10233e;
             background: #ffffff;
           }
@@ -3041,6 +3041,7 @@ export default function PeoplePage() {
     </BentixPage>
   )
 }
+
 
 
 

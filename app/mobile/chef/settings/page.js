@@ -1,4 +1,4 @@
-import Link from 'next/link'
+﻿import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import LogoutButton from '../../../components/LogoutButton'
 import ChangePasswordForm from '../../../account-settings/ChangePasswordForm'
@@ -19,7 +19,7 @@ const pageStyle = {
   padding: `${mobileSafeTopInset} 14px calc(32px + ${mobileSafeBottomInset})`,
   boxSizing: 'border-box',
   color: 'var(--vp-text)',
-  fontFamily: '"Avenir Next", "Segoe UI", "-apple-system", "BlinkMacSystemFont", sans-serif',
+  fontFamily: 'var(--btx-font-family)',
 }
 
 const phoneShellStyle = {
@@ -125,7 +125,7 @@ const infoValueStyle = {
 export const dynamic = 'force-dynamic'
 
 export const metadata = {
-  title: 'Definições Móveis',
+  title: 'DefiniÃ§Ãµes MÃ³veis',
 }
 
 export default async function ChefMobileSettingsPage() {
@@ -156,7 +156,7 @@ export default async function ChefMobileSettingsPage() {
               }}
             />
           </div>
-          <h1 style={titleStyle}>Definições</h1>
+          <h1 style={titleStyle}>DefiniÃ§Ãµes</h1>
         </section>
 
         <ViewportScrollArea style={{ '--vp-page-scroll-gap': '14px' }}>
@@ -179,13 +179,13 @@ export default async function ChefMobileSettingsPage() {
         </section>
 
         <section style={cardStyle}>
-          <h2 style={sectionTitleStyle}>Segurança</h2>
+          <h2 style={sectionTitleStyle}>SeguranÃ§a</h2>
           <ChangePasswordForm />
         </section>
 
         {isChef ? (
           <section style={cardStyle}>
-            <h2 style={sectionTitleStyle}>Notificações</h2>
+            <h2 style={sectionTitleStyle}>NotificaÃ§Ãµes</h2>
             <MobileNotificationPermissionCard />
             <NotificationSettingsForm
               title="Hora do lembrete"
@@ -200,3 +200,4 @@ export default async function ChefMobileSettingsPage() {
     </ViewportPage>
   )
 }
+

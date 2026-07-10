@@ -1,4 +1,4 @@
-import Link from 'next/link'
+﻿import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import LogoutButton from '../components/LogoutButton'
 import ChangePasswordForm from './ChangePasswordForm'
@@ -13,7 +13,7 @@ const pageStyle = {
   padding: 'clamp(20px, 4vw, 40px) 24px 48px',
   background: 'var(--vp-page-background)',
   color: 'var(--vp-text)',
-  fontFamily: '"Avenir Next", "Segoe UI", "-apple-system", "BlinkMacSystemFont", sans-serif',
+  fontFamily: 'var(--btx-font-family)',
 }
 
 const shellStyle = {
@@ -151,10 +151,10 @@ export default async function AccountSettingsPage() {
             />
           </div>
           <h1 style={titleStyle}>
-            Definições da <span style={{ color: '#ff8c00' }}>conta</span>
+            DefiniÃ§Ãµes da <span style={{ color: '#ff8c00' }}>conta</span>
           </h1>
           <p style={subtitleStyle}>
-            Consulta rápida dos dados ativos da sessão. As alterações de dados de colaboradores continuam a ser geridas na área de Gestão de pessoas.
+            Consulta rÃ¡pida dos dados ativos da sessÃ£o. As alteraÃ§Ãµes de dados de colaboradores continuam a ser geridas na Ã¡rea de GestÃ£o de pessoas.
           </p>
         </section>
 
@@ -184,3 +184,4 @@ export default async function AccountSettingsPage() {
     </ViewportPage>
   )
 }
+

@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
@@ -16,7 +16,7 @@ const pageStyle = {
   padding: '40px 24px 60px',
   background: 'var(--vp-page-background)',
   color: 'var(--vp-text)',
-  fontFamily: '"Avenir Next", "Segoe UI", "-apple-system", "BlinkMacSystemFont", sans-serif',
+  fontFamily: 'var(--btx-font-family)',
 }
 
 const shellStyle = {
@@ -251,7 +251,7 @@ export default function WorkSpecialPricingPage() {
         notes: work.notes,
         pricingChangeApplication,
       },
-      'Erro ao guardar preços especiais',
+      'Erro ao guardar preÃ§os especiais',
     )
 
     setWork(data)
@@ -268,7 +268,7 @@ export default function WorkSpecialPricingPage() {
       return
     }
 
-    setSuccess('Preços especiais guardados com sucesso.')
+    setSuccess('PreÃ§os especiais guardados com sucesso.')
   }
 
   async function confirmPricingChangeApplication(mode = 'none') {
@@ -330,10 +330,10 @@ export default function WorkSpecialPricingPage() {
       <ViewportShell fillHeight style={shellStyle}>
         <section style={heroPanelStyle}>
           <Link href={`/works/${workId}`} style={{ color: 'var(--vp-accent)', textDecoration: 'none', fontWeight: 700 }}>
-            Voltar à obra
+            Voltar Ã  obra
           </Link>
 
-          {loading && <p style={{ marginTop: '18px' }}>A carregar preços especiais...</p>}
+          {loading && <p style={{ marginTop: '18px' }}>A carregar preÃ§os especiais...</p>}
           {error && <p style={{ marginTop: '18px', color: '#b42318' }}>{error}</p>}
 
           {!loading && !error && work && (
@@ -342,7 +342,7 @@ export default function WorkSpecialPricingPage() {
                 Obra #{work.number}
               </p>
               <h1 style={{ margin: '10px 0 0', fontSize: '42px', lineHeight: 1.05 }}>
-                Preços especiais por pessoa
+                PreÃ§os especiais por pessoa
               </h1>
               <p style={{ margin: '12px 0 0', color: 'var(--vp-text-soft)' }}>
                 {work.name}
@@ -355,13 +355,13 @@ export default function WorkSpecialPricingPage() {
         {!loading && !error && work && (
           <section style={panelStyle}>
             <p style={{ marginTop: 0, color: 'var(--vp-text-muted)' }}>
-              Hierarquia usada no plano diário: preço manual da afetação, depois preço especial desta obra, depois preço por role e por fim preço por defeito.
+              Hierarquia usada no plano diÃ¡rio: preÃ§o manual da afetaÃ§Ã£o, depois preÃ§o especial desta obra, depois preÃ§o por role e por fim preÃ§o por defeito.
             </p>
 
             <div style={{ display: 'grid', gap: '16px', marginTop: '20px' }}>
               {Object.entries(specialPricingForm || {}).length === 0 && (
                 <p style={{ margin: 0, color: 'var(--vp-text-muted)' }}>
-                  Ainda não tens exceções definidas para esta obra.
+                  Ainda nÃ£o tens exceÃ§Ãµes definidas para esta obra.
                 </p>
               )}
 
@@ -397,14 +397,14 @@ export default function WorkSpecialPricingPage() {
                   </label>
 
                   <label style={{ display: 'block', fontSize: '14px', fontWeight: 700 }}>
-                    Preço hora
+                    PreÃ§o hora
                     <input
                       type="number"
                       min="0"
                       step="0.01"
                       value={value}
                       onChange={(event) => handleSpecialPersonHourlyCostChange(personId, event.target.value)}
-                      placeholder="Usar preço automático"
+                      placeholder="Usar preÃ§o automÃ¡tico"
                       style={inputStyle}
                       disabled={saving}
                     />
@@ -435,11 +435,11 @@ export default function WorkSpecialPricingPage() {
                     : secondaryButtonStyle
                 }
               >
-                Adicionar preço especial
+                Adicionar preÃ§o especial
               </button>
 
               <button type="button" onClick={saveSpecialPricing} style={primaryButtonStyle} disabled={saving}>
-                {saving ? 'A guardar...' : 'Guardar preços especiais'}
+                {saving ? 'A guardar...' : 'Guardar preÃ§os especiais'}
               </button>
             </div>
           </section>
@@ -480,3 +480,4 @@ export default function WorkSpecialPricingPage() {
     </ViewportPage>
   )
 }
+

@@ -1,4 +1,4 @@
-import Link from 'next/link'
+﻿import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import NotificationsClient from './NotificationsClient'
 import { isFeatureEnabled } from '../../lib/feature-flags.js'
@@ -13,7 +13,7 @@ const pageStyle = {
   padding: 'clamp(22px, 4vw, 42px) 24px 56px',
   background: 'var(--vp-page-background)',
   color: 'var(--vp-text)',
-  fontFamily: '"Avenir Next", "Segoe UI", "-apple-system", "BlinkMacSystemFont", sans-serif',
+  fontFamily: 'var(--btx-font-family)',
 }
 
 const shellStyle = {
@@ -73,7 +73,7 @@ export default async function NotificationsPage() {
           <Link href="/" style={backLinkStyle}>
             Voltar ao menu
           </Link>
-          <h1 style={titleStyle}>Central de notificações</h1>
+          <h1 style={titleStyle}>Central de notificaÃ§Ãµes</h1>
         </section>
 
         <ViewportScrollArea style={{ '--vp-page-scroll-gap': '22px' }}>
@@ -83,3 +83,4 @@ export default async function NotificationsPage() {
     </ViewportPage>
   )
 }
+

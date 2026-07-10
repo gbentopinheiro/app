@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
@@ -22,7 +22,7 @@ const pageStyle = {
   padding: '40px 24px 60px',
   background: 'var(--vp-page-background)',
   color: 'var(--vp-text)',
-  fontFamily: '"Avenir Next", "Segoe UI", "-apple-system", "BlinkMacSystemFont", sans-serif',
+  fontFamily: 'var(--btx-font-family)',
 }
 
 const shellStyle = {
@@ -296,15 +296,15 @@ export default function WorkAssignmentsPage() {
     if (!form.date) {
       nextErrors.date = 'Seleciona uma data.'
     } else if (Number.isNaN(new Date(form.date).getTime())) {
-      nextErrors.date = 'Data inválida.'
+      nextErrors.date = 'Data invÃ¡lida.'
     }
 
     if (!form.hours || Number(form.hours) <= 0) {
-      nextErrors.hours = 'A duração tem de ser maior que 0.'
+      nextErrors.hours = 'A duraÃ§Ã£o tem de ser maior que 0.'
     }
 
     if (form.hourlyCost === '' || Number(form.hourlyCost) < 0) {
-      nextErrors.hourlyCost = 'O preço hora não pode ser negativo.'
+      nextErrors.hourlyCost = 'O preÃ§o hora nÃ£o pode ser negativo.'
     }
 
     setFormErrors(nextErrors)
@@ -330,10 +330,10 @@ export default function WorkAssignmentsPage() {
         notes: form.notes,
       }
 
-      const data = await saveWorkAssignment(form.id, payload, 'Erro ao gravar afetação')
+      const data = await saveWorkAssignment(form.id, payload, 'Erro ao gravar afetaÃ§Ã£o')
 
       await loadPageData()
-      setSuccess(form.id ? 'Afetação atualizada com sucesso.' : `Afetação criada para ${data.person?.name || 'pessoa'}.`)
+      setSuccess(form.id ? 'AfetaÃ§Ã£o atualizada com sucesso.' : `AfetaÃ§Ã£o criada para ${data.person?.name || 'pessoa'}.`)
       setForm(emptyForm)
       setCustomRate(false)
       setShowForm(false)
@@ -350,10 +350,10 @@ export default function WorkAssignmentsPage() {
     setSuccess('')
 
     try {
-      await deleteWorkAssignment(id, 'Erro ao remover afetação')
+      await deleteWorkAssignment(id, 'Erro ao remover afetaÃ§Ã£o')
 
       await loadPageData()
-      setSuccess('Afetação removida com sucesso.')
+      setSuccess('AfetaÃ§Ã£o removida com sucesso.')
       setShowForm(false)
       setForm(emptyForm)
       setCustomRate(false)
@@ -386,11 +386,11 @@ export default function WorkAssignmentsPage() {
           hourlyCost: targetWork.defaultHourlyCost ?? assignment.hourlyCost,
           notes: assignment.notes,
         },
-        'Erro ao mover afetação',
+        'Erro ao mover afetaÃ§Ã£o',
       )
 
       await loadPageData()
-      setSuccess(`Afetação movida para a obra #${data.work?.number || targetWork.number}.`)
+      setSuccess(`AfetaÃ§Ã£o movida para a obra #${data.work?.number || targetWork.number}.`)
     } catch (err) {
       setError(err.message)
     } finally {
@@ -413,7 +413,7 @@ export default function WorkAssignmentsPage() {
           <Link href="/" style={{ color: 'var(--vp-accent)', textDecoration: 'none', fontWeight: 700 }}>            {'<- '}Voltar ao menu
           </Link>
           <p style={{ margin: '18px 0 0', textTransform: 'uppercase', letterSpacing: '0.12em', fontSize: '12px', color: 'var(--vp-text-soft)' }}>
-            Afetações
+            AfetaÃ§Ãµes
           </p>
           <h1 style={{ margin: '10px 0 12px', fontSize: '46px', lineHeight: 1.05 }}>
             Pessoas afetas por obra
@@ -425,7 +425,7 @@ export default function WorkAssignmentsPage() {
           <section style={topBarStyle}>
           <div className="vp-responsive-stat-grid" style={statGridStyle}>
             <article style={statCardStyle}>
-              <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>Afetações</div>
+              <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>AfetaÃ§Ãµes</div>
               <div style={{ marginTop: '8px', fontSize: '32px', fontWeight: 700 }}>{totalAssignments}</div>
             </article>
             <article style={statCardStyle}>
@@ -433,13 +433,13 @@ export default function WorkAssignmentsPage() {
               <div style={{ marginTop: '8px', fontSize: '32px', fontWeight: 700 }}>{assignedPeople}</div>
             </article>
             <article style={statCardStyle}>
-              <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>Obras com afetações</div>
+              <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>Obras com afetaÃ§Ãµes</div>
               <div style={{ marginTop: '8px', fontSize: '32px', fontWeight: 700 }}>{worksInUse}</div>
             </article>
           </div>
 
           <button type="button" onClick={startCreate} style={primaryButtonStyle}>
-            Nova afetação
+            Nova afetaÃ§Ã£o
           </button>
         </section>
 
@@ -447,14 +447,14 @@ export default function WorkAssignmentsPage() {
           <section style={panelStyle}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center' }}>
               <div>
-                <h2 style={{ margin: 0 }}>{form.id ? 'Editar afetação' : 'Nova afetação'}</h2>
+                <h2 style={{ margin: 0 }}>{form.id ? 'Editar afetaÃ§Ã£o' : 'Nova afetaÃ§Ã£o'}</h2>
                 {form.id ? (
                   <p style={{ margin: '8px 0 0', color: 'var(--vp-text-muted)', fontSize: '13px', fontWeight: 700 }}>
                     Assignment ID: {form.id}
                   </p>
                 ) : null}
                 <p style={{ margin: '8px 0 0', color: 'var(--vp-text-muted)' }}>
-                  Ao mudar a obra numa afetação existente, a pessoa passa a ficar associada a outra obra.
+                  Ao mudar a obra numa afetaÃ§Ã£o existente, a pessoa passa a ficar associada a outra obra.
                 </p>
               </div>
               <button type="button" onClick={cancelForm} style={secondaryButtonStyle}>
@@ -498,7 +498,7 @@ export default function WorkAssignmentsPage() {
                   </label>
 
                   <label style={labelStyle}>
-                    Duração
+                    DuraÃ§Ã£o
                     <select name="hours" value={form.hours} onChange={handleChange} style={inputStyle}>
                       {DURATION_OPTIONS.map(option => (
                         <option key={option} value={option}>
@@ -510,7 +510,7 @@ export default function WorkAssignmentsPage() {
                   </label>
 
                   <label style={labelStyle}>
-                    Preço hora nesta obra
+                    PreÃ§o hora nesta obra
                     <input
                       type="number"
                       name="hourlyCost"
@@ -533,7 +533,7 @@ export default function WorkAssignmentsPage() {
                           }}
                           disabled={!selectedPerson || !selectedWork}
                         >
-                          Alterar preço
+                          Alterar preÃ§o
                         </button>
                       )}
                       {customRate && (
@@ -548,7 +548,7 @@ export default function WorkAssignmentsPage() {
                             }))
                           }}
                         >
-                          Repor preço por defeito
+                          Repor preÃ§o por defeito
                         </button>
                       )}
                     </div>
@@ -568,7 +568,7 @@ export default function WorkAssignmentsPage() {
                     {selectedPerson ? `Pessoa: ${selectedPerson.name}` : 'Escolhe uma pessoa'}
                     {' | '}
                     {selectedWork && selectedPerson
-                      ? `Preço hora aplicado: ${form.hourlyCost || 0}/h`
+                      ? `PreÃ§o hora aplicado: ${form.hourlyCost || 0}/h`
                       : 'Seleciona obra e pessoa'}
                   </div>
 
@@ -577,11 +577,11 @@ export default function WorkAssignmentsPage() {
 
                   <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                     <button type="submit" disabled={submitting} style={primaryButtonStyle}>
-                      {submitting ? 'A gravar...' : form.id ? 'Guardar alterações' : 'Gravar afetação'}
+                      {submitting ? 'A gravar...' : form.id ? 'Guardar alteraÃ§Ãµes' : 'Gravar afetaÃ§Ã£o'}
                     </button>
                     {form.id && (
-                      <button type="button" onClick={() => handleDelete(form.id)} disabled={submitting} style={iconDangerButtonStyle} title="Eliminar afetação" aria-label="Eliminar afetação">
-                        🗑
+                      <button type="button" onClick={() => handleDelete(form.id)} disabled={submitting} style={iconDangerButtonStyle} title="Eliminar afetaÃ§Ã£o" aria-label="Eliminar afetaÃ§Ã£o">
+                        ðŸ—‘
                       </button>
                     )}
                   </div>
@@ -593,7 +593,7 @@ export default function WorkAssignmentsPage() {
 
         <section style={panelStyle}>
           <h2 style={{ marginTop: 0 }}>Obras ativas com pessoas afetas</h2>
-          {loading && <p>A carregar obras, pessoas e afetações...</p>}
+          {loading && <p>A carregar obras, pessoas e afetaÃ§Ãµes...</p>}
           {!loading && worksWithAssignments.length === 0 && <p>Sem obras registadas.</p>}
           {!loading && worksWithAssignments.length > 0 && (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
@@ -623,7 +623,7 @@ export default function WorkAssignmentsPage() {
                   <div>
                     <strong>#{work.number} - {work.name}</strong>
                     <p style={{ margin: '6px 0 0', color: 'var(--vp-text-muted)' }}>
-                      Preço hora por defeito: {work.defaultHourlyCost || 0}/h
+                      PreÃ§o hora por defeito: {work.defaultHourlyCost || 0}/h
                     </p>
                   </div>
 
@@ -667,7 +667,7 @@ export default function WorkAssignmentsPage() {
                           </div>
 
                           <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                            <button type="button" onClick={() => startEdit(assignment)} style={iconButtonStyle} title="Editar afetação" aria-label="Editar afetação">
+                            <button type="button" onClick={() => startEdit(assignment)} style={iconButtonStyle} title="Editar afetaÃ§Ã£o" aria-label="Editar afetaÃ§Ã£o">
                               <EditPencilIcon />
                             </button>
                           </div>
@@ -685,3 +685,4 @@ export default function WorkAssignmentsPage() {
     </ViewportPage>
   )
 }
+

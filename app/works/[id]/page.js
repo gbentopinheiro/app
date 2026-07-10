@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
@@ -15,7 +15,7 @@ const pageStyle = {
   padding: '40px 24px 60px',
   background: 'var(--vp-page-background)',
   color: 'var(--vp-text)',
-  fontFamily: '"Avenir Next", "Segoe UI", "-apple-system", "BlinkMacSystemFont", sans-serif',
+  fontFamily: 'var(--btx-font-family)',
 }
 
 const shellStyle = {
@@ -142,7 +142,7 @@ const workStatusLabels = {
   planned: 'Planeada',
   in_progress: 'Em curso',
   paused: 'Em pausa',
-  completed: 'Concluída',
+  completed: 'ConcluÃ­da',
 }
 
 function formatDateLabel(dateString) {
@@ -301,7 +301,7 @@ function buildMonthlyGrid(month) {
     .filter(person => person.totalHours > 0 || person.totalValue > 0)
 
   return {
-    headers: ['Trabalhador', ...dayColumns, 'Horas', 'Preço', 'Total'],
+    headers: ['Trabalhador', ...dayColumns, 'Horas', 'PreÃ§o', 'Total'],
     rows: peopleRows,
   }
 }
@@ -357,7 +357,7 @@ function formatGridNumber(value) {
 
 function formatGridPrice(value) {
   if (value === null || value === undefined || Number.isNaN(Number(value))) {
-    return 'Vários'
+    return 'VÃ¡rios'
   }
 
   return formatGridNumber(Number(value))
@@ -445,7 +445,7 @@ function buildExcelDocument(months, work, workId) {
 
         return `<Row>${cells}</Row>`
       }).join('')
-      : `<Row><Cell ss:StyleID="emptyCell"><Data ss:Type="String">Sem registos para este mês.</Data></Cell></Row>`
+      : `<Row><Cell ss:StyleID="emptyCell"><Data ss:Type="String">Sem registos para este mÃªs.</Data></Cell></Row>`
 
     const summaryRows = `
       <Row ss:Height="8"/>
@@ -456,7 +456,7 @@ function buildExcelDocument(months, work, workId) {
       </Row>
       <Row>
         <Cell ss:MergeAcross="25"/>
-        <Cell ss:MergeAcross="3" ss:StyleID="summaryLabel"><Data ss:Type="String">Preço hora</Data></Cell>
+        <Cell ss:MergeAcross="3" ss:StyleID="summaryLabel"><Data ss:Type="String">PreÃ§o hora</Data></Cell>
         <Cell ss:StyleID="summaryValue"><Data ss:Type="Number">${summary.hourlyPrice}</Data></Cell>
       </Row>
       <Row>
@@ -609,7 +609,7 @@ function buildPrintDocument(months, work) {
       ? grid.rows
         .map(row => `<tr>${row.map(cell => `<td>${escapeHtml(cell)}</td>`).join('')}</tr>`)
         .join('')
-      : `<tr><td colspan="${grid.headers.length}">Sem registos para este mês.</td></tr>`
+      : `<tr><td colspan="${grid.headers.length}">Sem registos para este mÃªs.</td></tr>`
 
     return `
       <section class="sheet">
@@ -632,7 +632,7 @@ function buildPrintDocument(months, work) {
             <strong>${escapeHtml(summary.totalHours)}</strong>
           </div>
           <div class="summary-row">
-            <span>Preço hora</span>
+            <span>PreÃ§o hora</span>
             <strong>${escapeHtml(summary.hourlyPrice)}</strong>
           </div>
           <div class="summary-row total">
@@ -652,7 +652,7 @@ function buildPrintDocument(months, work) {
         <title>${escapeHtml(work?.name || 'Obra')}</title>
         <style>
           body {
-            font-family: Arial, sans-serif;
+            font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
             margin: 0;
             color: #17211c;
             background: #fff;
@@ -767,7 +767,7 @@ function buildWorkExportExcelDocument(months, work, workId) {
 
         return `<Row>${cells}</Row>`
       }).join('')
-      : `<Row><Cell ss:StyleID="emptyCell"><Data ss:Type="String">Sem registos para este mês.</Data></Cell></Row>`
+      : `<Row><Cell ss:StyleID="emptyCell"><Data ss:Type="String">Sem registos para este mÃªs.</Data></Cell></Row>`
 
     const summaryRows = `
       <Row ss:Height="8"/>
@@ -935,17 +935,17 @@ function buildWorkExportExcelWorkbook(months, work, workId) {
           ...row.values.map(value => formatGridNumber(value)),
           formatGridNumber(row.totalHours),
         ])
-      : [['Sem registos para este mês.']]
+      : [['Sem registos para este mÃªs.']]
     const calculationRows = summary.roleRows.length > 0
       ? summary.roleRows.map(roleRow => [
           roleRow.calculationDisplay,
           formatGridNumber(roleRow.totalValue),
         ])
-      : [['Sem horas aprovadas para calcular neste mês.', '']]
+      : [['Sem horas aprovadas para calcular neste mÃªs.', '']]
 
     const normalizedDataRows = grid.rows.length > 0
       ? dataRows
-      : [['Sem registos para este mês.', ...emptyRow.slice(1)]]
+      : [['Sem registos para este mÃªs.', ...emptyRow.slice(1)]]
     const calculationSheetRows = summary.roleRows.length > 0
       ? summary.roleRows.map(roleRow => {
           const row = [...emptyRow]
@@ -955,7 +955,7 @@ function buildWorkExportExcelWorkbook(months, work, workId) {
         })
       : (() => {
           const row = [...emptyRow]
-          row[calculationStartColumn] = 'Sem horas aprovadas para calcular neste mês.'
+          row[calculationStartColumn] = 'Sem horas aprovadas para calcular neste mÃªs.'
           return [row]
         })()
     const totalRow = [...emptyRow]
@@ -1104,7 +1104,7 @@ function buildWorkExportPrintDocument(months, work) {
           return `<tr>${rowCells.map(cell => `<td>${escapeHtml(cell)}</td>`).join('')}</tr>`
         })
         .join('')
-      : `<tr><td colspan="${printHeaders.length}">Sem registos para este mês.</td></tr>`
+      : `<tr><td colspan="${printHeaders.length}">Sem registos para este mÃªs.</td></tr>`
 
     const roleCalculationRowsHtml = summary.roleRows.length > 0
       ? summary.roleRows
@@ -1117,7 +1117,7 @@ function buildWorkExportPrintDocument(months, work) {
           `,
         )
         .join('')
-      : '<p class="role-calc-empty">Sem horas aprovadas para calcular neste mês.</p>'
+      : '<p class="role-calc-empty">Sem horas aprovadas para calcular neste mÃªs.</p>'
 
     const brandingHtml = branding.logoUrl
       ? `
@@ -1161,7 +1161,7 @@ function buildWorkExportPrintDocument(months, work) {
         <title>${escapeHtml(workDisplayName)}</title>
         <style>
           body {
-            font-family: Arial, sans-serif;
+            font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
             margin: 0;
             color: #17211c;
             background: #fff;
@@ -1308,7 +1308,7 @@ export default function WorkDetailPage() {
       try {
       const [workData, assignmentsData] = await Promise.all([
         getWork(workId, 'Erro ao carregar obra'),
-        listWorkAssignments({ workId }, 'Erro ao carregar afetações'),
+        listWorkAssignments({ workId }, 'Erro ao carregar afetaÃ§Ãµes'),
       ])
 
       setWork(workData)
@@ -1508,7 +1508,7 @@ export default function WorkDetailPage() {
             href={work?.clientId ? `/works/client/${work.clientId}` : '/works'}
             style={{ color: 'var(--vp-accent)', textDecoration: 'none', fontWeight: 700 }}
           >
-            {work?.clientId ? 'Voltar ao cliente' : 'Voltar à gestão de obra'}
+            {work?.clientId ? 'Voltar ao cliente' : 'Voltar Ã  gestÃ£o de obra'}
           </Link>
 
           {loading && <p style={{ marginTop: '18px' }}>A carregar obra...</p>}
@@ -1533,7 +1533,7 @@ export default function WorkDetailPage() {
                 <div style={{ marginTop: '8px', fontSize: '28px', fontWeight: 700 }}>{getWorkStatusLabel(work.status)}</div>
               </article>
               <article style={statCardStyle}>
-                <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>Preço hora por defeito</div>
+                <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>PreÃ§o hora por defeito</div>
                 <div style={{ marginTop: '8px', fontSize: '28px', fontWeight: 700 }}>{work.defaultHourlyCost || 0}/h</div>
               </article>
               <article style={statCardStyle}>
@@ -1547,7 +1547,7 @@ export default function WorkDetailPage() {
             </section>
 
             <section style={{ ...panelStyle, position: 'relative' }}>
-              <h2 style={{ marginTop: 0 }}>Informação da obra</h2>
+              <h2 style={{ marginTop: 0 }}>InformaÃ§Ã£o da obra</h2>
               <Link
                 href={`/works?edit=${work.id}`}
                 style={{ ...editPencilButtonStyle, position: 'absolute', top: '22px', right: '22px' }}
@@ -1567,10 +1567,10 @@ export default function WorkDetailPage() {
                     'Sem cliente'
                   )}
                 </p>
-                <p style={{ margin: 0 }}><strong>Localização:</strong> {work.location || 'Sem localização'}</p>
-                <p style={{ margin: 0 }}><strong>Data de começo:</strong> {work.startDate || 'Sem data'}</p>
-                <p style={{ margin: 0 }}><strong>Data de finalização:</strong> {work.endDate || 'Em aberto'}</p>
-                <p style={{ margin: 0 }}><strong>Orçamento:</strong> {work.budget || 0}</p>
+                <p style={{ margin: 0 }}><strong>LocalizaÃ§Ã£o:</strong> {work.location || 'Sem localizaÃ§Ã£o'}</p>
+                <p style={{ margin: 0 }}><strong>Data de comeÃ§o:</strong> {work.startDate || 'Sem data'}</p>
+                <p style={{ margin: 0 }}><strong>Data de finalizaÃ§Ã£o:</strong> {work.endDate || 'Em aberto'}</p>
+                <p style={{ margin: 0 }}><strong>OrÃ§amento:</strong> {work.budget || 0}</p>
                 <p style={{ margin: 0 }}><strong>Notas:</strong> {work.notes || 'Sem notas'}</p>
               </div>
             </section>
@@ -1587,21 +1587,21 @@ export default function WorkDetailPage() {
                     textDecoration: 'none',
                   }}
                 >
-                  Preços especiais por pessoa
+                  PreÃ§os especiais por pessoa
                 </Link>
               </section>
             )}
 
             <section style={panelStyle}>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '12px' }}>
-                <h2 style={{ margin: 0 }}>Afetações desta obra por mês</h2>
+                <h2 style={{ margin: 0 }}>AfetaÃ§Ãµes desta obra por mÃªs</h2>
                 {assignments.length > 0 && (
                   <button type="button" onClick={openExportModal} style={primaryButtonStyle}>
                     Exportar
                   </button>
                 )}
               </div>
-              {assignments.length === 0 && <p>Sem afetações registadas para esta obra.</p>}
+              {assignments.length === 0 && <p>Sem afetaÃ§Ãµes registadas para esta obra.</p>}
               {assignments.length > 0 && (
                 <div style={{ display: 'grid', gap: '12px' }}>
 
@@ -1709,10 +1709,10 @@ export default function WorkDetailPage() {
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
               <div>
                 <p style={{ margin: 0, textTransform: 'uppercase', letterSpacing: '0.12em', fontSize: '12px', color: 'var(--vp-text-soft)' }}>
-                  Exportação
+                  ExportaÃ§Ã£o
                 </p>
                 <h2 style={{ margin: '10px 0 0', fontSize: '34px', lineHeight: 1.1 }}>
-                  Escolher mês
+                  Escolher mÃªs
                 </h2>
               </div>
               <button type="button" onClick={closeExportModal} style={secondaryButtonStyle} disabled={Boolean(exporting)}>
@@ -1722,7 +1722,7 @@ export default function WorkDetailPage() {
 
             <div style={{ display: 'grid', gap: '18px', marginTop: '22px' }}>
               <label style={{ display: 'block', fontSize: '14px', fontWeight: 700 }}>
-                Mês
+                MÃªs
                 <select
                   value={selectedExportMonth}
                   onChange={(event) => setSelectedExportMonth(event.target.value)}
@@ -1752,3 +1752,4 @@ export default function WorkDetailPage() {
     </ViewportPage>
   )
 }
+

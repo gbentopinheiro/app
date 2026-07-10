@@ -166,13 +166,17 @@ Estados e cores:
 
 A tipografia da Bentix deve privilegiar leitura rápida, autoridade e estabilidade visual.
 
-Pilha tipográfica atual:
+A Bentix Design System referencia a especificação tipográfica oficial em [Bentix Typography Guide](./BENTIX_TYPOGRAPHY_GUIDE.md). O [Bentix Visual Identity](./BENTIX_VISUAL_IDENTITY.md) descreve a identidade da marca. Este documento define como a tipografia é aplicada na interface.
 
-- `"Avenir Next"`
-- `"Segoe UI"`
-- `-apple-system`
-- `BlinkMacSystemFont`
-- `sans-serif`
+Fonte oficial implementada:
+
+- `Inter`
+
+Implementação tipográfica oficial:
+
+- `next/font/google`
+- tokens tipográficos partilhados
+- classes tipográficas partilhadas
 
 Princípios tipográficos:
 
@@ -197,6 +201,15 @@ Regras:
 - evitar textos longos dentro de cartões de resumo
 - evitar excesso de estilos tipográficos diferentes na mesma página
 - garantir que os valores principais continuam legíveis em ecrãs móveis
+
+### Official Decision Log
+
+| Item | Decision |
+| --- | --- |
+| Status | IMPLEMENTED |
+| Official Font | `Inter` |
+| Reason | Legibilidade enterprise, consistência cross-platform, conforto em sessões longas, sustentabilidade open source, integração nativa com Next.js |
+| Implementation | `next/font/google` mais tokens tipográficos partilhados e classes tipográficas partilhadas |
 
 ## 7. Espaçamentos
 
