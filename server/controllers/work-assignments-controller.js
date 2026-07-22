@@ -2,6 +2,7 @@ import { HttpError } from '../errors/http-error.js'
 import { jsonResponse } from '../responses/route-response.js'
 import { requireSessionService } from '../services/session-service.js'
 import {
+  approveWorkAssignmentsBatchService,
   approveWorkAssignmentService,
   createWorkAssignmentService,
   deleteWorkAssignmentService,
@@ -53,4 +54,9 @@ export async function submitWorkAssignmentController(id) {
 export async function approveWorkAssignmentController(request, id) {
   const session = await requireSessionService()
   return jsonResponse(await approveWorkAssignmentService(session, id, await readRequestBody(request)))
+}
+
+export async function approveWorkAssignmentsBatchController(request) {
+  const session = await requireSessionService()
+  return jsonResponse(await approveWorkAssignmentsBatchService(session, await readRequestBody(request)))
 }

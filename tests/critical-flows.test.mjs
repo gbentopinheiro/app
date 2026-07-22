@@ -199,6 +199,7 @@ const { getTomorrowPlanningDateValue } = await import('../lib/planning-date.js')
 const { buildLoginRedirectPath, getSafeRedirectPath } = await import('../lib/safe-redirect.js')
 const { buildOperationalWorkStatuses } = await import('../lib/work-operation-status.js')
 const { getNextWorkNumber } = await import('../lib/work-numbering.js')
+const { buildDailyHoursWarningMap } = await import('../lib/daily-hours-approval.js')
 const {
   getWorkExtraAccessSelectionsByPersonData,
   replaceWorkExtraAccessSelectionsData,
@@ -214,9 +215,12 @@ const {
 } = await import('../lib/work-assignments.js')
 const { getAllWorkPlans, getWorkPlanByDate } = await import('../lib/work-plans.js')
 const {
+  approveWorkAssignmentsBatchService,
   approveWorkAssignmentService,
+  createWorkAssignmentService,
   getWorkAssignmentsListService,
   submitWorkAssignmentService,
+  updateWorkAssignmentService,
 } = await import('../server/services/work-assignments-service.js')
 const {
   createPlanningDraftAssignmentService,
@@ -1245,6 +1249,133 @@ test('aprovar horas guarda approvedHours e respeita a regra admin-only', () => {
   assert.equal(approvedAssignment.adminApprovedAt, '2030-01-17T19:00:00.000Z')
 })
 
+test('aprovacao em lote agrega obras diferentes, aprova pendentes e ignora as ja aprovadas', async () => {
+  const secondWork = await createWorkService(ADMIN_SESSION, {
+    name: 'Obra Batch',
+    clientId: 1,
+    number: 102,
+    location: 'Porto',
+    status: 'planned',
+    defaultHourlyCost: 12,
+  })
+  const firstAssignment = await createWorkAssignmentService(ADMIN_SESSION, {
+    date: '2030-01-18',
+    workId: 1,
+    personId: 3,
+    hours: 8,
+  })
+  const secondAssignment = await createWorkAssignmentService(ADMIN_SESSION, {
+    date: '2030-01-18',
+    workId: secondWork.id,
+    personId: 4,
+    hours: 9,
+  })
+
+  await approveWorkAssignmentService(ADMIN_SESSION, secondAssignment.id, {
+    approvedHours: 9,
+  })
+
+  const result = await approveWorkAssignmentsBatchService(ADMIN_SESSION, {
+    items: [
+      { assignmentId: firstAssignment.id, approvedHours: 8 },
+      { assignmentId: secondAssignment.id, approvedHours: 9 },
+    ],
+  })
+  const refreshedAssignments = getAllWorkAssignments({ date: '2030-01-18' })
+  const approvedFirstAssignment = refreshedAssignments.find(
+    assignment => Number(assignment.id) === Number(firstAssignment.id),
+  )
+
+  assert.equal(result.approvedCount, 1)
+  assert.equal(result.skippedCount, 1)
+  assert.equal(result.failedCount, 0)
+  assert.equal(approvedFirstAssignment?.approvedHours, 8)
+})
+
+test('aprovacao em lote respeita permissoes de admin-only', async () => {
+  const assignment = createWorkAssignment({
+    date: '2030-01-19',
+    workId: 1,
+    personId: 3,
+    hours: 8,
+  })
+
+  await assert.rejects(
+    approveWorkAssignmentsBatchService(CHEF_SESSION, {
+      items: [{ assignmentId: assignment.id, approvedHours: 8 }],
+    }),
+    /Apenas administradores podem aprovar horas/,
+  )
+})
+
+test('warning diario agrega horas registadas por pessoa em varias obras e respeita sabado', async () => {
+  const secondWork = await createWorkService(ADMIN_SESSION, {
+    name: 'Obra Warning',
+    clientId: 1,
+    number: 102,
+    location: 'Braga',
+    status: 'planned',
+    defaultHourlyCost: 12,
+  })
+  const saturdayDate = Array.from({ length: 31 }, (_, index) => {
+    const day = String(index + 1).padStart(2, '0')
+    return `2030-06-${day}`
+  }).find(date => new Date(`${date}T00:00:00`).getDay() === 6)
+  const weekdayDate = '2030-06-03'
+  const weekdayWarnings = buildDailyHoursWarningMap(
+    [
+      { personId: 3, workId: 1, hours: 5 },
+      { personId: 3, workId: secondWork.id, hours: 3 },
+    ],
+    weekdayDate,
+  )
+  const saturdayWarnings = buildDailyHoursWarningMap(
+    [
+      { personId: 3, workId: 1, hours: 7 },
+    ],
+    saturdayDate,
+  )
+
+  assert.ok(saturdayDate)
+  assert.equal(weekdayWarnings.get('3')?.expectedHours, 10)
+  assert.equal(weekdayWarnings.get('3')?.recordedHours, 8)
+  assert.equal(weekdayWarnings.get('3')?.message, 'Faltam 2 h')
+  assert.equal(saturdayWarnings.size, 0)
+})
+
+test('criacao de horas pelo administrador regista criador e ultimo modificador', async () => {
+  const assignment = await createWorkAssignmentService(ADMIN_SESSION, {
+    date: '2030-01-20',
+    workId: 1,
+    personId: 3,
+    hours: 8,
+  })
+
+  assert.equal(assignment.hoursCreatedByName, 'Administrador Teste')
+  assert.equal(assignment.hoursUpdatedByName, 'Administrador Teste')
+  assert.ok(assignment.hoursCreatedAt)
+  assert.ok(assignment.hoursUpdatedAt)
+})
+
+test('submissao do chefe preserva a origem das horas e separa aprovacao do administrador', async () => {
+  const assignment = createWorkAssignment({
+    date: '2030-01-21',
+    workId: 1,
+    personId: 3,
+    hours: 6,
+  })
+  const submittedAssignment = await submitWorkAssignmentService(CHEF_SESSION, assignment.id)
+  const approvedAssignment = await approveWorkAssignmentService(ADMIN_SESSION, assignment.id, {
+    approvedHours: 6,
+  })
+
+  assert.equal(submittedAssignment.hoursCreatedByName, 'Chefe Teste')
+  assert.equal(submittedAssignment.hoursUpdatedByName, 'Chefe Teste')
+  assert.equal(approvedAssignment.hoursCreatedByName, 'Chefe Teste')
+  assert.equal(approvedAssignment.hoursUpdatedByName, 'Chefe Teste')
+  assert.equal(approvedAssignment.adminApprovedBy, 'Administrador Teste')
+})
+
 test('remover obra limpa afetacoes antigas e permite remover o cliente a seguir', async () => {
   createWorkAssignment({
     date: '2030-01-18',
@@ -1309,6 +1440,24 @@ test('Registo diário do admin mostra apenas obras com afetações na data selec
   assert.match(dailyHoursPageSource, /visibleWorks\.map\(work => \(/)
   assert.match(dailyHoursPageSource, /Não existem obras atribuídas para a data selecionada\./)
 })
+test('Registo diÃ¡rio do admin usa batch approval, confirmaÃ§Ã£o global e origem das horas', () => {
+  assert.match(dailyHoursPageSource, /approveWorkAssignmentsBatch\(/)
+  assert.match(dailyHoursPageSource, /Aprovar todas as obras/)
+  assert.match(dailyHoursPageSource, /Aprovar todas as horas\?/)
+  assert.match(
+    dailyHoursPageSource,
+    /Serão aprovadas todas as horas elegíveis das obras apresentadas para o dia selecionado\./,
+  )
+  assert.match(
+    dailyHoursPageSource,
+    /Existem diferenças relativamente às horas esperadas\. Confirme que foram verificadas\./,
+  )
+  assert.match(dailyHoursPageSource, /Submetido pelo chefe/)
+  assert.match(dailyHoursPageSource, /Introduzido pelo administrador/)
+  assert.match(dailyHoursPageSource, /Esperado:/)
+  assert.doesNotMatch(dailyHoursPageSource, /const approvePromises = selectedWorkEntries\.map/)
+})
+
 test('People page aplica a split grid adaptativa e headers internos responsivos', () => {
   assert.match(peoplePageSource, /className=\{canManagePeople \? 'btx-people-main-grid' : ''\}/)
   assert.match(peoplePageSource, /className="btx-people-detail-header"/)

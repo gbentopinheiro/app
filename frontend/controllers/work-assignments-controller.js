@@ -124,3 +124,18 @@ export async function approveWorkAssignment(
     fallbackMessage,
   )
 }
+
+export async function approveWorkAssignmentsBatch(
+  payload,
+  fallbackMessage = 'Erro ao aprovar horas em lote',
+) {
+  return requestWorkAssignmentsJson(
+    '/api/work-assignments/approve-batch',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    },
+    fallbackMessage,
+  )
+}

@@ -3,7 +3,9 @@
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import EditPencilIcon, { editPencilButtonStyle } from '../components/EditPencilIcon'
+import PlanningDatePopover from '../components/PlanningDatePopover'
 import {
+  BentixButton,
   BentixContent,
   BentixOverflowX,
   BentixPage,
@@ -17,6 +19,7 @@ import {
 } from '../../frontend/controllers/daily-work-notes-controller.js'
 import {
   approveWorkAssignment,
+  approveWorkAssignmentsBatch,
   listWorkAssignments,
   saveWorkAssignment,
   submitWorkAssignment,
@@ -31,6 +34,11 @@ import {
   submitChefEntries,
   validateChefEntryHours,
 } from '../../lib/chef-daily-hours-shared.js'
+import {
+  buildDailyHoursWarningMap,
+  formatHoursValue,
+  getDailyHoursWarningForPerson,
+} from '../../lib/daily-hours-approval.js'
 import { isChefRole } from '../../lib/roles.js'
 import { isAssignmentApproved } from '../../lib/work-assignment-approval.js'
 import LogoutButton from '../components/LogoutButton'
@@ -67,6 +75,40 @@ const topBarStyle = {
   alignItems: 'center',
   gap: '16px',
   flexWrap: 'wrap',
+}
+
+const heroHeadingStyle = {
+  display: 'grid',
+  gap: '12px',
+  minWidth: 0,
+}
+
+const heroActionsStyle = {
+  display: 'flex',
+  flexWrap: 'wrap',
+  gap: '12px',
+  width: '100%',
+  alignItems: 'flex-start',
+  justifyContent: 'flex-start',
+}
+
+const heroDateDisplayStyle = {
+  width: '100%',
+  maxWidth: '760px',
+  padding: '12px 18px',
+  borderRadius: '28px',
+  color: '#ffffff',
+  display: 'grid',
+  justifyItems: 'center',
+}
+
+const heroDateTextStyle = {
+  margin: 0,
+  fontSize: 'clamp(24px, 4vw, 42px)',
+  lineHeight: 1.08,
+  fontWeight: 900,
+  letterSpacing: '-0.04em',
+  textAlign: 'center',
 }
 
 const contentFlowStyle = {
@@ -337,35 +379,101 @@ const adminEntriesTableStyle = {
   minWidth: '720px',
 }
 
+const modalBackdropStyle = {
+  position: 'fixed',
+  inset: 0,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  padding: '20px',
+  background: 'rgba(8, 22, 45, 0.42)',
+  zIndex: 60,
+}
+
+const modalCardStyle = {
+  width: 'min(520px, 100%)',
+  display: 'grid',
+  gap: '16px',
+  padding: '24px',
+  borderRadius: '24px',
+  background: 'var(--vp-surface-soft-strong, #ffffff)',
+  border: '1px solid var(--vp-border)',
+  boxShadow: 'var(--vp-shadow-modal)',
+}
+
+const modalActionsStyle = {
+  display: 'flex',
+  justifyContent: 'flex-end',
+  gap: '12px',
+  flexWrap: 'wrap',
+}
+
+const originBadgeStyle = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: '6px',
+  padding: '5px 10px',
+  borderRadius: '999px',
+  background: 'rgba(15, 23, 42, 0.06)',
+  color: 'var(--vp-text-muted)',
+  fontSize: '12px',
+  fontWeight: 700,
+}
+
+const warningBadgeStyle = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: '6px',
+  padding: '5px 10px',
+  borderRadius: '999px',
+  background: 'rgba(245, 158, 11, 0.12)',
+  border: '1px solid rgba(245, 158, 11, 0.28)',
+  color: '#8a5a00',
+  fontSize: '12px',
+  fontWeight: 700,
+}
+
+const warningNoticeStyle = {
+  borderRadius: '16px',
+  padding: '14px 16px',
+  background: 'rgba(245, 158, 11, 0.12)',
+  border: '1px solid rgba(245, 158, 11, 0.22)',
+  color: '#8a5a00',
+  fontSize: '14px',
+  fontWeight: 700,
+}
+
 const REMINDER_SETTINGS_STORAGE_KEY = 'benpin:daily-hours-reminder-settings'
 const DEFAULT_REMINDER_SETTINGS = {
   weekday: '17:25',
   saturday: '15:25',
 }
 
-function openNativeDatePicker(event) {
-  try {
-    if (typeof event?.currentTarget?.showPicker === 'function') {
-      event.currentTarget.showPicker()
-    }
-  } catch (error) {
-    return
-  }
-}
-
 function getTodayDate() {
   return new Intl.DateTimeFormat('sv-SE').format(new Date())
 }
 
-function formatDateLabel(dateString) {
+function capitalizeLabel(value) {
+  if (!value) return ''
+  return value.charAt(0).toUpperCase() + value.slice(1)
+}
+
+function formatHeroDateLabel(dateString) {
   const date = new Date(`${dateString}T00:00:00`)
   if (Number.isNaN(date.getTime())) return dateString
 
-  return new Intl.DateTimeFormat('pt-PT', {
-    day: '2-digit',
-    month: '2-digit',
+  const weekday = capitalizeLabel(
+    new Intl.DateTimeFormat('pt-PT', {
+      weekday: 'long',
+    }).format(date),
+  )
+  const calendarDate = new Intl.DateTimeFormat('pt-PT', {
+    day: 'numeric',
+    month: 'long',
     year: 'numeric',
   }).format(date)
+
+  return `${weekday} · ${calendarDate}`
 }
 
 function normalizeReminderTime(value, fallback) {
@@ -434,6 +542,8 @@ export default function DailyHoursPage() {
   const [editingApprovedHours, setEditingApprovedHours] = useState(null)
   const [editedApprovedHours, setEditedApprovedHours] = useState({})
   const [approvingAll, setApprovingAll] = useState(false)
+  const [approvingAllWorks, setApprovingAllWorks] = useState(false)
+  const [approvalDialogOpen, setApprovalDialogOpen] = useState(false)
   const [notificationPermission, setNotificationPermission] = useState('default')
   const [reminderSettings, setReminderSettings] = useState(DEFAULT_REMINDER_SETTINGS)
   const [workNotes, setWorkNotes] = useState({})
@@ -506,6 +616,11 @@ export default function DailyHoursPage() {
     [dailyEntries, selectedWorkId],
   )
 
+  const adminVisibleEntries = useMemo(
+    () => (isChef ? [] : sortEntriesByPersonName(dailyEntries)),
+    [dailyEntries, isChef],
+  )
+
   const chefWorksWithEntries = useMemo(() => {
     if (!isChef) return []
 
@@ -520,6 +635,18 @@ export default function DailyHoursPage() {
 
     return chefWorksWithEntries.reduce((sum, group) => sum + group.entries.length, 0)
   }, [chefWorksWithEntries, isChef, selectedWorkEntries.length])
+
+  const dailyWarningsByPersonId = useMemo(
+    () => buildDailyHoursWarningMap(dailyEntries, selectedDate),
+    [dailyEntries, selectedDate],
+  )
+
+  const hasDailyHoursWarnings = dailyWarningsByPersonId.size > 0
+
+  const allVisibleAdminEntriesApproved = useMemo(
+    () => adminVisibleEntries.length > 0 && adminVisibleEntries.every(entry => isAssignmentApproved(entry)),
+    [adminVisibleEntries],
+  )
 
   useEffect(() => {
     if (isChef) {
@@ -632,6 +759,54 @@ export default function DailyHoursPage() {
       Math.floor(selectedWorkEntries.reduce((sum, entry) => sum + (Number(entry.hours) || 0), 0)),
     )
   }, [selectedWorkEntries])
+  const formattedSelectedDate = useMemo(() => formatHeroDateLabel(selectedDate), [selectedDate])
+  const approveAllWorksDisabled =
+    approvingAllWorks || adminVisibleEntries.length === 0 || allVisibleAdminEntriesApproved
+
+  function getEntryOriginLabel(entry) {
+    if (entry?.submittedAt || entry?.submitted) {
+      return 'Submetido pelo chefe'
+    }
+
+    if (entry?.hoursCreatedByName || entry?.hoursUpdatedByName) {
+      return 'Introduzido pelo administrador'
+    }
+
+    return 'Base do planeamento'
+  }
+
+  function formatBatchApprovalSummary(result) {
+    const parts = []
+
+    if (result?.approvedCount > 0) {
+      parts.push(`${result.approvedCount} ${result.approvedCount === 1 ? 'hora aprovada' : 'horas aprovadas'}.`)
+    }
+
+    if (result?.skippedCount > 0) {
+      parts.push(`${result.skippedCount} ${result.skippedCount === 1 ? 'já estava aprovada' : 'já estavam aprovadas'}.`)
+    }
+
+    if (result?.failedCount > 0) {
+      parts.push(`${result.failedCount} ${result.failedCount === 1 ? 'necessita de revisão' : 'necessitam de revisão'}.`)
+    }
+
+    return parts.join(' ') || 'Sem alterações.'
+  }
+
+  function buildBatchApprovalItems(entries) {
+    return entries.map(entry => {
+      const approvedHours = resolveApprovedHoursForEntry(entry)
+
+      if (Number.isNaN(approvedHours) || approvedHours < 0) {
+        throw new Error('Horas aprovadas têm de ser um número igual ou maior que 0.')
+      }
+
+      return {
+        assignmentId: entry.id,
+        approvedHours,
+      }
+    })
+  }
 
   const shouldShowReminderCard =
     isChef &&
@@ -952,32 +1127,66 @@ export default function DailyHoursPage() {
     }
   }
 
-  async function handleApproveAllHours() {
+  async function executeBatchApproval(entries, scope) {
     setError('')
     setSuccess('')
-    setApprovingAll(true)
+
+    if (scope === 'allWorks') {
+      setApprovingAllWorks(true)
+    } else {
+      setApprovingAll(true)
+    }
 
     try {
-      const approvePromises = selectedWorkEntries.map(entry => {
-        const approvedHours = resolveApprovedHoursForEntry(entry)
-
-        if (Number.isNaN(approvedHours) || approvedHours < 0) {
-          throw new Error('Horas aprovadas têm de ser um número igual ou maior que 0.')
-        }
-
-        return approveWorkAssignment(entry.id, { approvedHours }, 'Erro ao aprovar horas')
-      })
-
-      await Promise.all(approvePromises)
+      const result = await approveWorkAssignmentsBatch(
+        {
+          items: buildBatchApprovalItems(entries),
+        },
+        'Erro ao aprovar horas',
+      )
 
       await loadPageData(selectedDate)
-      setSuccess('Todas as horas foram aprovadas com sucesso.')
+      const summary = formatBatchApprovalSummary(result)
+
+      if (result.failedCount > 0 && result.approvedCount === 0 && result.skippedCount === 0) {
+        setError(summary)
+      } else {
+        setSuccess(summary)
+      }
+
       setRowErrors({})
     } catch (err) {
       setError(err.message)
     } finally {
-      setApprovingAll(false)
+      if (scope === 'allWorks') {
+        setApprovingAllWorks(false)
+      } else {
+        setApprovingAll(false)
+      }
     }
+  }
+
+  async function handleApproveAllHours() {
+    await executeBatchApproval(selectedWorkEntries, 'work')
+  }
+
+  function openApproveAllWorksDialog() {
+    setError('')
+    setSuccess('')
+    setApprovalDialogOpen(true)
+  }
+
+  function closeApproveAllWorksDialog() {
+    if (approvingAllWorks) {
+      return
+    }
+
+    setApprovalDialogOpen(false)
+  }
+
+  async function handleConfirmApproveAllWorks() {
+    setApprovalDialogOpen(false)
+    await executeBatchApproval(adminVisibleEntries, 'allWorks')
   }
 
   async function handleEnableNotifications() {
@@ -1097,20 +1306,29 @@ export default function DailyHoursPage() {
     <BentixPage style={pageStyle}>
       <BentixContent width="app" gap="lg" style={shellStyle}>
         <section style={heroStyle}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }} className="btx-daily-hours-detail-header">
-            <div>
+          <div style={topBarStyle} className="btx-daily-hours-detail-header">
+            <div style={heroHeadingStyle}>
               {!isChef ? (
-                <>
-                  <Link href="/" style={{ color: 'var(--vp-accent)', textDecoration: 'none', fontWeight: 700 }}>
-                    Voltar ao menu
-                  </Link>
-                </>
-              ) : (
-                null
-              )}
+                <Link href="/" style={{ color: 'var(--vp-accent)', textDecoration: 'none', fontWeight: 700 }}>
+                  Voltar ao menu
+                </Link>
+              ) : null}
               <h1 style={{ margin: !isChef ? '18px 0 12px' : '0 0 12px', fontSize: 'clamp(38px, 6vw, 52px)', lineHeight: 1.05 }}>
                 Registo Diário
               </h1>
+              {isChef ? (
+                <div style={heroDateDisplayStyle}>
+                  <p style={heroDateTextStyle}>{formattedSelectedDate}</p>
+                </div>
+              ) : (
+                <PlanningDatePopover
+                  value={selectedDate}
+                  displayLabel={formattedSelectedDate}
+                  onChange={setSelectedDate}
+                  dialogLabel="Selecionar data do registo diário"
+                  triggerAriaLabel={`Selecionar data do registo diário: ${formattedSelectedDate}`}
+                />
+              )}
             </div>
             {isChef ? (
               <div style={accountClusterStyle}>
@@ -1139,7 +1357,18 @@ export default function DailyHoursPage() {
                   </div>
                 </details>
               </div>
-            ) : null}
+            ) : (
+              <div style={heroActionsStyle} className="btx-daily-hours-hero-actions">
+                <BentixButton
+                  type="button"
+                  variant="primary"
+                  onClick={openApproveAllWorksDialog}
+                  disabled={approveAllWorksDisabled}
+                >
+                  {approvingAllWorks ? 'A aprovar todas as obras...' : 'Aprovar todas as obras'}
+                </BentixButton>
+              </div>
+            )}
           </div>
         </section>
 
@@ -1176,22 +1405,6 @@ export default function DailyHoursPage() {
                 )}
               </article>
               <article style={statCardStyle}>
-                <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>Data</div>
-                {isChef ? (
-                  <div style={{ marginTop: '8px', fontSize: 'clamp(20px, 4vw, 24px)', fontWeight: 700 }}>
-                    {formatDateLabel(selectedDate)}
-                  </div>
-                ) : (
-                  <input
-                    type="date"
-                    value={selectedDate}
-                    onChange={(event) => setSelectedDate(event.target.value)}
-                    onClick={openNativeDatePicker}
-                    style={{ ...inputStyle, marginTop: '8px', fontSize: '14px', width: '100%' }}
-                  />
-                )}
-              </article>
-              <article style={statCardStyle}>
                 <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>Pessoas atribuídas</div>
                 <div style={{ marginTop: '8px', fontSize: 'clamp(24px, 5vw, 32px)', fontWeight: 700 }}>
                   {visibleChefEntriesCount}
@@ -1214,9 +1427,9 @@ export default function DailyHoursPage() {
                   <span style={{ fontSize: '13px' }}>
                     Ativa as notificações do navegador para receber este aviso automaticamente as {reminderCutoffLabel}.
                   </span>
-                  <button type="button" onClick={handleEnableNotifications} style={secondaryButtonStyle}>
+                  <BentixButton type="button" variant="secondary" size="sm" onClick={handleEnableNotifications}>
                     Ativar notificações
-                  </button>
+                  </BentixButton>
                 </div>
               )}
               {notificationPermission === 'unsupported' && (
@@ -1519,23 +1732,39 @@ export default function DailyHoursPage() {
                   {!isChef && <div style={{ textAlign: 'center' }}>Aprovadas</div>}
                 </div>
 
-                {selectedWorkEntries.map(entry => (
-                  <article
-                    key={entry.id}
-                    className="btx-daily-hours-entry-grid"
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: isChef ? '1fr 120px' : adminEntryGridTemplate,
-                      gap: '12px',
-                      border: '1px solid var(--vp-border)',
-                      borderRadius: '18px',
-                      padding: '16px',
-                      background: entry.submitted ? 'var(--vp-highlight)' : 'var(--vp-surface)',
-                      alignItems: 'center',
-                    }}
-                  >
+                {selectedWorkEntries.map(entry => {
+                  const dailyWarning = getDailyHoursWarningForPerson(
+                    dailyWarningsByPersonId,
+                    entry.personId,
+                  )
+
+                  return (
+                    <article
+                      key={entry.id}
+                      className="btx-daily-hours-entry-grid"
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: isChef ? '1fr 120px' : adminEntryGridTemplate,
+                        gap: '12px',
+                        border: '1px solid var(--vp-border)',
+                        borderRadius: '18px',
+                        padding: '16px',
+                        background: entry.submitted ? 'var(--vp-highlight)' : 'var(--vp-surface)',
+                        alignItems: 'center',
+                      }}
+                    >
                   <div style={{ minWidth: 0 }}>
                     <strong>{entry.person?.name || `Pessoa ${entry.personId}`}</strong>
+                    {!isChef ? (
+                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '6px' }}>
+                        <span style={originBadgeStyle}>{getEntryOriginLabel(entry)}</span>
+                        {dailyWarning ? (
+                          <span style={warningBadgeStyle}>
+                            {`⚠ Esperado: ${formatHoursValue(dailyWarning.expectedHours)} h · Registado: ${formatHoursValue(dailyWarning.recordedHours)} h`}
+                          </span>
+                        ) : null}
+                      </div>
+                    ) : null}
                     {entry.notes && (
                       <p style={{ margin: '6px 0 0', color: 'var(--vp-text-muted)', overflowWrap: 'anywhere', fontSize: '13px' }}>
                         {entry.notes}
@@ -1702,8 +1931,9 @@ export default function DailyHoursPage() {
                       </div>
                     </>
                   )}
-                  </article>
-                ))}
+                    </article>
+                  )
+                })}
 
                 {isChef ? (
                   <>
@@ -1751,6 +1981,38 @@ export default function DailyHoursPage() {
         </BentixSection>
         </div>
       </BentixContent>
+      {approvalDialogOpen && !isChef ? (
+        <div style={modalBackdropStyle} role="presentation" onClick={closeApproveAllWorksDialog}>
+          <div style={modalCardStyle} role="dialog" aria-modal="true" aria-labelledby="approve-all-works-title" onClick={(event) => event.stopPropagation()}>
+            <div>
+              <h2 id="approve-all-works-title" style={{ margin: 0, fontSize: '24px', lineHeight: 1.15 }}>
+                Aprovar todas as horas?
+              </h2>
+              <p style={{ margin: '10px 0 0', color: 'var(--vp-text-muted)', lineHeight: 1.5 }}>
+                Serão aprovadas todas as horas elegíveis das obras apresentadas para o dia selecionado.
+              </p>
+            </div>
+            {hasDailyHoursWarnings ? (
+              <div style={warningNoticeStyle}>
+                Existem diferenças relativamente às horas esperadas. Confirme que foram verificadas.
+              </div>
+            ) : null}
+            <div style={modalActionsStyle}>
+              <BentixButton type="button" variant="secondary" onClick={closeApproveAllWorksDialog}>
+                Cancelar
+              </BentixButton>
+              <BentixButton
+                type="button"
+                variant="primary"
+                onClick={handleConfirmApproveAllWorks}
+                disabled={approveAllWorksDisabled}
+              >
+                {approvingAllWorks ? 'A aprovar...' : 'Aprovar'}
+              </BentixButton>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </BentixPage>
   )
 }

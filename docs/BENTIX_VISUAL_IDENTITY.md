@@ -82,16 +82,16 @@ Bentix must use a restrained palette. The brand should be recognizable with very
 
 | Token | Value | Role |
 | --- | --- | --- |
-| Primary | `#FF8C00` | Primary action colour |
-| Primary Hover | `#EA7B00` | Hover and pressed state for primary action |
-| Primary Light | `#FFF1DD` | Soft emphasis, highlights, and selected supporting states |
-| Text Primary | `#14243D` | Main text and structural dark UI tone |
-| Text Secondary | `#5D7391` | Secondary text, metadata, support labels |
-| Background | `#F5EFE7` | Main page background |
-| Surface | `#FFF5E8` | Cards, panels, forms, content surfaces |
-| Border | `#E7CCB0` | Soft separators and control borders |
+| Primary | `#B85E00` | Primary action colour |
+| Primary Hover | `#AF5A00` | Hover and pressed state for primary action |
+| Primary Light | `#FFF1E3` | Soft emphasis, selected support states, gentle action framing |
+| Text Primary | `#102E49` | Main text and structural dark UI tone |
+| Text Secondary | `#556C86` | Secondary text, metadata, support labels |
+| Background | `#F6F8FA` | Main page background |
+| Surface | `#FFFFFF` | Cards, panels, forms, content surfaces |
+| Border | `#DCE4EA` | Subtle blue-neutral separators and control borders |
 | Success | `#1F7A45` | Confirmed, approved, successful outcomes |
-| Warning | `#C98512` | Caution, draft attention, operational warnings |
+| Warning | `#B7791F` | Caution, draft attention, operational warnings |
 | Danger | `#B42318` | Destructive actions, errors, high-risk states |
 | Info | `#1D4ED8` | Informational emphasis, neutral guidance, support state |
 
@@ -99,17 +99,18 @@ Bentix must use a restrained palette. The brand should be recognizable with very
 
 Bentix should use a deep dark blue for text and interface structure instead of relying on dark grey or black as the dominant UI anchor.
 
-Recommended structural blue:
+Recommended structural blues:
 
-- Structural Blue: `#14243D`
+- Bentix Navy: `#183B5B`
+- Bentix Navy Strong: `#102E49`
 
 This colour gives Bentix a more distinctive and more enterprise-grade character than neutral grey. It feels more deliberate, more controlled, and more premium without becoming cold.
 
 ### Why These Colours
 
-#### Primary: `#FF8C00`
+#### Primary: `#B85E00`
 
-Bentix Orange remains the primary action colour because it creates immediate action recognition and gives the product an operational signature.
+Bentix Orange remains the primary action colour because it creates immediate action recognition and gives the product an operational signature while remaining readable with white text in operational interfaces.
 
 Why it works:
 
@@ -118,39 +119,39 @@ Why it works:
 - highly scannable on light surfaces
 - clearly different from structural and informational tones
 
-#### Primary Hover: `#EA7B00`
+#### Primary Hover: `#AF5A00`
 
 The hover state is slightly deeper and warmer rather than darker in a muddy way. It keeps the action feeling active and premium.
 
-#### Primary Light: `#FFF1DD`
+#### Primary Light: `#FFF1E3`
 
 This supports highlights, soft selected states, contextual accents, and gentle action framing without creating visual aggression.
 
-#### Text Primary: `#14243D`
+#### Text Primary: `#102E49`
 
 This is the most important identity decision. Bentix should not use dark grey as its dominant visual anchor. A deep blue gives the product a stronger, more ownable, and more enterprise-specific tone.
 
-#### Text Secondary: `#5D7391`
+#### Text Secondary: `#556C86`
 
 Bentix needs softer text for labels, metadata, helper context, and less important content. This blue-grey stays within the same family and preserves cohesion.
 
-#### Background: `#F5EFE7`
+#### Background: `#F6F8FA`
 
-The background should feel warm, soft, and comfortable for long sessions. Pure white backgrounds often feel too clinical and create more glare over long usage.
+The background should feel neutral, calm, and comfortable for long sessions. It should reduce glare without becoming beige, decorative, or visually noisy.
 
-#### Surface: `#FFF5E8`
+#### Surface: `#FFFFFF`
 
-Surface colour should remain clearly lighter than the background while keeping warmth and avoiding a sterile, harsh interface.
+Surface colour should remain clean and highly readable, with light neutral backgrounds providing enough separation without turning the product into a marketing-style UI.
 
-#### Border: `#E7CCB0`
+#### Border: `#DCE4EA`
 
-Bentix should prefer soft, warm borders over dark outlines. Borders should separate, not dominate.
+Bentix should prefer subtle blue-neutral borders over heavy outlines. Borders should separate, not dominate.
 
 #### Success: `#1F7A45`
 
 This green communicates confirmation and trust. It should feel stable and measured, not celebratory.
 
-#### Warning: `#C98512`
+#### Warning: `#B7791F`
 
 Warnings should be visible and serious without immediately reading as destructive. This amber tone is suitable for draft-related or pending operational states.
 
@@ -166,10 +167,12 @@ Info should remain distinct from primary action orange. Blue is the right inform
 
 - Use blue for structure.
 - Use orange for action.
-- Use neutral warm surfaces for comfort.
+- Use white and light-neutral surfaces for comfort.
 - Use semantic colours only for meaning.
 - Avoid introducing page-specific accent colours.
 - No critical meaning should depend on colour alone.
+
+For the implemented token names, compatibility aliases, semantic state rules, and migration strategy, see [BENTIX_COLOR_SYSTEM.md](./BENTIX_COLOR_SYSTEM.md).
 
 ## 4. Typography
 

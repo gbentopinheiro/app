@@ -3,6 +3,7 @@ import { canBypassTemporaryDailyPlanMutationLock, isDailyPlanLocked } from '../.
 import { isFeatureEnabled } from '../../lib/feature-flags.js'
 import { hasPermission } from '../../lib/permissions.js'
 import { isChefRole } from '../../lib/roles.js'
+import { isAssignmentApproved } from '../../lib/work-assignment-approval.js'
 import { getWorkByIdData } from '../../lib/works.js'
 import {
   canAccessAssignment,
@@ -30,6 +31,53 @@ function ensurePermission(session, permissionKey, message) {
   if (!hasPermission(session, permissionKey)) {
     throw new HttpError(403, message)
   }
+}
+
+async function ensureHoursApprovalAvailable(session) {
+  if (!(await isFeatureEnabled('hoursApproval'))) {
+    throw new HttpError(503, 'A aprovacao de horas esta desativada.')
+  }
+
+  ensurePermission(session, 'work_assignments.approve', 'Apenas administradores podem aprovar horas.')
+}
+
+function normalizeApprovedHoursValue(approvedHours) {
+  const normalizedApprovedHours = Number(approvedHours)
+
+  if (approvedHours === undefined || Number.isNaN(normalizedApprovedHours) || normalizedApprovedHours < 0) {
+    throw new HttpError(400, 'approvedHours tem de ser 0 ou maior')
+  }
+
+  return normalizedApprovedHours
+}
+
+async function approveWorkAssignmentWithCurrentState(session, currentAssignment, approvedHours) {
+  if (!currentAssignment) {
+    throw new HttpError(404, 'Afetacao nao encontrada')
+  }
+
+  if (!canAccessAssignment(session, currentAssignment)) {
+    throw new HttpError(403, 'Sem permissao para esta afetacao.')
+  }
+
+  const assignment = await updateWorkAssignmentData(
+    currentAssignment.id,
+    {
+      approvedHours,
+      adminApprovedAt: new Date().toISOString(),
+      adminApprovedBy: session.name || session.username || session.userId,
+    },
+    {
+      actorSession: session,
+      ensureHoursAuditWithActor: true,
+    },
+  )
+
+  if (!assignment) {
+    throw new HttpError(404, 'Afetacao nao encontrada')
+  }
+
+  return assignment
 }
 
 function toAssignmentMutationError(error, fallbackMessage) {
@@ -167,6 +215,8 @@ export async function createWorkAssignmentService(session, body) {
       notes,
       hasWorkAccess,
       assignmentPurpose,
+    }, {
+      actorSession: session,
     })
   } catch (error) {
     if (error instanceof HttpError) {
@@ -295,7 +345,7 @@ export async function updateWorkAssignmentService(session, id, body) {
         submittedBy,
       },
       {
-        actorSession: shouldAutoSubmitFromAdmin ? session : null,
+        actorSession: session,
       },
     )
 
@@ -382,46 +432,13 @@ export async function submitWorkAssignmentService(session, id) {
 }
 
 export async function approveWorkAssignmentService(session, id, body) {
-  if (!(await isFeatureEnabled('hoursApproval'))) {
-    throw new HttpError(503, 'A aprovacao de horas esta desativada.')
-  }
-
-  ensurePermission(session, 'work_assignments.approve', 'Apenas administradores podem aprovar horas.')
+  await ensureHoursApprovalAvailable(session)
 
   const currentAssignment = await getWorkAssignmentByIdData(id)
-
-  if (!currentAssignment) {
-    throw new HttpError(404, 'Afetacao nao encontrada')
-  }
-
-  if (!canAccessAssignment(session, currentAssignment)) {
-    throw new HttpError(403, 'Sem permissao para esta afetacao.')
-  }
-
-  const { approvedHours } = body || {}
-
-  if (approvedHours === undefined || Number(approvedHours) < 0) {
-    throw new HttpError(400, 'approvedHours tem de ser 0 ou maior')
-  }
+  const approvedHours = normalizeApprovedHoursValue(body?.approvedHours)
 
   try {
-    const assignment = await updateWorkAssignmentData(
-      id,
-      {
-        approvedHours: Number(approvedHours),
-        adminApprovedAt: new Date().toISOString(),
-        adminApprovedBy: session.name || session.username || session.userId,
-      },
-      {
-        actorSession: session,
-      },
-    )
-
-    if (!assignment) {
-      throw new HttpError(404, 'Afetacao nao encontrada')
-    }
-
-    return assignment
+    return await approveWorkAssignmentWithCurrentState(session, currentAssignment, approvedHours)
   } catch (error) {
     if (error instanceof HttpError) {
       throw error
@@ -429,4 +446,103 @@ export async function approveWorkAssignmentService(session, id, body) {
 
     throw toAssignmentMutationError(error, 'Erro ao aprovar horas')
   }
+}
+
+export async function approveWorkAssignmentsBatchService(session, body) {
+  await ensureHoursApprovalAvailable(session)
+
+  const items = Array.isArray(body?.items) ? body.items : []
+
+  if (items.length === 0) {
+    throw new HttpError(400, 'items sao obrigatorios')
+  }
+
+  const seenAssignmentIds = new Set()
+  const result = {
+    requested: items.length,
+    approvedCount: 0,
+    skippedCount: 0,
+    failedCount: 0,
+    approved: [],
+    skipped: [],
+    failed: [],
+  }
+
+  for (const item of items) {
+    const assignmentId = Number(item?.assignmentId ?? item?.id)
+
+    if (!Number.isInteger(assignmentId) || assignmentId <= 0) {
+      result.failedCount += 1
+      result.failed.push({
+        assignmentId: item?.assignmentId ?? item?.id ?? null,
+        message: 'Afetacao invalida',
+      })
+      continue
+    }
+
+    if (seenAssignmentIds.has(assignmentId)) {
+      result.skippedCount += 1
+      result.skipped.push({
+        assignmentId,
+        message: 'Afetacao duplicada no pedido',
+      })
+      continue
+    }
+
+    seenAssignmentIds.add(assignmentId)
+
+    let approvedHours
+
+    try {
+      approvedHours = normalizeApprovedHoursValue(item?.approvedHours)
+    } catch (error) {
+      result.failedCount += 1
+      result.failed.push({
+        assignmentId,
+        message: error instanceof HttpError ? error.message : 'approvedHours tem de ser 0 ou maior',
+      })
+      continue
+    }
+
+    try {
+      const currentAssignment = await getWorkAssignmentByIdData(assignmentId)
+
+      if (!currentAssignment) {
+        throw new HttpError(404, 'Afetacao nao encontrada')
+      }
+
+      if (!canAccessAssignment(session, currentAssignment)) {
+        throw new HttpError(403, 'Sem permissao para esta afetacao.')
+      }
+
+      if (isAssignmentApproved(currentAssignment)) {
+        result.skippedCount += 1
+        result.skipped.push({
+          assignmentId,
+          message: 'Afetacao ja estava aprovada',
+        })
+        continue
+      }
+
+      const assignment = await approveWorkAssignmentWithCurrentState(
+        session,
+        currentAssignment,
+        approvedHours,
+      )
+
+      result.approvedCount += 1
+      result.approved.push({
+        assignmentId,
+        approvedHours: Number(assignment.approvedHours ?? approvedHours),
+      })
+    } catch (error) {
+      result.failedCount += 1
+      result.failed.push({
+        assignmentId,
+        message: error instanceof HttpError ? error.message : 'Erro ao aprovar horas',
+      })
+    }
+  }
+
+  return result
 }

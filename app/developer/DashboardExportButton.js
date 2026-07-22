@@ -6,7 +6,7 @@ import {
   readDownloadFilename,
 } from '../../frontend/controllers/developer-controller.js'
 
-export default function DashboardExportButton({ children, style = {} }) {
+export default function DashboardExportButton({ children, className = '', style = {} }) {
   const href = getDeveloperDashboardExportUrl()
 
   async function handleClick(event) {
@@ -35,7 +35,7 @@ export default function DashboardExportButton({ children, style = {} }) {
   }
 
   return (
-    <a href={href} onClick={handleClick} style={style}>
+    <a href={href} onClick={handleClick} className={className} style={style}>
       {children}
     </a>
   )

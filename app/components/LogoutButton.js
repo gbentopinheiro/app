@@ -3,18 +3,16 @@
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { logoutUser } from '../../frontend/controllers/auth-controller.js'
+import { BentixButton } from './ViewportLayout.js'
 
-const defaultStyle = {
-  border: '1px solid var(--vp-accent)',
-  borderRadius: '999px',
-  padding: '10px 16px',
-  background: 'transparent',
-  color: 'var(--vp-accent)',
-  fontWeight: 700,
-  cursor: 'pointer',
-}
-
-export default function LogoutButton({ label = 'Sair', redirectTo = '/login', style = {} }) {
+export default function LogoutButton({
+  label = 'Sair',
+  redirectTo = '/login',
+  variant = 'secondary',
+  size = 'md',
+  className = '',
+  style = {},
+}) {
   const router = useRouter()
   const [submitting, setSubmitting] = useState(false)
 
@@ -31,8 +29,17 @@ export default function LogoutButton({ label = 'Sair', redirectTo = '/login', st
   }
 
   return (
-    <button type="button" onClick={handleLogout} disabled={submitting} style={{ ...defaultStyle, ...style }}>
-      {submitting ? 'A sair...' : label}
-    </button>
+    <BentixButton
+      type="button"
+      variant={variant}
+      size={size}
+      loading={submitting}
+      onClick={handleLogout}
+      className={className}
+      style={style}
+      aria-label={submitting ? 'A sair' : label}
+    >
+      {label}
+    </BentixButton>
   )
 }

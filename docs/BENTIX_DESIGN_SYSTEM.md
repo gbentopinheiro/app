@@ -122,20 +122,40 @@ O sistema de cores da Bentix é semântico. As cores devem ser escolhidas pelo p
 
 Tokens base atualmente definidos:
 
-- `--vp-page-start`: `#f5efe7`
-- `--vp-page-end`: `#ffe2bc`
-- `--vp-surface`: `#fff5e8`
-- `--vp-surface-alt`: `#fff0de`
-- `--vp-surface-muted`: `#ffedd8`
-- `--vp-highlight`: `#e5efff`
-- `--vp-highlight-text`: `#1d4ed8`
-- `--vp-border`: `#e7ccb0`
-- `--vp-border-strong`: `#dcb48b`
-- `--vp-accent`: `#ff8c00`
-- `--vp-accent-strong`: `#ea7b00`
-- `--vp-text`: `#14243d`
-- `--vp-text-muted`: `#5d7391`
-- `--vp-text-soft`: `#7991b2`
+- `--btx-color-navy`: `#183B5B`
+- `--btx-color-navy-strong`: `#102E49`
+- `--btx-color-navy-soft`: `#EAF1F6`
+- `--btx-color-primary`: `#B85E00`
+- `--btx-color-primary-hover`: `#AF5A00`
+- `--btx-color-primary-active`: `#A85700`
+- `--btx-color-primary-soft`: `#FFF1E3`
+- `--btx-color-background`: `#F6F8FA`
+- `--btx-color-surface`: `#FFFFFF`
+- `--btx-color-surface-subtle`: `#F7FAFC`
+- `--btx-color-text-primary`: `#102E49`
+- `--btx-color-text-secondary`: `#556C86`
+- `--btx-color-text-muted`: `#60758E`
+- `--btx-color-border`: `#DCE4EA`
+- `--btx-color-border-strong`: `#C8D3DC`
+- `--btx-color-success`: `#1F7A45`
+- `--btx-color-warning`: `#B7791F`
+- `--btx-color-danger`: `#B42318`
+- `--btx-color-info`: `#1D4ED8`
+
+Aliases de compatibilidade mantidos nesta fase:
+
+- `--vp-text` -> `--btx-color-text-primary`
+- `--vp-text-muted` -> `--btx-color-text-secondary`
+- `--vp-text-soft` -> `--btx-color-text-muted`
+- `--vp-border` -> `--btx-color-border`
+- `--vp-border-strong` -> `--btx-color-border-strong`
+- `--vp-accent` -> `--btx-color-primary`
+- `--vp-accent-strong` -> `--btx-color-primary-hover`
+- `--vp-surface` -> `--btx-color-surface`
+- `--vp-surface-alt` -> `--btx-color-surface-subtle`
+- `--vp-surface-muted` -> `--btx-color-surface-subtle`
+- `--vp-highlight` -> `--btx-color-navy-soft`
+- `--vp-highlight-text` -> `--btx-color-navy-strong`
 
 Superfícies e gradientes principais:
 
@@ -148,12 +168,13 @@ Superfícies e gradientes principais:
 
 Regras de utilização:
 
-- azul escuro para contexto forte, cabeçalhos e zonas de autoridade visual
-- laranja para ações primárias e destaques funcionais
-- superfícies claras para leitura, organização e conforto visual
+- navy para estrutura, títulos, texto e identidade corporativa
+- laranja para ações primárias e destaque deliberado
+- branco e neutros claros para leitura, organização e conforto visual
 - texto principal sempre em tons escuros de boa legibilidade
 - texto secundário pode ser mais suave, mas nunca difícil de ler
 - nenhuma informação crítica deve depender apenas de cor
+- cores semânticas não devem ser usadas como decoração
 
 Estados e cores:
 
@@ -161,6 +182,10 @@ Estados e cores:
 - rascunho deve parecer transitório, mas claramente visível
 - vazio deve ser legível e calmo
 - perigo deve ser reservado a ações destrutivas ou alertas reais
+
+Referência oficial:
+
+- [BENTIX_COLOR_SYSTEM.md](./BENTIX_COLOR_SYSTEM.md)
 
 ## 6. Tipografia
 
@@ -267,6 +292,10 @@ Regras:
 
 Os botões devem refletir prioridade operacional.
 
+Referência oficial:
+
+- [BENTIX_BUTTON_SYSTEM.md](./BENTIX_BUTTON_SYSTEM.md)
+
 Hierarquia de ações:
 
 - primário: ação principal da área atual
@@ -287,6 +316,13 @@ Aplicação prática:
 - `Publicar`, `Guardar` ou `Adicionar` podem ser ações principais, consoante o fluxo
 - ações como `Importar mensagem` devem parecer secundárias
 - grupos de ações devem ficar próximos do contexto a que pertencem
+
+Implementação partilhada atual:
+
+- tokens de botão em `app/globals.css`
+- classes partilhadas do Button System
+- componente reutilizável `BentixButton`
+- migração progressiva, sem substituição em massa nesta fase
 
 ## 10. Hierarquia de Ações
 

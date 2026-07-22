@@ -2,6 +2,25 @@ function joinClassNames(...classNames) {
   return classNames.filter(Boolean).join(' ')
 }
 
+export function getBentixButtonClassName({
+  variant = 'secondary',
+  size = 'md',
+  iconOnly = false,
+  block = false,
+  loading = false,
+  className = '',
+} = {}) {
+  return joinClassNames(
+    'btx-button',
+    variant ? `btx-button--${variant}` : '',
+    size ? `btx-button--${size}` : '',
+    iconOnly ? 'btx-button--icon-only' : '',
+    block ? 'btx-button--block' : '',
+    loading ? 'btx-button--loading' : '',
+    className,
+  )
+}
+
 export function ViewportPage({
   as: Component = 'main',
   children,
@@ -230,6 +249,67 @@ export function BentixOverflowX({
       style={style}
     >
       {children}
+    </Component>
+  )
+}
+
+export function BentixButton({
+  as: Component = 'button',
+  type,
+  variant = 'secondary',
+  size = 'md',
+  iconOnly = false,
+  block = false,
+  loading = false,
+  disabled = false,
+  className = '',
+  style,
+  children,
+  onClick,
+  ...props
+}) {
+  const isButtonElement = Component === 'button'
+  const isDisabled = Boolean(disabled || loading)
+  const componentProps = {
+    ...props,
+    className: getBentixButtonClassName({
+      variant,
+      size,
+      iconOnly,
+      block,
+      loading,
+      className,
+    }),
+    style,
+    'aria-busy': loading ? 'true' : undefined,
+    'data-loading': loading ? 'true' : undefined,
+  }
+
+  if (isButtonElement) {
+    componentProps.type = type ?? 'button'
+    componentProps.disabled = isDisabled
+    componentProps.onClick = onClick
+  } else {
+    componentProps['aria-disabled'] = isDisabled ? 'true' : undefined
+    componentProps.onClick = event => {
+      if (isDisabled) {
+        event.preventDefault()
+        event.stopPropagation()
+        return
+      }
+
+      onClick?.(event)
+    }
+  }
+
+  return (
+    <Component {...componentProps}>
+      <span className="btx-button__label">{children}</span>
+      {loading ? (
+        <span className="btx-button__loading" aria-hidden="true">
+          <span className="btx-button__spinner" />
+        </span>
+      ) : null}
     </Component>
   )
 }
