@@ -1,0 +1,34 @@
+[
+  {
+    "id": 1,
+    "companyId": 1,
+    "name": "Administrador Teste",
+    "price": 0,
+    "monthlyPrice": 0,
+    "role": "admin"
+  },
+  {
+    "id": 2,
+    "companyId": 1,
+    "name": "Chefe Teste",
+    "price": 0,
+    "monthlyPrice": 0,
+    "role": "chef_primeira"
+  },
+  {
+    "id": 3,
+    "companyId": 1,
+    "name": "Carpinteiro Teste",
+    "price": 12,
+    "monthlyPrice": 0,
+    "role": "carpinteiro"
+  },
+  {
+    "id": 4,
+    "companyId": 1,
+    "name": "Ferrajeiro Teste",
+    "price": 13,
+    "monthlyPrice": 0,
+    "role": "ferrajeiro"
+  }
+]

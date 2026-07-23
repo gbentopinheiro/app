@@ -1,0 +1,12 @@
+[
+  {
+    "id": 1,
+    "personId": 2,
+    "role": "chef_primeira",
+    "username": "chefe_teste",
+    "password": "$2b$12$/O.dFNrWKxQZMgllIBeFOepy0kkpjEWo4F/tnQrA27qGcDDRNQkri",
+    "works": [
+      1
+    ]
+  }
+]

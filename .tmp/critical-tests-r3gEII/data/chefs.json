@@ -1,0 +1,26 @@
+[
+  {
+    "id": 1,
+    "username": "construtora.alfa",
+    "password": "scrypt$v1$16979c4e949b6772d07e7afe6772dc8d$a77bb4997cb710d8daa422ea8202d26b4017db2a160daa5df8732a432e0a982017d3822280dc2efe94d4a9118586d06431aea87984f0ca1c8d83ecc9cf319bb7",
+    "works": [
+      1
+    ]
+  },
+  {
+    "id": 2,
+    "username": "particular.valeverde",
+    "password": "scrypt$v1$f424caca54d617d033116bf6b23e4cee$cf4ea7ecee37e5defcc9e198fdba7f8048310d0e3fc1dbca3e5735922f6216b85852ac413d498fe044e98fac7aa9c3f33102d2c13a9dfc8be155080b25584f10",
+    "works": [
+      2
+    ]
+  },
+  {
+    "id": 3,
+    "username": "logistica.horizonte",
+    "password": "scrypt$v1$e7719cad9aeea3ddd25df5608b6bf324$ea47e1f2ad852ef40ad8c22bc6b39aaed2ecc3df7426cc262e1519ed0e88341281f65aefbfc02c75f1fe8f400b4a61fa537427903513283fffe79c24fdf2d114",
+    "works": [
+      3
+    ]
+  }
+]

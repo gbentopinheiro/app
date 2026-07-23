@@ -1,0 +1,27 @@
+[
+  {
+    "id": 1,
+    "number": 101,
+    "companyId": 1,
+    "name": "Obra Teste",
+    "clientId": 1,
+    "location": "Lisboa",
+    "status": "planned",
+    "budget": 0,
+    "defaultHourlyCost": 12,
+    "roleHourlyCosts": {
+      "carpinteiro": 12
+    },
+    "specialPersonHourlyCosts": {},
+    "startDate": null,
+    "endDate": null,
+    "workingDays": [
+      "monday",
+      "tuesday",
+      "wednesday",
+      "thursday",
+      "friday"
+    ],
+    "notes": ""
+  }
+]

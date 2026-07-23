@@ -99,16 +99,17 @@ model Company {
 }
 
 model Client {
-  id          Int      @id
-  companyId   Int      @map("company_id")
-  name        String
-  vatNumber   String?  @map("vat_number") @db.VarChar(64)
-  contactName String?  @map("contact_name")
-  email       String?  @db.VarChar(191)
-  phone       String?  @db.VarChar(64)
-  notes       String?  @db.Text
-  company     Company  @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  works       Work[]
+  id              Int     @id
+  companyId       Int     @map("company_id")
+  name            String
+  vatNumber       String? @map("vat_number") @db.VarChar(64)
+  contactName     String? @map("contact_name")
+  email           String? @db.VarChar(191)
+  phone           String? @db.VarChar(64)
+  notes           String? @db.Text
+  summaryLanguage String  @default("pt") @map("summary_language") @db.VarChar(8)
+  company         Company @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  works           Work[]
 
   @@unique([companyId, name])
   @@map("clients")

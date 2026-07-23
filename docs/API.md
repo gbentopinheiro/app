@@ -38,10 +38,77 @@ Alguns pedidos sensiveis usam payload protegido com chave publica obtida em `/ap
 ### Clients
 
 - CRUD de clientes
+- configuracao da lingua dos resumos enviados ao cliente
 
 ### Works
 
 - CRUD de obras
+- exportacao rapida por obra na pagina individual
+- exportacao combinada por cliente em um unico `.xlsx`
+
+#### Exportacao de resumo de obras
+
+Permissao obrigatoria:
+
+- `works.annual_summary.export`
+
+Entradas disponiveis:
+
+- pagina individual da obra: export rapido, mantendo o fluxo atual baseado apenas no mes selecionado
+- pagina dedicada do cliente: selecao de 1 ou mais obras do proprio cliente, meses inicial/final e nome do resumo
+
+Endpoint:
+
+- `POST /api/clients/{id}/summary-export`
+
+Payload:
+
+```json
+{
+  "workIds": [10, 11],
+  "startMonth": "2026-01",
+  "endMonth": "2026-03",
+  "summaryName": "Trabalhos Janeiro-Marco"
+}
+```
+
+Resposta:
+
+- um unico ficheiro `.xlsx`
+- nunca um `.zip`
+
+Regras:
+
+- todos os `workIds` devem pertencer ao cliente do path
+- ids duplicados sao normalizados no servidor
+- `startMonth` e `endMonth` sao obrigatorios e usam o formato `YYYY-MM`
+- o servidor converte o periodo para o primeiro dia do mes inicial e o ultimo dia do mes final
+- `summaryName` e obrigatorio e controla o titulo interno e o nome final do ficheiro
+- quando varias obras sao selecionadas, o resumo combina horas por `pessoa + data`
+- o workbook final nao expoe a obra de origem de cada hora
+
+Validacoes server-side:
+
+- utilizador autenticado
+- permissao de exportacao
+- cliente existente
+- obras existentes
+- obras pertencem ao cliente do path
+- obras acessiveis para a sessao autenticada
+- periodo valido
+- nome do resumo valido
+
+Limites:
+
+- maximo 100 obras por pedido
+- periodo maximo de 366 dias
+
+Idioma do resumo:
+
+- cada cliente tem `summaryLanguage`
+- valores suportados: `pt`, `fr`, `en`, `es`
+- fallback para clientes antigos ou valor invalido: `pt`
+- esta definicao afeta apenas os resumos enviados ao cliente
 
 ### Work Plans
 

@@ -39,12 +39,12 @@ Diagrama lógico principal:
 
 ```text
 Browser
-   │
-   ▼
+   |
+   v
 Web (Next.js)
-   │
+   |
 REST API
-   │
+   |
 MariaDB
 ```
 
@@ -70,14 +70,14 @@ A API usa a seguinte cadeia interna:
 
 ```text
 app/api/*/route.js
-   │
-   ▼
+   |
+   v
 server/controllers/*
-   │
-   ▼
+   |
+   v
 server/services/*
-   │
-   ▼
+   |
+   v
 lib/*  +  lib/db/*
 ```
 
@@ -91,21 +91,21 @@ MariaDB é a base de dados persistente alvo da aplicação. O acesso é feito po
 
 ```text
 Browser
-   │
-   ▼
+   |
+   v
 Cloudflare
-   │
-   ▼
+   |
+   v
 Nginx
-   │
-   ├── dev.bentixapp.com  ─────► web / app
-   └── api-*.bentixapp.com ────► api / app
-                                   │
-                                   ▼
-                                Prisma
-                                   │
-                                   ▼
-                                MariaDB
+   |
+   |-- dev.bentixapp.com  -----> web / app
+   `-- api-*.bentixapp.com --> api / app
+                                   |
+                                   v
+                                 Prisma
+                                   |
+                                   v
+                                 MariaDB
 ```
 
 ## Ambientes
@@ -201,6 +201,51 @@ Camada HTTP e aplicação.
 - `server/errors/*`: erros tipados
 - `server/docs/*`: OpenAPI servido pela própria aplicação
 
+### Exportacao de resumo de obras
+
+Existem duas entradas independentes:
+
+- pagina individual da obra: export rapido, mantendo a UX atual baseada num unico mes
+- pagina dedicada do cliente: export combinado de uma ou mais obras do cliente num unico `.xlsx`
+
+Fluxo do export por cliente:
+
+```text
+Client works page
+    |
+    v
+ClientSummaryExportModal
+    |
+    v
+frontend/controllers/work-summary-export-controller.js
+    |
+    v
+app/api/clients/{id}/summary-export
+    |
+    v
+server/controllers/work-summary-export-controller.js
+    |
+    v
+server/services/work-summary-export-service.js
+    |
+    +-- getClientByIdData
+    +-- getAllWorksData
+    +-- getAllWorkAssignmentsData
+    |
+    v
+lib/work-summary-export.js
+```
+
+Regras arquiteturais:
+
+- a pagina da obra continua a usar o gerador centralizado para manter os calculos coerentes
+- a pagina do cliente nao implementa logica de agregacao nem de workbook
+- o servidor valida cliente, obras, permissao, nome do resumo e periodo mes-a-mes
+- varias obras selecionadas sao agregadas por `pessoa + data`
+- o workbook final nao expoe a obra de origem e nunca responde com `.zip`
+- `summaryLanguage` do cliente controla apenas as labels customer-facing do resumo exportado
+
+
 ### `lib/`
 
 Camada transversal de domínio e infraestrutura interna.
@@ -249,29 +294,29 @@ Fluxo completo:
 
 ```text
 Browser
-   │
-   ▼
+   |
+   v
 GET /login
-   │
-   ▼
+   |
+   v
 GET /api/auth/payload-key
-   │
-   ▼
+   |
+   v
 Browser cifra credenciais
-   │
-   ▼
+   |
+   v
 POST /api/auth/login
-   │
-   ▼
+   |
+   v
 Cookie bentix_session
-   │
-   ▼
+   |
+   v
 GET /api/auth/session e restantes rotas
-   │
-   ▼
+   |
+   v
 GET /api/auth/logout
-   │
-   ▼
+   |
+   v
 Cookie expirado
 ```
 
@@ -398,23 +443,23 @@ MariaDB persiste o estado da aplicação: pessoas, utilizadores, obras, afetaç�
 
 ```text
 app/api/people/route.js
-   │
-   ▼
+   |
+   v
 server/controllers/people-controller.js
-   │
-   ▼
+   |
+   v
 server/services/people-service.js
-   │
-   ▼
+   |
+   v
 lib/people.js
-   │
-   ▼
+   |
+   v
 lib/db/people-db.js
-   │
-   ▼
+   |
+   v
 Prisma
-   │
-   ▼
+   |
+   v
 MariaDB
 ```
 
@@ -616,14 +661,14 @@ Fluxo resumido:
 
 ```text
 Browser
-   │
-   ▼
+   |
+   v
 Cloudflare DNS / Proxy
-   │
-   ▼
+   |
+   v
 Nginx no VPS
-   │
-   ▼
+   |
+   v
 Docker service
 ```
 

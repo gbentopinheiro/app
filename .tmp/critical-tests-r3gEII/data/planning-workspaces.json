@@ -1,0 +1,12 @@
+[
+  {
+    "id": 1,
+    "companyId": 1,
+    "date": "2030-02-10",
+    "state": "published",
+    "publishedWorkPlanId": 1,
+    "publishedAt": "2026-07-23T20:41:06.657Z",
+    "createdAt": "2026-07-23T20:41:06.624Z",
+    "updatedAt": "2026-07-23T20:41:06.658Z"
+  }
+]

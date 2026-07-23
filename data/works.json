@@ -1,24 +1,17 @@
 [
   {
     "id": 1,
-    "number": 1001,
+    "number": 101,
     "companyId": 1,
-    "name": "Reabilitacao Edificio Central",
+    "name": "Obra A",
     "clientId": 1,
-    "location": "Porto",
-    "status": "in_progress",
-    "budget": 125000,
-    "defaultHourlyCost": 40,
-    "roleHourlyCosts": {
-      "chef_primeira": 49,
-      "chef_segunda": 44,
-      "carpinteiro": 40,
-      "ferrajeiro": 40,
-      "trolha": 40,
-      "gruista": 44
-    },
+    "location": "Lisboa",
+    "status": "planned",
+    "budget": 0,
+    "defaultHourlyCost": 10,
+    "roleHourlyCosts": {},
     "specialPersonHourlyCosts": {},
-    "startDate": "2026-01-15",
+    "startDate": null,
     "endDate": null,
     "workingDays": [
       "monday",
@@ -27,21 +20,21 @@
       "thursday",
       "friday"
     ],
-    "notes": "Obra com equipa de estruturas e acabamentos."
+    "notes": ""
   },
   {
     "id": 2,
-    "number": 1002,
+    "number": 102,
     "companyId": 1,
-    "name": "Moradia Vale Verde",
-    "clientId": 2,
-    "location": "Braga",
+    "name": "Obra B",
+    "clientId": 1,
+    "location": "Porto",
     "status": "planned",
-    "budget": 89000,
-    "defaultHourlyCost": 16,
+    "budget": 0,
+    "defaultHourlyCost": 12,
     "roleHourlyCosts": {},
     "specialPersonHourlyCosts": {},
-    "startDate": "2026-04-01",
+    "startDate": null,
     "endDate": null,
     "workingDays": [
       "monday",
@@ -50,30 +43,75 @@
       "thursday",
       "friday"
     ],
-    "notes": "A aguardar aprovacao final do cliente."
+    "notes": ""
   },
   {
     "id": 3,
-    "number": 1003,
+    "number": 201,
     "companyId": 1,
-    "name": "Armazem Industrial Sul",
-    "clientId": 3,
-    "location": "Setubal",
-    "status": "completed",
-    "budget": 210500,
-    "defaultHourlyCost": 22,
+    "name": "Chantier FR",
+    "clientId": 2,
+    "location": "Lyon",
+    "status": "planned",
+    "budget": 0,
+    "defaultHourlyCost": 15,
     "roleHourlyCosts": {},
     "specialPersonHourlyCosts": {},
-    "startDate": "2025-06-10",
-    "endDate": "2026-02-28",
+    "startDate": null,
+    "endDate": null,
     "workingDays": [
       "monday",
       "tuesday",
       "wednesday",
       "thursday",
-      "friday",
-      "saturday"
+      "friday"
     ],
-    "notes": "Entrega concluida sem pendencias."
+    "notes": ""
+  },
+  {
+    "id": 4,
+    "number": 301,
+    "companyId": 1,
+    "name": "English Work",
+    "clientId": 3,
+    "location": "London",
+    "status": "planned",
+    "budget": 0,
+    "defaultHourlyCost": 16,
+    "roleHourlyCosts": {},
+    "specialPersonHourlyCosts": {},
+    "startDate": null,
+    "endDate": null,
+    "workingDays": [
+      "monday",
+      "tuesday",
+      "wednesday",
+      "thursday",
+      "friday"
+    ],
+    "notes": ""
+  },
+  {
+    "id": 5,
+    "number": 401,
+    "companyId": 1,
+    "name": "Obra ES",
+    "clientId": 4,
+    "location": "Madrid",
+    "status": "planned",
+    "budget": 0,
+    "defaultHourlyCost": 14,
+    "roleHourlyCosts": {},
+    "specialPersonHourlyCosts": {},
+    "startDate": null,
+    "endDate": null,
+    "workingDays": [
+      "monday",
+      "tuesday",
+      "wednesday",
+      "thursday",
+      "friday"
+    ],
+    "notes": ""
   }
 ]

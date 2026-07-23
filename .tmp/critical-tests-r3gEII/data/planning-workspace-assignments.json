@@ -1,0 +1,15 @@
+[
+  {
+    "id": 1,
+    "workspaceId": 1,
+    "workId": 1,
+    "personId": 3,
+    "hourlyCost": 12,
+    "manualHourlyCost": false,
+    "notes": "Planeamento publicado",
+    "hasWorkAccess": false,
+    "assignmentPurpose": "work",
+    "createdAt": "2026-07-23T20:41:06.632Z",
+    "updatedAt": "2026-07-23T20:41:06.632Z"
+  }
+]

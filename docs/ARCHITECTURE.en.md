@@ -201,6 +201,51 @@ HTTP and application layer.
 - `server/errors/*`: typed errors
 - `server/docs/*`: OpenAPI served by the application itself
 
+### Work Summary Export
+
+There are two independent entry points:
+
+- individual work page: quick export, preserving the current single-month UX
+- dedicated client page: combined export for one or more works from that client in a single `.xlsx`
+
+Client export flow:
+
+```text
+Client works page
+    |
+    v
+ClientSummaryExportModal
+    |
+    v
+frontend/controllers/work-summary-export-controller.js
+    |
+    v
+app/api/clients/{id}/summary-export
+    |
+    v
+server/controllers/work-summary-export-controller.js
+    |
+    v
+server/services/work-summary-export-service.js
+    |
+    +-- getClientByIdData
+    +-- getAllWorksData
+    +-- getAllWorkAssignmentsData
+    |
+    v
+lib/work-summary-export.js
+```
+
+Architectural rules:
+
+- the work page continues to use the centralized generator so calculations stay consistent
+- the client page does not implement aggregation or workbook logic
+- the server validates client, works, permission, summary name, and month-based period
+- multiple selected works are aggregated by `person + date`
+- the final workbook does not expose the source work and never responds with `.zip`
+- the client `summaryLanguage` controls only the customer-facing labels inside the exported summary
+
+
 ### `lib/`
 
 Cross-cutting domain and internal infrastructure layer.

@@ -2,11 +2,11 @@
   {
     "id": 1,
     "holdingId": 1,
-    "name": "Empresa Principal",
-    "slug": "empresa-principal",
+    "name": "Empresa Teste",
+    "slug": "empresa-teste",
     "countryCode": "PT",
-    "documentMark": "EP",
-    "documentLabel": "Empresa Principal",
+    "documentMark": "ET",
+    "documentLabel": "Empresa Teste",
     "documentLogoUrl": "",
     "active": true
   }

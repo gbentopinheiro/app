@@ -1,0 +1,12 @@
+[
+  {
+    "id": 1,
+    "companyId": 1,
+    "name": "Cliente Teste",
+    "vatNumber": "",
+    "contactName": "",
+    "email": "",
+    "phone": "",
+    "notes": ""
+  }
+]

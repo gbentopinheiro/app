@@ -1,0 +1,29 @@
+{
+  "generatedAt": "2026-06-25T15:13:24.059Z",
+  "source": "mysql-runtime-baseline",
+  "targetCounts": {
+    "accessProfiles": 5,
+    "permissions": 66,
+    "accessProfilePermissions": 86,
+    "companies": 1,
+    "clients": 4,
+    "people": 74,
+    "works": 3,
+    "workWorkingDays": 16,
+    "workRoleHourlyCosts": 6,
+    "workPersonHourlyCosts": 0,
+    "workPlans": 31,
+    "users": 17,
+    "workAssignments": 164,
+    "dailyWorkNotes": 0,
+    "developerOverrideEvents": 1,
+    "loginEvents": 129,
+    "loginAttempts": 5,
+    "auditTrailEvents": 11,
+    "materials": 0,
+    "personDocumentReminders": 2,
+    "calendarEvents": 6,
+    "calendarNotificationStates": 3,
+    "featureFlags": 6
+  }
+}
