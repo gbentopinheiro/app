@@ -41,14 +41,35 @@ async function ensureHoursApprovalAvailable(session) {
   ensurePermission(session, 'work_assignments.approve', 'Apenas administradores podem aprovar horas.')
 }
 
-function normalizeApprovedHoursValue(approvedHours) {
-  const normalizedApprovedHours = Number(approvedHours)
+const DAILY_HOURS_MIN = 0
+const DAILY_HOURS_MAX = 24
 
-  if (approvedHours === undefined || Number.isNaN(normalizedApprovedHours) || normalizedApprovedHours < 0) {
-    throw new HttpError(400, 'approvedHours tem de ser 0 ou maior')
+function normalizeDailyHoursValue(value, fieldName = 'hours') {
+  const valueType = typeof value
+  const isBlankString = typeof value === 'string' && value.trim() === ''
+  const normalizedValue = Number(value)
+
+  if (
+    value === undefined ||
+    value === null ||
+    (valueType !== 'number' && valueType !== 'string') ||
+    isBlankString ||
+    !Number.isFinite(normalizedValue) ||
+    normalizedValue < DAILY_HOURS_MIN ||
+    normalizedValue > DAILY_HOURS_MAX
+  ) {
+    throw new HttpError(400, `${fieldName} tem de estar entre 0 e 24`)
   }
 
-  return normalizedApprovedHours
+  return normalizedValue
+}
+
+function normalizeWorkedHoursValue(hours) {
+  return normalizeDailyHoursValue(hours, 'hours')
+}
+
+function normalizeApprovedHoursValue(approvedHours) {
+  return normalizeDailyHoursValue(approvedHours, 'approvedHours')
 }
 
 async function approveWorkAssignmentWithCurrentState(session, currentAssignment, approvedHours) {
@@ -195,9 +216,7 @@ export async function createWorkAssignmentService(session, body) {
     throw new HttpError(400, 'date tem de ser uma data valida')
   }
 
-  if (hours === undefined || Number(hours) < 0) {
-    throw new HttpError(400, 'hours tem de ser 0 ou maior')
-  }
+  const normalizedHours = normalizeWorkedHoursValue(hours)
 
   if (hourlyCost !== undefined && Number(hourlyCost) < 0) {
     throw new HttpError(400, 'hourlyCost nao pode ser negativo')
@@ -209,7 +228,7 @@ export async function createWorkAssignmentService(session, body) {
       workId,
       personId,
       date,
-      hours,
+      hours: normalizedHours,
       hourlyCost,
       manualHourlyCost,
       notes,
@@ -302,9 +321,7 @@ export async function updateWorkAssignmentService(session, id, body) {
     throw new HttpError(400, 'date tem de ser uma data valida')
   }
 
-  if (hours !== undefined && Number(hours) < 0) {
-    throw new HttpError(400, 'hours tem de ser 0 ou maior')
-  }
+  const normalizedHours = hours !== undefined ? normalizeWorkedHoursValue(hours) : undefined
 
   if (hourlyCost !== undefined && Number(hourlyCost) < 0) {
     throw new HttpError(400, 'hourlyCost nao pode ser negativo')
@@ -334,7 +351,7 @@ export async function updateWorkAssignmentService(session, id, body) {
         workId,
         personId,
         date,
-        hours,
+        hours: normalizedHours,
         hourlyCost,
         manualHourlyCost,
         notes,
@@ -499,7 +516,7 @@ export async function approveWorkAssignmentsBatchService(session, body) {
       result.failedCount += 1
       result.failed.push({
         assignmentId,
-        message: error instanceof HttpError ? error.message : 'approvedHours tem de ser 0 ou maior',
+        message: error instanceof HttpError ? error.message : 'approvedHours tem de estar entre 0 e 24',
       })
       continue
     }

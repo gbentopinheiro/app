@@ -166,8 +166,8 @@ export default function HoursApprovalPage() {
     try {
       const hoursValue = Number(approvalValues[assignmentId])
 
-      if (Number.isNaN(hoursValue) || hoursValue < 0) {
-        setError('Horas têm de ser um número igual ou maior que 0.')
+      if (Number.isNaN(hoursValue) || hoursValue < 0 || hoursValue > 24) {
+        setError('Horas têm de estar entre 0 e 24.')
         setApprovingId(null)
         return
       }
@@ -228,7 +228,8 @@ export default function HoursApprovalPage() {
             <input
               type="number"
               min="0"
-              step="1"
+              max="24"
+              step="0.01"
               value={approvalValues[assignment.id] ?? ''}
               onChange={(event) => handleApprovalChange(assignment.id, event.target.value)}
               style={inputStyle}

@@ -657,7 +657,7 @@ export default function ChefMobileDailyHoursClient({ initialSession, previewMode
   }
 
   function setEntryHoursValue(entryId, value) {
-    handleHoursChange(entryId, value === '' ? '' : String(Math.max(0, Number(value) || 0)))
+    handleHoursChange(entryId, value === '' ? '' : String(Math.min(24, Math.max(0, Number(value) || 0))))
   }
 
   function adjustEntryHours(entryId, delta) {
@@ -809,8 +809,8 @@ export default function ChefMobileDailyHoursClient({ initialSession, previewMode
       const rawValue = entryHours[String(entry.id)]
       const numericValue = Number(rawValue)
 
-      if (rawValue === '' || Number.isNaN(numericValue) || numericValue < 0) {
-        nextRowErrors[String(entry.id)] = 'Indica horas iguais ou maiores que 0.'
+      if (rawValue === '' || Number.isNaN(numericValue) || numericValue < 0 || numericValue > 24) {
+        nextRowErrors[String(entry.id)] = 'Indica horas entre 0 e 24.'
         hasErrors = true
       }
     }
@@ -1243,8 +1243,9 @@ export default function ChefMobileDailyHoursClient({ initialSession, previewMode
                       <input
                         type="number"
                         min="0"
-                        step="1"
-                        inputMode="numeric"
+                        max="24"
+                        step="0.01"
+                        inputMode="decimal"
                         value={entryHours[String(entry.id)] ?? ''}
                         onChange={event => handleHoursChange(entry.id, event.target.value)}
                         disabled={isSubmitted || previewMode}

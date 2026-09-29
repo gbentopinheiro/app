@@ -797,8 +797,8 @@ export default function DailyHoursPage() {
     return entries.map(entry => {
       const approvedHours = resolveApprovedHoursForEntry(entry)
 
-      if (Number.isNaN(approvedHours) || approvedHours < 0) {
-        throw new Error('Horas aprovadas têm de ser um número igual ou maior que 0.')
+      if (Number.isNaN(approvedHours) || approvedHours < 0 || approvedHours > 24) {
+        throw new Error('Horas aprovadas têm de estar entre 0 e 24.')
       }
 
       return {
@@ -886,7 +886,7 @@ export default function DailyHoursPage() {
   }
 
   function setEntryHoursValue(entryId, value) {
-    handleHoursChange(entryId, value === '' ? '' : String(Math.max(0, Number(value) || 0)))
+    handleHoursChange(entryId, value === '' ? '' : String(Math.min(24, Math.max(0, Number(value) || 0))))
   }
 
   function adjustEntryHours(entryId, delta) {
@@ -967,8 +967,8 @@ export default function DailyHoursPage() {
       const hoursValue = entryHours[String(entry.id)]
       const numericHours = Number(hoursValue)
 
-      if (hoursValue === '' || Number.isNaN(numericHours) || numericHours < 0) {
-        nextRowErrors[String(entry.id)] = 'Indica horas iguais ou maiores que 0.'
+      if (hoursValue === '' || Number.isNaN(numericHours) || numericHours < 0 || numericHours > 24) {
+        nextRowErrors[String(entry.id)] = 'Indica horas entre 0 e 24.'
         hasErrors = true
       }
     }
@@ -1016,8 +1016,8 @@ export default function DailyHoursPage() {
     try {
       const approvedHours = Number(approvalValues[entryId])
 
-      if (Number.isNaN(approvedHours) || approvedHours < 0) {
-        setError('Horas têm de ser um número igual ou maior que 0.')
+      if (Number.isNaN(approvedHours) || approvedHours < 0 || approvedHours > 24) {
+        setError('Horas têm de estar entre 0 e 24.')
         setApprovingId(null)
         return
       }
@@ -1052,8 +1052,8 @@ export default function DailyHoursPage() {
     try {
       const newHours = Number(editedChefHours[entryId])
 
-      if (Number.isNaN(newHours) || newHours < 0) {
-        setError('Horas têm de ser um número igual ou maior que 0.')
+      if (Number.isNaN(newHours) || newHours < 0 || newHours > 24) {
+        setError('Horas têm de estar entre 0 e 24.')
         return
       }
 
@@ -1108,8 +1108,8 @@ export default function DailyHoursPage() {
     try {
       const newApprovedHours = Number(editedApprovedHours[entryId])
 
-      if (Number.isNaN(newApprovedHours) || newApprovedHours < 0) {
-        setError('Horas têm de ser um número igual ou maior que 0.')
+      if (Number.isNaN(newApprovedHours) || newApprovedHours < 0 || newApprovedHours > 24) {
+        setError('Horas têm de estar entre 0 e 24.')
         return
       }
 
@@ -1659,8 +1659,9 @@ export default function DailyHoursPage() {
                                   <input
                                     type="number"
                                     min="0"
-                                    step="1"
-                                    inputMode="numeric"
+                                    max="24"
+                                    step="0.01"
+                                    inputMode="decimal"
                                     value={entryHours[String(entry.id)] ?? ''}
                                     onChange={(event) => handleHoursChange(entry.id, event.target.value)}
                                     style={chefHoursInputStyle(savingAll)}
@@ -1784,7 +1785,8 @@ export default function DailyHoursPage() {
                             <input
                               type="number"
                               min="0"
-                              step="1"
+                              max="24"
+                              step="0.01"
                               value={entryHours[String(entry.id)] ?? ''}
                               onChange={(event) => handleHoursChange(entry.id, event.target.value)}
                               style={{ ...inputStyle, marginTop: 0 }}
@@ -1816,7 +1818,8 @@ export default function DailyHoursPage() {
                             <input
                               type="number"
                               min="0"
-                              step="1"
+                              max="24"
+                              step="0.01"
                               value={editedChefHours[entry.id] ?? ''}
                               onChange={(event) => setEditedChefHours(curr => ({ ...curr, [entry.id]: event.target.value }))}
                               style={{ ...inputStyle, marginTop: 0, fontSize: '12px', padding: '8px 10px' }}
@@ -1868,7 +1871,8 @@ export default function DailyHoursPage() {
                             <input
                               type="number"
                               min="0"
-                              step="1"
+                              max="24"
+                              step="0.01"
                               value={editedApprovedHours[entry.id] ?? ''}
                               onChange={(event) => setEditedApprovedHours(curr => ({ ...curr, [entry.id]: event.target.value }))}
                               style={{ ...inputStyle, marginTop: 0, fontSize: '12px', padding: '8px 10px' }}

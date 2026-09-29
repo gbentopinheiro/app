@@ -1160,6 +1160,70 @@ test('workflow de aprovacao continua funcional com planeamento publicado', async
   assert.ok(approvedAssignment.adminApprovedAt)
 })
 
+test('registo de horas aceita apenas valores entre 0 e 24', async () => {
+  const validHours = [0, 0.5, 23.5, 24]
+  const invalidHours = [-1, 24.5, 25, 'valor-invalido']
+
+  for (const [index, hours] of validHours.entries()) {
+    const assignment = await createWorkAssignmentService(ADMIN_SESSION, {
+      date: `2030-04-${String(index + 1).padStart(2, '0')}`,
+      workId: 1,
+      personId: 3,
+      hours,
+    })
+
+    assert.equal(assignment.hours, hours)
+  }
+
+  for (const [index, hours] of invalidHours.entries()) {
+    await assert.rejects(
+      () =>
+        createWorkAssignmentService(ADMIN_SESSION, {
+          date: `2030-04-${String(index + 10).padStart(2, '0')}`,
+          workId: 1,
+          personId: 3,
+          hours,
+        }),
+      /hours tem de estar entre 0 e 24/,
+    )
+  }
+
+  const assignment = await createWorkAssignmentService(ADMIN_SESSION, {
+    date: '2030-04-20',
+    workId: 1,
+    personId: 3,
+    hours: 8,
+  })
+
+  for (const hours of validHours) {
+    const updatedAssignment = await updateWorkAssignmentService(ADMIN_SESSION, assignment.id, {
+      hours,
+    })
+
+    assert.equal(updatedAssignment.hours, hours)
+  }
+
+  for (const hours of invalidHours) {
+    await assert.rejects(
+      () => updateWorkAssignmentService(ADMIN_SESSION, assignment.id, { hours }),
+      /hours tem de estar entre 0 e 24/,
+    )
+
+    await assert.rejects(
+      () => approveWorkAssignmentService(ADMIN_SESSION, assignment.id, { approvedHours: hours }),
+      /approvedHours tem de estar entre 0 e 24/,
+    )
+  }
+
+  for (const approvedHours of validHours) {
+    const approvedAssignment = await approveWorkAssignmentService(ADMIN_SESSION, assignment.id, {
+      approvedHours,
+    })
+
+    assert.equal(approvedAssignment.approvedHours, approvedHours)
+  }
+})
+
 test('propoe automaticamente o proximo numero de obra', () => {
   assert.equal(getNextWorkNumber(getAllWorks()), 102)
   assert.equal(getNextWorkNumber([]), 1)
