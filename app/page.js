@@ -157,14 +157,6 @@ const brandWordmarkStyle = {
   lineHeight: 1,
 }
 
-const brandProductStyle = {
-  margin: 0,
-  color: 'var(--vp-hero-text-soft)',
-  fontSize: '12px',
-  fontWeight: 700,
-  letterSpacing: '0.08em',
-}
-
 const accountMenuStyle = {
   position: 'relative',
   display: 'inline-flex',
@@ -291,15 +283,6 @@ const heroCopyStyle = {
   width: 'min(100%, clamp(34rem, 58vw, 52rem))',
 }
 
-const heroKickerStyle = {
-  margin: 0,
-  fontSize: '12px',
-  letterSpacing: '0.16em',
-  textTransform: 'uppercase',
-  color: 'var(--vp-hero-text-muted)',
-  fontWeight: 800,
-}
-
 const heroTitleStyle = {
   margin: 0,
   fontSize: 'clamp(34px, 4.8vw, 52px)',
@@ -324,15 +307,6 @@ const dashboardHeaderStyle = {
   alignItems: 'center',
   gap: '14px',
   flexWrap: 'wrap',
-}
-
-const dashboardKickerStyle = {
-  margin: 0,
-  color: 'var(--vp-text-soft)',
-  fontSize: '12px',
-  fontWeight: 800,
-  letterSpacing: '0.12em',
-  textTransform: 'uppercase',
 }
 
 const dashboardTitleStyle = {
@@ -958,14 +932,8 @@ const cardFooterStyle = {
   marginTop: 'auto',
   display: 'flex',
   alignItems: 'center',
-  justifyContent: 'space-between',
+  justifyContent: 'flex-end',
   gap: '12px',
-}
-
-const cardFooterHintStyle = {
-  color: 'var(--vp-text-muted)',
-  fontSize: '13px',
-  fontWeight: 700,
 }
 
 const cardArrowStyle = {
@@ -1246,7 +1214,6 @@ export default async function Home() {
                 </div>
                 <div style={brandTextWrapStyle}>
                   <p style={brandWordmarkStyle}>BENTIX</p>
-                  <p style={brandProductStyle}>Centro operacional</p>
                 </div>
               </div>
               <div className="btx-dashboard-account" style={accountClusterStyle}>
@@ -1279,7 +1246,6 @@ export default async function Home() {
 
             <div style={heroGridStyle}>
               <div style={heroCopyStyle}>
-                <p style={heroKickerStyle}>Dashboard</p>
                 <h1 style={heroTitleStyle}>
                   Centro de gestão <span style={{ color: '#ffb15c' }}>operacional</span>
                 </h1>
@@ -1292,8 +1258,7 @@ export default async function Home() {
         <div style={{ display: 'grid', gap: '16px' }}>
         <section className="btx-dashboard-section" style={dashboardSectionStyle}>
           <div style={dashboardHeaderStyle}>
-            <div>
-              <p style={dashboardKickerStyle}>Operação</p>
+            <div style={{ minWidth: 0 }}>
               <h2 style={dashboardTitleStyle}>Visão geral da operação</h2>
             </div>
             <p style={dashboardDateStyle}>Hoje · {getTodayLabel()}</p>
@@ -1505,7 +1470,6 @@ export default async function Home() {
                   <h2 style={cardTitleStyle}>{module.title}</h2>
                 </div>
                 <div style={cardFooterStyle}>
-                  <span style={cardFooterHintStyle}>Abrir módulo</span>
                   <span style={cardArrowStyle} aria-hidden="true">→</span>
                 </div>
               </div>
