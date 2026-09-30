@@ -1309,7 +1309,7 @@ export default function DailyPlanPage() {
     if (!isDraftPlanning) return
 
     const confirmed = window.confirm(
-      `Pretendes realmente eliminar a afetação de ${getPersonDisplayName(assignment.person, assignment.personId)} do rascunho atual?`
+      `Pretendes realmente eliminar a afetação de ${getPersonDisplayName(assignment.person, assignment.personId)} do rascunho atual?\n\nEsta alteração invalida as horas registadas na afetação anterior. As horas terão de ser novamente registadas e aprovadas.`
     )
 
     if (!confirmed) return
@@ -1924,6 +1924,12 @@ export default function DailyPlanPage() {
                 ×
               </button>
             </div>
+
+            {assignmentForm.id ? (
+              <p style={{ margin: '12px 0 0', color: '#8a5a00', fontSize: '13px', fontWeight: 700, lineHeight: 1.45 }}>
+                Esta alteração invalida as horas registadas na afetação anterior. As horas terão de ser novamente registadas e aprovadas.
+              </p>
+            ) : null}
 
             <form onSubmit={handleCreateAssignment} style={{ display: 'grid', gap: '14px', marginTop: '18px', overflow: 'hidden' }}>
               <ResponsiveGrid preset="modal-form" style={{ '--vp-grid-gap': '14px' }}>

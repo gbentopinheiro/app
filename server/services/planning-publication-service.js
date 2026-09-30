@@ -32,7 +32,8 @@ function toPlanningMutationError(error, fallbackMessage) {
           message.includes('data valida') ||
           message.includes('data válida') ||
           message.includes('negativo') ||
-          message.includes('voltar a rascunho')
+          message.includes('voltar a rascunho') ||
+          message.includes('corrigir planeamentos')
         ? 400
         : 500
 
@@ -88,7 +89,9 @@ export async function publishPlanningWorkspaceService(session, workspaceId) {
   ensurePermission(session, 'work_plans.update')
 
   try {
-    return await publishPlanningWorkspaceData(workspaceId)
+    return await publishPlanningWorkspaceData(workspaceId, {
+      actorSession: session,
+    })
   } catch (error) {
     throw toPlanningMutationError(error, 'Erro ao publicar planeamento')
   }
@@ -98,7 +101,9 @@ export async function setPlanningWorkspaceToDraftService(session, workspaceId) {
   ensurePermission(session, 'work_plans.update')
 
   try {
-    return await setPlanningWorkspaceToDraftData(workspaceId)
+    return await setPlanningWorkspaceToDraftData(workspaceId, {
+      actorSession: session,
+    })
   } catch (error) {
     throw toPlanningMutationError(error, 'Erro ao voltar o planeamento para rascunho')
   }

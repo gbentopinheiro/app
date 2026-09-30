@@ -239,6 +239,8 @@ const {
   setPlanningWorkspaceToDraftService,
   updatePlanningDraftAssignmentService,
 } = await import('../server/services/planning-publication-service.js')
+const { getApprovedAssignmentHours } = await import('../lib/work-assignment-approval.js')
+const { getHistoricalPlanningCorrectionState } = await import('../lib/planning-publication.js')
 const { getAllWorks } = await import('../lib/works.js')
 const ADMIN_SESSION = {
   role: 'admin',
@@ -270,6 +272,36 @@ function createSearchParams(params = {}) {
       .filter(([, value]) => value !== undefined && value !== null && value !== '')
       .map(([key, value]) => [key, String(value)]),
   )
+}
+
+function getLocalDateOffset(days, base = new Date()) {
+  const date = new Date(base.getFullYear(), base.getMonth(), base.getDate(), 12, 0, 0, 0)
+  date.setDate(date.getDate() + days)
+
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+
+  return `${year}-${month}-${day}`
+}
+
+function getVisibleAssignmentForDate(date, { workId, personId } = {}) {
+  return getAllWorkAssignments({ date }).find(assignment => {
+    if (assignment.planningVisible === false) return false
+    if (workId !== undefined && Number(assignment.workId) !== Number(workId)) return false
+    if (personId !== undefined && Number(assignment.personId) !== Number(personId)) return false
+
+    return true
+  })
+}
+
+function getAssignmentForDate(date, { workId, personId } = {}) {
+  return getAllWorkAssignments({ date }).find(assignment => {
+    if (workId !== undefined && Number(assignment.workId) !== Number(workId)) return false
+    if (personId !== undefined && Number(assignment.personId) !== Number(personId)) return false
+
+    return true
+  })
 }
 
 function createProtectedPayload(payload) {
@@ -1158,6 +1190,333 @@ test('workflow de aprovacao continua funcional com planeamento publicado', async
   assert.equal(approvedAssignment.approvedHours, 7)
   assert.equal(approvedAssignment.adminApprovedBy, 'Administrador Teste')
   assert.ok(approvedAssignment.adminApprovedAt)
+})
+
+test('admin pode corrigir planeamento ate 30 dias e datas mais antigas sao rejeitadas', async () => {
+  const withinWindowDate = getLocalDateOffset(-30)
+  const olderDate = getLocalDateOffset(-31)
+  const futureDate = getLocalDateOffset(10)
+
+  assert.equal(getHistoricalPlanningCorrectionState(withinWindowDate).blocked, false)
+  assert.equal(getHistoricalPlanningCorrectionState(olderDate).blocked, true)
+  assert.equal(getHistoricalPlanningCorrectionState(futureDate).blocked, false)
+
+  const { workspace } = await initializePlanningWorkspaceDraftService(ADMIN_SESSION, {
+    date: withinWindowDate,
+  })
+  await createPlanningDraftAssignmentService(ADMIN_SESSION, {
+    workspaceId: workspace.id,
+    workId: 1,
+    personId: 3,
+    notes: 'Correcao dentro da janela',
+  })
+
+  const publishedWorkspace = await publishPlanningWorkspaceService(ADMIN_SESSION, workspace.id)
+  assert.equal(publishedWorkspace.state, 'published')
+
+  await assert.rejects(
+    () => initializePlanningWorkspaceDraftService(ADMIN_SESSION, { date: olderDate }),
+    /corrigir planeamentos ate 30 dias/,
+  )
+
+  const futureDraft = await initializePlanningWorkspaceDraftService(ADMIN_SESSION, {
+    date: futureDate,
+  })
+  assert.ok(futureDraft.workspace?.id)
+})
+
+test('correcao historica A para B sem horas publica a nova obra sem herdar horas', async () => {
+  const date = getLocalDateOffset(-1)
+  const workB = await createWorkService(ADMIN_SESSION, {
+    name: 'Obra Historica B',
+    clientId: 1,
+    number: 120,
+    location: 'Porto',
+    status: 'planned',
+    defaultHourlyCost: 12,
+  })
+  const { workspace } = await initializePlanningWorkspaceDraftService(ADMIN_SESSION, { date })
+  const draftA = await createPlanningDraftAssignmentService(ADMIN_SESSION, {
+    workspaceId: workspace.id,
+    workId: 1,
+    personId: 3,
+    notes: 'Obra A original',
+  })
+
+  await publishPlanningWorkspaceService(ADMIN_SESSION, workspace.id)
+  await setPlanningWorkspaceToDraftService(ADMIN_SESSION, workspace.id)
+  await updatePlanningDraftAssignmentService(ADMIN_SESSION, draftA.id, {
+    workId: workB.id,
+    personId: 3,
+    notes: 'Obra B corrigida',
+  })
+  await publishPlanningWorkspaceService(ADMIN_SESSION, workspace.id)
+
+  const oldAssignment = getAssignmentForDate(date, { workId: 1, personId: 3 })
+  const newAssignment = getVisibleAssignmentForDate(date, { workId: workB.id, personId: 3 })
+
+  assert.equal(oldAssignment?.planningVisible, false)
+  assert.equal(oldAssignment?.hours, 0)
+  assert.equal(oldAssignment?.approvedHours, null)
+  assert.ok(newAssignment)
+  assert.equal(newAssignment.hours, 0)
+  assert.equal(newAssignment.dailyHours, 0)
+  assert.equal(newAssignment.approvedHours, null)
+})
+
+test('correcao historica A para B invalida horas submetidas sem as transferir', async () => {
+  const date = getLocalDateOffset(-2)
+  const workB = await createWorkService(ADMIN_SESSION, {
+    name: 'Obra Historica Submetida',
+    clientId: 1,
+    number: 120,
+    location: 'Porto',
+    status: 'planned',
+    defaultHourlyCost: 12,
+  })
+  const { workspace } = await initializePlanningWorkspaceDraftService(ADMIN_SESSION, { date })
+  const draftA = await createPlanningDraftAssignmentService(ADMIN_SESSION, {
+    workspaceId: workspace.id,
+    workId: 1,
+    personId: 3,
+  })
+
+  await publishPlanningWorkspaceService(ADMIN_SESSION, workspace.id)
+  const publishedA = getVisibleAssignmentForDate(date, { workId: 1, personId: 3 })
+  updateWorkAssignment(publishedA.id, { hours: 8, dailyHours: 8 })
+  submitWorkAssignment(publishedA.id, 'Chefe Teste')
+
+  await setPlanningWorkspaceToDraftService(ADMIN_SESSION, workspace.id)
+  await updatePlanningDraftAssignmentService(ADMIN_SESSION, draftA.id, {
+    workId: workB.id,
+    personId: 3,
+  })
+  await publishPlanningWorkspaceService(ADMIN_SESSION, workspace.id)
+
+  const oldAssignment = getAssignmentForDate(date, { workId: 1, personId: 3 })
+  const newAssignment = getVisibleAssignmentForDate(date, { workId: workB.id, personId: 3 })
+  const chefAssignments = await getWorkAssignmentsListService(
+    { ...CHEF_SESSION, workIds: [1, workB.id] },
+    createSearchParams({ date }),
+  )
+
+  assert.equal(oldAssignment?.planningVisible, false)
+  assert.equal(oldAssignment?.hours, 0)
+  assert.equal(oldAssignment?.dailyHours, 0)
+  assert.equal(oldAssignment?.submitted, false)
+  assert.equal(oldAssignment?.submittedAt, null)
+  assert.equal(oldAssignment?.submittedBy, null)
+  assert.equal(newAssignment?.hours, 0)
+  assert.equal(newAssignment?.submitted, false)
+  assert.equal(chefAssignments.length, 1)
+  assert.equal(chefAssignments[0].workId, workB.id)
+})
+
+test('correcao historica A para B invalida horas aprovadas e exige nova aprovacao', async () => {
+  const date = getLocalDateOffset(-3)
+  const workB = await createWorkService(ADMIN_SESSION, {
+    name: 'Obra Historica Aprovada',
+    clientId: 1,
+    number: 120,
+    location: 'Porto',
+    status: 'planned',
+    defaultHourlyCost: 12,
+  })
+  const { workspace } = await initializePlanningWorkspaceDraftService(ADMIN_SESSION, { date })
+  const draftA = await createPlanningDraftAssignmentService(ADMIN_SESSION, {
+    workspaceId: workspace.id,
+    workId: 1,
+    personId: 3,
+  })
+
+  await publishPlanningWorkspaceService(ADMIN_SESSION, workspace.id)
+  const publishedA = getVisibleAssignmentForDate(date, { workId: 1, personId: 3 })
+  updateWorkAssignment(publishedA.id, { hours: 8, dailyHours: 8 })
+  submitWorkAssignment(publishedA.id, 'Chefe Teste')
+  updateWorkAssignment(publishedA.id, {
+    approvedHours: 8,
+    adminApprovedAt: '2030-01-01T10:00:00.000Z',
+    adminApprovedBy: 'Administrador Teste',
+  })
+  assert.equal(getApprovedAssignmentHours(getAssignmentForDate(date, { workId: 1, personId: 3 })), 8)
+
+  await setPlanningWorkspaceToDraftService(ADMIN_SESSION, workspace.id)
+  await updatePlanningDraftAssignmentService(ADMIN_SESSION, draftA.id, {
+    workId: workB.id,
+    personId: 3,
+  })
+  await publishPlanningWorkspaceService(ADMIN_SESSION, workspace.id)
+
+  const oldAssignment = getAssignmentForDate(date, { workId: 1, personId: 3 })
+  const newAssignment = getVisibleAssignmentForDate(date, { workId: workB.id, personId: 3 })
+  const assignmentsAfterCorrection = getAllWorkAssignments({ date })
+  const workerApprovedHours = assignmentsAfterCorrection
+    .filter(assignment => Number(assignment.personId) === 3)
+    .reduce((sum, assignment) => sum + getApprovedAssignmentHours(assignment), 0)
+  const workAApprovedHours = assignmentsAfterCorrection
+    .filter(assignment => Number(assignment.workId) === 1)
+    .reduce((sum, assignment) => sum + getApprovedAssignmentHours(assignment), 0)
+
+  assert.equal(oldAssignment?.planningVisible, false)
+  assert.equal(oldAssignment?.approvedHours, null)
+  assert.equal(oldAssignment?.adminApprovedAt, null)
+  assert.equal(getApprovedAssignmentHours(oldAssignment), 0)
+  assert.equal(workerApprovedHours, 0)
+  assert.equal(workAApprovedHours, 0)
+  assert.equal(newAssignment?.hours, 0)
+  assert.equal(getApprovedAssignmentHours(newAssignment), 0)
+
+  updateWorkAssignment(newAssignment.id, { hours: 7, dailyHours: 7 })
+  submitWorkAssignment(newAssignment.id, 'Chefe Teste')
+  assert.equal(
+    getApprovedAssignmentHours(getAssignmentForDate(date, { workId: workB.id, personId: 3 })),
+    0,
+  )
+
+  updateWorkAssignment(newAssignment.id, {
+    approvedHours: 7,
+    adminApprovedAt: '2030-01-01T12:00:00.000Z',
+    adminApprovedBy: 'Administrador Teste',
+  })
+
+  const approvedB = getAssignmentForDate(date, { workId: workB.id, personId: 3 })
+  assert.equal(getApprovedAssignmentHours(approvedB), 7)
+})
+
+test('republicar a mesma afetacao e editar notas preserva as horas existentes', async () => {
+  const date = getLocalDateOffset(-4)
+  const { workspace } = await initializePlanningWorkspaceDraftService(ADMIN_SESSION, { date })
+  const draftA = await createPlanningDraftAssignmentService(ADMIN_SESSION, {
+    workspaceId: workspace.id,
+    workId: 1,
+    personId: 3,
+    notes: 'Nota original',
+  })
+
+  await publishPlanningWorkspaceService(ADMIN_SESSION, workspace.id)
+  const publishedA = getVisibleAssignmentForDate(date, { workId: 1, personId: 3 })
+  updateWorkAssignment(publishedA.id, { hours: 6, dailyHours: 6 })
+  submitWorkAssignment(publishedA.id, 'Chefe Teste')
+  updateWorkAssignment(publishedA.id, {
+    approvedHours: 6,
+    adminApprovedAt: '2030-01-01T10:00:00.000Z',
+    adminApprovedBy: 'Administrador Teste',
+  })
+
+  await setPlanningWorkspaceToDraftService(ADMIN_SESSION, workspace.id)
+  await updatePlanningDraftAssignmentService(ADMIN_SESSION, draftA.id, {
+    notes: 'Nota revista sem alterar a obra',
+  })
+  await publishPlanningWorkspaceService(ADMIN_SESSION, workspace.id)
+
+  const preservedAssignment = getVisibleAssignmentForDate(date, { workId: 1, personId: 3 })
+  assert.equal(preservedAssignment?.id, publishedA.id)
+  assert.equal(preservedAssignment?.hours, 6)
+  assert.equal(preservedAssignment?.approvedHours, 6)
+  assert.equal(getApprovedAssignmentHours(preservedAssignment), 6)
+})
+
+test('remover trabalhador numa correcao historica invalida as horas da afetacao', async () => {
+  const date = getLocalDateOffset(-5)
+  const { workspace } = await initializePlanningWorkspaceDraftService(ADMIN_SESSION, { date })
+  const draftA = await createPlanningDraftAssignmentService(ADMIN_SESSION, {
+    workspaceId: workspace.id,
+    workId: 1,
+    personId: 3,
+  })
+
+  await publishPlanningWorkspaceService(ADMIN_SESSION, workspace.id)
+  const publishedA = getVisibleAssignmentForDate(date, { workId: 1, personId: 3 })
+  updateWorkAssignment(publishedA.id, { hours: 5, dailyHours: 5 })
+  submitWorkAssignment(publishedA.id, 'Chefe Teste')
+  updateWorkAssignment(publishedA.id, {
+    approvedHours: 5,
+    adminApprovedAt: '2030-01-01T10:00:00.000Z',
+    adminApprovedBy: 'Administrador Teste',
+  })
+
+  await setPlanningWorkspaceToDraftService(ADMIN_SESSION, workspace.id)
+  await deletePlanningDraftAssignmentService(ADMIN_SESSION, draftA.id)
+  await publishPlanningWorkspaceService(ADMIN_SESSION, workspace.id)
+
+  const removedAssignment = getAssignmentForDate(date, { workId: 1, personId: 3 })
+  assert.equal(removedAssignment?.planningVisible, false)
+  assert.equal(removedAssignment?.hours, 0)
+  assert.equal(removedAssignment?.approvedHours, null)
+  assert.equal(getVisibleAssignmentForDate(date, { workId: 1, personId: 3 }), undefined)
+})
+
+test('correcao com multiplas afetacoes invalida apenas a relacao substituida', async () => {
+  const date = getLocalDateOffset(-6)
+  const workB = await createWorkService(ADMIN_SESSION, {
+    name: 'Obra Historica B Multipla',
+    clientId: 1,
+    number: 120,
+    location: 'Porto',
+    status: 'planned',
+    defaultHourlyCost: 12,
+  })
+  const workC = await createWorkService(ADMIN_SESSION, {
+    name: 'Obra Historica C Multipla',
+    clientId: 1,
+    number: 121,
+    location: 'Braga',
+    status: 'planned',
+    defaultHourlyCost: 13,
+  })
+  const { workspace } = await initializePlanningWorkspaceDraftService(ADMIN_SESSION, { date })
+  const draftA = await createPlanningDraftAssignmentService(ADMIN_SESSION, {
+    workspaceId: workspace.id,
+    workId: 1,
+    personId: 3,
+  })
+  await createPlanningDraftAssignmentService(ADMIN_SESSION, {
+    workspaceId: workspace.id,
+    workId: workC.id,
+    personId: 3,
+  })
+
+  await publishPlanningWorkspaceService(ADMIN_SESSION, workspace.id)
+  const publishedA = getVisibleAssignmentForDate(date, { workId: 1, personId: 3 })
+  const publishedC = getVisibleAssignmentForDate(date, { workId: workC.id, personId: 3 })
+
+  updateWorkAssignment(publishedA.id, { hours: 8, dailyHours: 8 })
+  submitWorkAssignment(publishedA.id, 'Chefe Teste')
+  updateWorkAssignment(publishedA.id, {
+    approvedHours: 8,
+    adminApprovedAt: '2030-01-01T10:00:00.000Z',
+    adminApprovedBy: 'Administrador Teste',
+  })
+  updateWorkAssignment(publishedC.id, { hours: 4, dailyHours: 4 })
+  submitWorkAssignment(publishedC.id, 'Chefe Teste')
+  updateWorkAssignment(publishedC.id, {
+    approvedHours: 4,
+    adminApprovedAt: '2030-01-01T10:30:00.000Z',
+    adminApprovedBy: 'Administrador Teste',
+  })
+
+  await setPlanningWorkspaceToDraftService(ADMIN_SESSION, workspace.id)
+  await updatePlanningDraftAssignmentService(ADMIN_SESSION, draftA.id, {
+    workId: workB.id,
+    personId: 3,
+  })
+  await publishPlanningWorkspaceService(ADMIN_SESSION, workspace.id)
+
+  const oldA = getAssignmentForDate(date, { workId: 1, personId: 3 })
+  const newB = getVisibleAssignmentForDate(date, { workId: workB.id, personId: 3 })
+  const preservedC = getVisibleAssignmentForDate(date, { workId: workC.id, personId: 3 })
+  const approvedTotal = getAllWorkAssignments({ date })
+    .filter(assignment => Number(assignment.personId) === 3)
+    .reduce((sum, assignment) => sum + getApprovedAssignmentHours(assignment), 0)
+
+  assert.equal(oldA?.planningVisible, false)
+  assert.equal(getApprovedAssignmentHours(oldA), 0)
+  assert.equal(newB?.hours, 0)
+  assert.equal(getApprovedAssignmentHours(newB), 0)
+  assert.equal(preservedC?.id, publishedC.id)
+  assert.equal(preservedC?.hours, 4)
+  assert.equal(getApprovedAssignmentHours(preservedC), 4)
+  assert.equal(approvedTotal, 4)
 })
 
 test('registo de horas aceita apenas valores entre 0 e 24', async () => {
