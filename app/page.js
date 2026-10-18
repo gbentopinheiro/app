@@ -1,11 +1,16 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import LogoutButton from './components/LogoutButton'
+import AdminSidebar from './components/AdminSidebar'
+import adminSidebarStyles from './components/AdminSidebar.module.css'
+import DashboardHero from './components/DashboardHero'
+import DashboardSummaryCards from './components/DashboardSummaryCards'
+import DashboardOperations from './components/DashboardOperations'
 import { BentixContent, BentixPage, BentixResponsiveGrid } from './components/ViewportLayout.js'
 import { BentixLogo } from './login/components/BentixLogo'
 import { isFeatureEnabled } from '../lib/feature-flags.js'
 import { getServerSession } from '../lib/server-session.js'
-import { isChefRole, isResponsavelRole } from '../lib/roles.js'
+import { isChefRole, isResponsavelRole, ROLE_ADMIN } from '../lib/roles.js'
 import { getAllPeopleData } from '../lib/people.js'
 import { getAllWorkAssignmentsData } from '../lib/work-assignments.js'
 import { isAssignmentApproved } from '../lib/work-assignment-approval.js'
@@ -1199,8 +1204,12 @@ export default async function Home() {
     : modules
 
   return (
-    <BentixPage style={pageStyle}>
+    <BentixPage style={pageStyle} className={session.role === ROLE_ADMIN ? adminSidebarStyles.dashboard : ''}>
+      {session.role === ROLE_ADMIN ? <AdminSidebar /> : null}
       <BentixContent width="app" gap="lg" style={containerStyle}>
+        {session.role === ROLE_ADMIN ? (
+          <DashboardHero userName={session.name || session.username} notificationUsername={session.username} notificationsEnabled={notificationsCenterEnabled} />
+        ) : (
         <section className="btx-dashboard-hero" style={heroStyle}>
           <div style={heroBlueGlowStyle} />
           <div style={heroOrangeGlowStyle} />
@@ -1254,8 +1263,26 @@ export default async function Home() {
             </div>
           </div>
         </section>
+        )}
+
+        {session.role === ROLE_ADMIN ? <DashboardSummaryCards
+          date={getTodayDate()}
+          annualBilling={dashboardStats.find(item => item.label === 'Faturação anual')}
+        /> : null}
 
         <div style={{ display: 'grid', gap: '16px' }}>
+        {session.role === ROLE_ADMIN ? (
+          <DashboardOperations
+            date={getTodayDate()}
+            todayDate={getTodayDate()}
+            todayLabel={getTodayLabel()}
+            smallCalendar={smallCalendar}
+            calendarOverview={calendarOverview}
+            notifications={notifications}
+            calendarEnabled={calendarManagementEnabled}
+            notificationsEnabled={notificationsCenterEnabled}
+          />
+        ) : (
         <section className="btx-dashboard-section" style={dashboardSectionStyle}>
           <div style={dashboardHeaderStyle}>
             <div style={{ minWidth: 0 }}>
@@ -1453,7 +1480,9 @@ export default async function Home() {
             </div>
           </BentixResponsiveGrid>
         </section>
+        )}
 
+        {session.role !== ROLE_ADMIN ? (
         <BentixResponsiveGrid as="section" preset="cards" style={cardsStyle}>
           {visibleModules.map(module => (
             <Link
@@ -1476,6 +1505,7 @@ export default async function Home() {
             </Link>
           ))}
         </BentixResponsiveGrid>
+        ) : null}
         </div>
       </BentixContent>
     </BentixPage>

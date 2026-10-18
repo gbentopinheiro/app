@@ -1,0 +1,196 @@
+.sidebar {
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  .dashboard:global(.btx-page) {
+    --btx-admin-sidebar-width: 72px;
+    padding-inline-start: calc(var(--btx-admin-sidebar-width) + clamp(16px, 2vw, 24px));
+    transition: padding-inline-start 160ms ease-out;
+  }
+
+  .dashboard:global(.btx-page):has(> .sidebar:hover, > .sidebar :focus-visible) {
+    --btx-admin-sidebar-width: 232px;
+  }
+
+  .dashboard:global(.btx-page) > :global(.vp-content-frame--app) {
+    width: 100%;
+  }
+
+  .sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 20;
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+    width: var(--btx-admin-sidebar-width, 72px);
+    height: 100dvh;
+    padding: 32px 12px 20px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    background: var(--btx-color-navy-strong);
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+    color: #c7d3df;
+    scrollbar-width: thin;
+    scrollbar-color: #556c86 transparent;
+    transition: width 160ms ease-out;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    gap: 12px;
+    min-height: 48px;
+    min-width: 0;
+    margin: 0 0 36px;
+    padding-inline: 5px;
+    overflow: hidden;
+    color: #ffffff;
+    text-decoration: none;
+    font-size: 23px;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    line-height: 1;
+  }
+
+  .brand img {
+    display: block;
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+  }
+
+  .menu,
+  .footer {
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    gap: 6px;
+  }
+
+  .sidebar .item {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 14px;
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 48px;
+    padding: 12px 13px;
+    overflow: hidden;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.5;
+    text-align: left;
+    text-decoration: none;
+    box-shadow: none;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background-color 160ms ease, color 160ms ease;
+  }
+
+  .icon {
+    display: block;
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+  }
+
+  .label,
+  .logoutButton :global(.btx-button__label) {
+    flex-shrink: 0;
+    opacity: 0;
+    transform: translateX(-4px);
+    white-space: nowrap;
+    pointer-events: none;
+    transition: opacity 160ms ease-out, transform 160ms ease-out;
+  }
+
+  .sidebar:is(:hover, :has(:focus-visible)) .label,
+  .sidebar:is(:hover, :has(:focus-visible)) .logoutButton :global(.btx-button__label) {
+    opacity: 1;
+    transform: translateX(0);
+  }
+
+  .item:hover {
+    background: rgba(255, 255, 255, 0.07);
+    color: #ffffff;
+  }
+
+  .item:focus-visible,
+  .brand:focus-visible {
+    outline: 2px solid #ffb15c;
+    outline-offset: 3px;
+  }
+
+  .item.active {
+    background: rgba(255, 177, 92, 0.12);
+    color: #ffb15c;
+    font-weight: 600;
+  }
+
+  .active::before {
+    position: absolute;
+    inset: 13px auto 13px 0;
+    width: 3px;
+    border-radius: 0 3px 3px 0;
+    background: #ffb15c;
+    content: '';
+  }
+
+  .footer {
+    margin-top: auto;
+    padding-top: 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .menu {
+    margin-bottom: 32px;
+  }
+
+  .logout {
+    position: relative;
+  }
+
+  .logout > .icon {
+    position: absolute;
+    top: 14px;
+    left: 13px;
+    z-index: 1;
+    pointer-events: none;
+  }
+
+  .sidebar .logoutButton {
+    --btx-button-current-hover-background: rgba(255, 255, 255, 0.07);
+    --btx-button-current-active-background: rgba(255, 255, 255, 0.1);
+    --btx-button-current-hover-border: transparent;
+    --btx-button-current-active-border: transparent;
+    --btx-button-current-shadow-hover: none;
+  }
+
+  .logoutButton :global(.btx-button__label) {
+    margin-left: 34px;
+  }
+
+  .sidebar .logoutButton:hover:not(:disabled):not([aria-disabled='true']) {
+    transform: none;
+  }
+}
+
+@media (min-width: 1024px) and (prefers-reduced-motion: reduce) {
+  .dashboard:global(.btx-page),
+  .sidebar,
+  .label,
+  .logoutButton :global(.btx-button__label) {
+    transition: none;
+  }
+}
