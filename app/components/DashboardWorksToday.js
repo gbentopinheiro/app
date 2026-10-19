@@ -7,12 +7,16 @@ import styles from './DashboardWorksToday.module.css'
 
 export default async function DashboardWorksToday({ date }) {
   const [assignments, works] = await Promise.all([
-    getAllWorkAssignmentsData({ date, planningVisible: true }),
+    getAllWorkAssignmentsData({ date }),
     getAllWorksData(),
   ])
   const peopleByWorkId = new Map()
+  // Match the existing work-level submission rule in buildOperationalWorkStatuses.
+  const submittedWorkIds = new Set(
+    assignments.filter(assignment => assignment.submitted).map(assignment => String(assignment.workId)),
+  )
 
-  assignments.filter(shouldAssignmentBehaveAsPlanningAssignment).forEach(assignment => {
+  assignments.filter(assignment => assignment.planningVisible !== false && shouldAssignmentBehaveAsPlanningAssignment(assignment)).forEach(assignment => {
     const workId = String(assignment.workId)
     const people = peopleByWorkId.get(workId) || new Set()
     if (assignment.person && (isWorkerRole(assignment.person.role) || isChefRole(assignment.person.role))) {
@@ -34,6 +38,8 @@ export default async function DashboardWorksToday({ date }) {
         <ul className={styles.list}>
           {todaysWorks.map(work => {
             const peopleCount = peopleByWorkId.get(String(work.id)).size
+            const submitted = submittedWorkIds.has(String(work.id))
+            const statusLabel = submitted ? 'Submetido' : 'Não submetido'
             return (
               <li key={work.id} className={styles.row}>
                 <div className={styles.workCopy}>
@@ -43,6 +49,10 @@ export default async function DashboardWorksToday({ date }) {
                 <span className={styles.people} aria-label={`${peopleCount} trabalhadores afetados`}>
                   {numberFormat.format(peopleCount)}
                   <span className={styles.peopleLabel}>{peopleCount === 1 ? 'trabalhador' : 'trabalhadores'}</span>
+                </span>
+                <span className={`${styles.status} ${submitted ? styles.submitted : styles.notSubmitted}`} aria-label={`Estado: ${statusLabel}`}>
+                  <span className={styles.statusDot} aria-hidden="true" />
+                  {statusLabel}
                 </span>
                 <Link href={`/works/${work.id}`} className={styles.openWork} aria-label={`Abrir obra ${work.name}`} title={`Abrir obra ${work.name}`}>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
