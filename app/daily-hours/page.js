@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import EditPencilIcon, { editPencilButtonStyle } from '../components/EditPencilIcon'
 import PlanningDatePopover from '../components/PlanningDatePopover'
 import {
@@ -533,6 +533,7 @@ export default function DailyHoursPage() {
   const [rowErrors, setRowErrors] = useState({})
   const [selectedDate, setSelectedDate] = useState(() => getTodayDate())
   const [selectedWorkId, setSelectedWorkId] = useState('')
+  const initialWorkSelectionHandled = useRef(false)
   const [entryHours, setEntryHours] = useState({})
   const [savingAll, setSavingAll] = useState(false)
   const [approvingId, setApprovingId] = useState(null)
@@ -673,6 +674,16 @@ export default function DailyHoursPage() {
       return
     }
 
+    if (!loading && session && !initialWorkSelectionHandled.current) {
+      initialWorkSelectionHandled.current = true
+      const requestedWorkId = new URLSearchParams(window.location.search).get('workId')
+      const requestedWork = visibleWorks.find(work => String(work.id) === requestedWorkId)
+      if (requestedWork) {
+        setSelectedWorkId(String(requestedWork.id))
+        return
+      }
+    }
+
     if (selectedWorkId && visibleWorks.some(work => String(work.id) === String(selectedWorkId))) {
       return
     }
@@ -684,7 +695,7 @@ export default function DailyHoursPage() {
     } else if (selectedWorkId) {
       setSelectedWorkId('')
     }
-  }, [activeWorks, dailyEntries, isChef, selectedWorkId, session?.workIds, visibleWorks])
+  }, [activeWorks, dailyEntries, isChef, loading, selectedWorkId, session, visibleWorks])
 
   useEffect(() => {
     const nextEntryHours = {}

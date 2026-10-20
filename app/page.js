@@ -1083,33 +1083,14 @@ async function getResponsavelCalendarAgenda() {
   }
 }
 
-function formatNotificationDate(dateString) {
-  const date = new Date(`${dateString}T00:00:00`)
-
-  if (Number.isNaN(date.getTime())) {
-    return dateString
-  }
-
-  return new Intl.DateTimeFormat('pt-PT', {
-    day: '2-digit',
-    month: '2-digit',
-  }).format(date)
-}
-
 async function getRecentNotifications() {
-  const notes = await getAllDailyWorkNotesData()
-
-  return notes
-    .filter(note => note.note)
-    .sort((left, right) => new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime())
-    .slice(0, 3)
-    .map(note => ({
-      id: note.id,
-      chef: note.authorName || 'Chefe',
-      work: note.work?.name || `Obra ${note.workId}`,
-      date: formatNotificationDate(note.date),
-      note: note.note.length > 92 ? `${note.note.slice(0, 92)}...` : note.note,
-    }))
+  const notifications = await getOperationNotifications({ audience: 'admin', limit: 3 })
+  return notifications.map(notification => ({
+    ...notification,
+    note: notification.sourceType === 'daily-note' && notification.note.length > 92
+      ? `${notification.note.slice(0, 92)}...`
+      : notification.note,
+  }))
 }
 
 async function getCalendarOverview(username) {

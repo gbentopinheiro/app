@@ -12,6 +12,7 @@ const __dirname = dirname(__filename)
 const repoRoot = join(__dirname, '..')
 const dataDir = join(repoRoot, 'data')
 const dailyPlanPageSource = readFileSync(join(repoRoot, 'app', 'daily-plan', 'page.js'), 'utf8')
+const planningClientBoardSource = readFileSync(join(repoRoot, 'app', 'daily-plan', 'PlanningClientBoard.js'), 'utf8')
 const dailyHoursPageSource = readFileSync(join(repoRoot, 'app', 'daily-hours', 'page.js'), 'utf8')
 const viewportLayoutSource = readFileSync(join(repoRoot, 'app', 'components', 'ViewportLayout.js'), 'utf8')
 const globalCssSource = readFileSync(join(repoRoot, 'app', 'globals.css'), 'utf8')
@@ -200,6 +201,7 @@ const { normalizePersonPricingInput } = await import('../lib/person-pricing.js')
 const { appendBuildVersion } = await import('../lib/pwa-version.js')
 const {
   buildPlanningMessagePreview,
+  comparePlanningMessageAssignments,
   filterPlanningMessageAssignmentsForWork,
 } = await import('../lib/planning-message.js')
 const { getEntityRoleLabel, getRoleDisplayLabel } = await import('../lib/roles.js')
@@ -399,7 +401,8 @@ test('Plano diÃƒÆ’Ã‚Â¡rio usa scroll ÃƒÆ’Ã‚Âºnico da pÃƒÆ
 })
 
 test('workspace do Plano diÃƒÆ’Ã‚Â¡rio usa grelha em fluxo normal e rodapÃƒÆ’Ã‚Â© de aÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o sem sobreposiÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o', () => {
-  assert.match(dailyPlanPageSource, /className="vp-planning-work-grid"/)
+  assert.match(dailyPlanPageSource, /<PlanningClientBoard/)
+  assert.match(planningClientBoardSource, /<ResponsiveGrid className="vp-planning-work-grid"/)
   assert.match(globalCssSource, /\.vp-planning-work-grid\s*\{[\s\S]*grid-auto-flow:\s*row/)
   assert.match(globalCssSource, /\.vp-planning-work-grid\s*\{[\s\S]*grid-auto-rows:\s*auto/)
   assert.match(globalCssSource, /\.vp-planning-secondary-action-bar\s*\{[\s\S]*justify-content:\s*flex-end/)
@@ -630,6 +633,53 @@ test('admin edita draft sem publicar e a versao oficial continua vazia', async (
   assert.equal(getAllWorkAssignments({ date: PLANNING_WORKFLOW_DATE }).length, 0)
 })
 
+test('planning conflicts join existing notifications once, track Draft edits and disappear without changing Published', async () => {
+  const { getOperationNotifications } = await import('../lib/operation-notifications.js')
+  const workB = await createWorkService(ADMIN_SESSION, { number: 102, name: 'Obra B', clientId: 1, defaultHourlyCost: 12 })
+  const workC = await createWorkService(ADMIN_SESSION, { number: 103, name: 'Obra C', clientId: 1, defaultHourlyCost: 12 })
+  const { workspace } = await initializePlanningWorkspaceDraftService(ADMIN_SESSION, { date: PLANNING_WORKFLOW_DATE })
+  const base = await createPlanningDraftAssignmentService(ADMIN_SESSION, { workspaceId: workspace.id, workId: 1, personId: 3 })
+  await createPlanningDraftAssignmentService(ADMIN_SESSION, { workspaceId: workspace.id, workId: 1, personId: 4 })
+  await publishPlanningWorkspaceService(ADMIN_SESSION, workspace.id)
+  await setPlanningWorkspaceToDraftService(ADMIN_SESSION, workspace.id)
+  writeJsonFile('daily-work-notes.json', [{ id: 1, date: PLANNING_WORKFLOW_DATE, workId: 1, note: 'Nota existente', authorName: 'Chefe Teste', updatedAt: '2030-02-10T10:00:00Z' }])
+  const notices = () => getOperationNotifications({ audience: 'admin', withYear: true })
+  const conflicts = async () => (await notices()).filter(item => item.sourceType === 'planning-conflict')
+  assert.equal((await conflicts()).length, 0)
+
+  const extra = await createPlanningDraftAssignmentService(ADMIN_SESSION, { workspaceId: workspace.id, workId: workB.id, personId: 3 })
+  await createPlanningDraftAssignmentService(ADMIN_SESSION, { workspaceId: workspace.id, workId: 1, personId: 2 })
+  await createPlanningDraftAssignmentService(ADMIN_SESSION, { workspaceId: workspace.id, workId: workB.id, personId: 2 })
+  const first = await conflicts()
+  assert.equal(first.length, 1, 'chefs in multiple works must retain their existing exemption')
+  assert.match(first[0].note, /Carpinteiro Teste/)
+  assert.match(first[0].note, /Obra B/)
+  assert.equal(first[0].href, `/daily-plan?date=${PLANNING_WORKFLOW_DATE}#planning-conflicts`)
+  assert.deepEqual(await conflicts(), first, 'successive reads cannot duplicate or change versions')
+  assert.equal((await notices()).filter(item => item.sourceType === 'daily-note').length, 1)
+  assert.equal((await getOperationNotifications({ audience: 'responsavel' })).some(item => item.sourceType === 'planning-conflict'), false)
+  assert.equal((await getOperationNotifications({ audience: 'admin', limit: 1 }))[0].id, first[0].id)
+
+  await updatePlanningDraftAssignmentService(ADMIN_SESSION, extra.id, { personId: 4 })
+  let next = await conflicts()
+  assert.equal(next.length, 1)
+  assert.match(next[0].note, /Ferrajeiro Teste/)
+  assert.notEqual(next[0].id, first[0].id)
+  await updatePlanningDraftAssignmentService(ADMIN_SESSION, extra.id, { personId: 3 })
+  assert.equal((await conflicts())[0].id, first[0].id)
+
+  await updatePlanningDraftAssignmentService(ADMIN_SESSION, base.id, { workId: workC.id })
+  assert.match((await conflicts())[0].work, /Obra C/)
+  await publishPlanningWorkspaceService(ADMIN_SESSION, workspace.id)
+  assert.equal((await conflicts()).length, 1, 'publishing does not resolve a real multi-work conflict')
+  const publishedBefore = JSON.stringify(getAllWorkAssignments({ date: PLANNING_WORKFLOW_DATE }))
+  await setPlanningWorkspaceToDraftService(ADMIN_SESSION, workspace.id)
+  await deletePlanningDraftAssignmentService(ADMIN_SESSION, extra.id)
+  assert.equal((await conflicts()).length, 0, 'resolved Draft must remove the warning even while Published still has it')
+  assert.equal(JSON.stringify(getAllWorkAssignments({ date: PLANNING_WORKFLOW_DATE })), publishedBefore)
+  assert.equal((await notices()).filter(item => item.sourceType === 'daily-note').length, 1)
+})
+
 test('mensagem gerada usa apenas as afetaÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Âµes reais do planeamento', () => {
   const groupedAssignments = [
     {
@@ -663,6 +713,87 @@ test('modal de importar mensagem reutiliza o mesmo filtro da mensagem gerada', (
   assert.match(dailyPlanPageSource, /filterPlanningMessageAssignmentsForWork/)
   assert.match(dailyPlanPageSource, /messagePreviewAssignmentsByWorkId/)
   assert.match(dailyPlanPageSource, /Sem pessoas na mensagem/)
+})
+
+test('daily comparison prefers the previous day Published over its edited Draft and ignores current-day publication', async () => {
+  const previousDate = '2030-02-09'
+  const date = PLANNING_WORKFLOW_DATE
+  const workB = await createWorkService(ADMIN_SESSION, { number: 102, name: 'Obra B', clientId: 1, defaultHourlyCost: 12 })
+  const previous = await initializePlanningWorkspaceDraftService(ADMIN_SESSION, { date: previousDate })
+  const previousAssignment = await createPlanningDraftAssignmentService(ADMIN_SESSION, {
+    workspaceId: previous.workspace.id, workId: 1, personId: 3,
+  })
+  await createPlanningDraftAssignmentService(ADMIN_SESSION, { workspaceId: previous.workspace.id, workId: 1, personId: 4 })
+  await publishPlanningWorkspaceService(ADMIN_SESSION, previous.workspace.id)
+  await setPlanningWorkspaceToDraftService(ADMIN_SESSION, previous.workspace.id)
+  await updatePlanningDraftAssignmentService(ADMIN_SESSION, previousAssignment.id, { workId: workB.id })
+
+  const current = await initializePlanningWorkspaceDraftService(ADMIN_SESSION, { date })
+  await createPlanningDraftAssignmentService(ADMIN_SESSION, { workspaceId: current.workspace.id, workId: workB.id, personId: 3 })
+  await createPlanningDraftAssignmentService(ADMIN_SESSION, { workspaceId: current.workspace.id, workId: workB.id, personId: 2 })
+  const getView = () => getPlanningWorkspaceViewService(ADMIN_SESSION, createSearchParams({ date }))
+  const beforePublish = await getView()
+  assert.equal(beforePublish.previousDaySnapshot.date, previousDate)
+  assert.equal(beforePublish.previousDaySnapshot.state, 'published')
+  assert.equal(beforePublish.previousDaySnapshot.assignments.find(a => a.personId === 3).workId, 1)
+  const compare = view => comparePlanningMessageAssignments({
+    planningDate: date, assignments: view.items, previousDaySnapshot: view.previousDaySnapshot,
+  })
+  assert.deepEqual([...compare(beforePublish).changedPersonIds], ['3'])
+  assert.deepEqual([...compare(beforePublish).newPersonIds], ['2'])
+  assert.deepEqual(compare(beforePublish).removedAssignments.map(a => a.personId).sort(), [3, 4])
+
+  await publishPlanningWorkspaceService(ADMIN_SESSION, current.workspace.id)
+  const afterPublish = await getView()
+  assert.equal(afterPublish.workspace.state, 'published')
+  assert.deepEqual(afterPublish.previousDaySnapshot, beforePublish.previousDaySnapshot)
+  assert.deepEqual([...compare(afterPublish).changedPersonIds], ['3'], 'publishing this day must not clear day-to-day differences')
+  await setPlanningWorkspaceToDraftService(ADMIN_SESSION, current.workspace.id)
+  assert.deepEqual([...compare(await getView()).changedPersonIds], ['3'])
+
+  await publishPlanningWorkspaceService(ADMIN_SESSION, previous.workspace.id)
+  const updatedReference = await getView()
+  assert.equal(compare(updatedReference).changedPersonIds.size, 0, 'republishing the previous day refreshes its reference')
+})
+
+test('daily comparison uses the previous day Draft only when no publication exists, without mutating it', async () => {
+  const previousDate = '2030-02-09'
+  const previous = await initializePlanningWorkspaceDraftService(ADMIN_SESSION, { date: previousDate })
+  await createPlanningDraftAssignmentService(ADMIN_SESSION, { workspaceId: previous.workspace.id, workId: 1, personId: 3 })
+  const current = await initializePlanningWorkspaceDraftService(ADMIN_SESSION, { date: PLANNING_WORKFLOW_DATE })
+  await createPlanningDraftAssignmentService(ADMIN_SESSION, { workspaceId: current.workspace.id, workId: 1, personId: 3 })
+  const previousBefore = await getPlanningWorkspaceViewService(ADMIN_SESSION, createSearchParams({ date: previousDate }))
+  const currentView = await getPlanningWorkspaceViewService(ADMIN_SESSION, createSearchParams({ date: PLANNING_WORKFLOW_DATE }))
+  assert.equal(currentView.previousDaySnapshot.state, 'draft')
+  assert.equal(currentView.previousDaySnapshot.date, previousDate)
+  assert.equal(currentView.previousDaySnapshot.workPlanId, null)
+  assert.equal(comparePlanningMessageAssignments({
+    planningDate: PLANNING_WORKFLOW_DATE, assignments: currentView.items, previousDaySnapshot: currentView.previousDaySnapshot,
+  }).changedPersonIds.size, 0)
+  assert.deepEqual(await getPlanningWorkspaceViewService(ADMIN_SESSION, createSearchParams({ date: previousDate })), previousBefore)
+  assert.equal(getWorkPlanByDate(previousDate, 1), null)
+})
+
+test('daily comparison never skips missing days and treats an empty Published as the real baseline', async () => {
+  const older = await initializePlanningWorkspaceDraftService(ADMIN_SESSION, { date: '2030-02-08' })
+  await createPlanningDraftAssignmentService(ADMIN_SESSION, { workspaceId: older.workspace.id, workId: 1, personId: 3 })
+  await publishPlanningWorkspaceService(ADMIN_SESSION, older.workspace.id)
+  const current = await initializePlanningWorkspaceDraftService(ADMIN_SESSION, { date: PLANNING_WORKFLOW_DATE })
+  await createPlanningDraftAssignmentService(ADMIN_SESSION, { workspaceId: current.workspace.id, workId: 1, personId: 3 })
+  const read = () => getPlanningWorkspaceViewService(ADMIN_SESSION, createSearchParams({ date: PLANNING_WORKFLOW_DATE }))
+  assert.equal((await read()).previousDaySnapshot, null, 'do not use the latest available earlier day')
+  const missingPrevious = await getPlanningWorkspaceViewService(ADMIN_SESSION, createSearchParams({ date: '2030-02-09' }))
+  assert.equal(missingPrevious.workspace, null, 'comparison must not create a workspace for a missing previous day')
+  const empty = await initializePlanningWorkspaceDraftService(ADMIN_SESSION, { date: '2030-02-09' })
+  await publishPlanningWorkspaceService(ADMIN_SESSION, empty.workspace.id)
+  await setPlanningWorkspaceToDraftService(ADMIN_SESSION, empty.workspace.id)
+  await createPlanningDraftAssignmentService(ADMIN_SESSION, { workspaceId: empty.workspace.id, workId: 1, personId: 3 })
+  const view = await read()
+  assert.equal(view.previousDaySnapshot.state, 'published')
+  assert.deepEqual(view.previousDaySnapshot.assignments, [], 'empty Published takes priority over populated Draft')
+  assert.deepEqual([...comparePlanningMessageAssignments({
+    planningDate: PLANNING_WORKFLOW_DATE, assignments: view.items, previousDaySnapshot: view.previousDaySnapshot,
+  }).newPersonIds], ['3'])
 })
 
 test('mensagem gerada exclui afetaÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Âµes persistidas como sÃƒÆ’Ã‚Â³ acesso', () => {

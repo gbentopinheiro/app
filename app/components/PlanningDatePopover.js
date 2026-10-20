@@ -232,6 +232,7 @@ export default function PlanningDatePopover({
   dialogLabel = 'Selecionar data do planeamento',
   previousMonthLabel = 'Mês anterior',
   nextMonthLabel = 'Mês seguinte',
+  compact = false,
 }) {
   const rootRef = useRef(null)
   const triggerRef = useRef(null)
@@ -436,20 +437,37 @@ export default function PlanningDatePopover({
       : null
 
   return (
-    <div ref={rootRef} style={containerStyle}>
+    <div ref={rootRef} style={compact ? { ...containerStyle, width: 'auto', minWidth: 0 } : containerStyle}>
       <button
         ref={triggerRef}
         type="button"
         className="vp-planning-date-trigger"
         onClick={toggleCalendar}
         onKeyDown={handleTriggerKeyDown}
-        style={triggerStyle}
+        style={compact ? {
+          ...triggerStyle,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          maxWidth: '100%',
+          padding: '9px 12px',
+          borderRadius: '10px',
+          border: '1px solid var(--btx-color-border)',
+          background: 'var(--btx-color-surface)',
+          color: 'var(--btx-color-text-primary)',
+          textAlign: 'left',
+        } : triggerStyle}
         aria-label={`Selecionar data do planeamento: ${displayLabel}`}
         aria-expanded={isOpen}
         aria-haspopup="dialog"
         aria-controls="planeamento-calendario"
       >
-        <p style={triggerTextStyle}>{displayLabel}</p>
+        {compact && (
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false" style={{ flexShrink: 0 }}>
+            <path d="M8 2v4m8-4v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z" />
+          </svg>
+        )}
+        <p style={compact ? { ...triggerTextStyle, fontSize: '13px', fontWeight: 600, lineHeight: 1.4, letterSpacing: 'normal' } : triggerTextStyle}>{displayLabel}</p>
       </button>
       {popover}
     </div>

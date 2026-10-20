@@ -1,0 +1,39 @@
+.surface {
+  position: relative;
+  isolation: isolate;
+  cursor: pointer;
+  transition: border-color 140ms ease, box-shadow 140ms ease;
+}
+
+.surface:hover {
+  border-color: var(--btx-color-navy-soft);
+  box-shadow: 0 6px 18px rgba(16, 46, 73, 0.08);
+}
+
+.link::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+}
+
+.link:focus-visible {
+  outline: none;
+}
+
+.link:focus-visible::after {
+  outline: 2px solid var(--btx-color-primary);
+  outline-offset: 3px;
+}
+
+.control,
+.surface :is(button, input, select, textarea, summary) {
+  position: relative;
+  z-index: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .surface {
+    transition: none;
+  }
+}

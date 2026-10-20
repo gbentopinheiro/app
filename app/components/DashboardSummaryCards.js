@@ -7,6 +7,7 @@ import { isChefRole, isWorkerRole, ROLE_ADMIN } from '../../lib/roles.js'
 import { filterAssignmentsForSession } from '../../lib/work-assignment-policy.js'
 import { getApprovedAssignmentTotalCost, isAssignmentApproved } from '../../lib/work-assignment-approval.js'
 import styles from './DashboardSummaryCards.module.css'
+import navigation from './DashboardNavigation.module.css'
 
 const iconPaths = {
   people: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2m20 0v-2a4 4 0 0 0-3-3.87M9 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8Zm8 .13a4 4 0 0 1 0 7.75',
@@ -25,7 +26,7 @@ function CardIcon({ name, ...props }) {
 
 function SummaryCard({ id, label, value, description, icon, tone, money = false, href }) {
   return (
-    <article className={styles.card} aria-labelledby={id}>
+    <article className={[styles.card, href ? navigation.surface : ''].filter(Boolean).join(' ')} aria-labelledby={id}>
       <div className={styles.cardHeader}>
         <span className={[styles.icon, styles[tone]].join(' ')}><CardIcon name={icon} /></span>
         <h2 id={id} className={styles.label}>{label}</h2>
@@ -36,7 +37,7 @@ function SummaryCard({ id, label, value, description, icon, tone, money = false,
       <div className={styles.cardFooter}>
         <p className={styles.description}>{description}</p>
         {href ? (
-          <Link href={href} className={styles.action} aria-label="Abrir Registo de Horas" title="Abrir Registo de Horas">
+          <Link href={href} className={`${styles.action} ${navigation.link}`} aria-label="Abrir Registo de Horas" title="Abrir Registo de Horas">
             <CardIcon name="arrow" width="18" height="18" />
           </Link>
         ) : null}

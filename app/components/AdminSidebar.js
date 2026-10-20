@@ -1,9 +1,12 @@
+'use client'
+
 import Link from 'next/link'
+import { useEffect, useId, useState } from 'react'
 import LogoutButton from './LogoutButton'
 import styles from './AdminSidebar.module.css'
 
 const menuItems = [
-  { label: 'Início', href: '/', icon: 'home', active: true },
+  { label: 'Início', href: '/', icon: 'home' },
   { label: 'Registo de horas', href: '/daily-hours', icon: 'clock' },
   { label: 'Clientes', href: '/clients', icon: 'clients' },
   { label: 'Obras', href: '/works', icon: 'building' },
@@ -45,52 +48,89 @@ function MenuIcon({ name }) {
   )
 }
 
-export default function AdminSidebar() {
+export default function AdminSidebar({ activePath = '/', mobileNavigation = false }) {
+  const sidebarId = useId()
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    if (!mobileNavigation) return
+
+    const query = window.matchMedia('(max-width: 1023px)')
+    const update = () => setIsMobile(query.matches)
+    update()
+    query.addEventListener('change', update)
+    return () => query.removeEventListener('change', update)
+  }, [mobileNavigation])
+
   return (
-    <aside className={styles.sidebar} aria-label="Menu do administrador">
-      <Link href="/" className={styles.brand} aria-label="Bentix — Início">
-        <img src="/icon.svg" alt="" width="40" height="40" />
-        <span className={styles.label}>BENTIX</span>
-      </Link>
-
-      <nav className={styles.menu} aria-label="Navegação principal">
-        {menuItems.map(item => item.blocked ? (
-          <button
-            key={item.label}
-            type="button"
-            className={styles.item}
-            aria-label={item.label}
-            aria-disabled="true"
-            title={item.label}
-          >
-            <MenuIcon name={item.icon} />
-            <span className={styles.label}>{item.label}</span>
-          </button>
-        ) : (
-          <Link
-            key={item.label}
-            href={item.href}
-            className={`${styles.item}${item.active ? ` ${styles.active}` : ''}`}
-            aria-current={item.active ? 'page' : undefined}
-            aria-label={item.label}
-            title={item.title || item.label}
-          >
-            <MenuIcon name={item.icon} />
-            <span className={styles.label}>{item.label}</span>
-          </Link>
-        ))}
-      </nav>
-
-      <div className={styles.footer}>
-        <Link href="/account-settings" className={styles.item} aria-label="Definições" title="Definições">
-          <MenuIcon name="settings" />
-          <span className={styles.label}>Definições</span>
+    <>
+      {mobileNavigation ? (
+        <button
+          type="button"
+          className={styles.mobileToggle}
+          popoverTarget={sidebarId}
+          aria-controls={sidebarId}
+          aria-label="Abrir menu principal"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" aria-hidden="true">
+            <path d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+          Menu
+        </button>
+      ) : null}
+      <aside
+        id={sidebarId}
+        className={`${styles.sidebar}${mobileNavigation ? ` ${styles.mobileNavigation}` : ''}`}
+        aria-label="Menu do administrador"
+        popover={isMobile ? 'auto' : undefined}
+        onClick={event => {
+          if (isMobile && event.target.closest('a')) event.currentTarget.hidePopover()
+        }}
+      >
+        <Link href="/" className={styles.brand} aria-label="Bentix — Início">
+          <img src="/icon.svg" alt="" width="40" height="40" />
+          <span className={styles.label}>BENTIX</span>
         </Link>
-        <div className={styles.logout} title="Sair">
-          <MenuIcon name="logout" />
-          <LogoutButton className={`${styles.item} ${styles.logoutButton}`} variant="ghost" />
+
+        <nav className={styles.menu} aria-label="Navegação principal">
+          {menuItems.map(item => item.blocked ? (
+            <button
+              key={item.label}
+              type="button"
+              className={styles.item}
+              aria-label={item.label}
+              aria-disabled="true"
+              title={item.label}
+            >
+              <MenuIcon name={item.icon} />
+              <span className={styles.label}>{item.label}</span>
+            </button>
+          ) : (
+            <Link
+              key={item.label}
+              href={item.href}
+              className={`${styles.item}${item.href === activePath ? ` ${styles.active}` : ''}`}
+              aria-current={item.href === activePath ? 'page' : undefined}
+              aria-label={item.label}
+              title={item.title || item.label}
+            >
+              <MenuIcon name={item.icon} />
+              <span className={styles.label}>{item.label}</span>
+            </Link>
+          ))}
+        </nav>
+
+        <div className={styles.footer}>
+          <Link href="/account-settings" className={styles.item} aria-label="Definições" title="Definições">
+            <MenuIcon name="settings" />
+            <span className={styles.label}>Definições</span>
+          </Link>
+          <div className={styles.logout} title="Sair">
+            <MenuIcon name="logout" />
+            <LogoutButton className={`${styles.item} ${styles.logoutButton}`} variant="ghost" />
+          </div>
         </div>
-      </div>
-    </aside>
+      </aside>
+    </>
   )
 }

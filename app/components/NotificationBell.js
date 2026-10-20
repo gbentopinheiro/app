@@ -3,12 +3,14 @@
 import Link from 'next/link'
 import { useEffect, useId, useRef, useState } from 'react'
 import styles from './NotificationBell.module.css'
+import { useOperationNotificationsRefresh } from '../../frontend/hooks/use-operation-notifications-refresh.js'
 
 function notificationVersion(notification) {
   return String(Number.isFinite(notification.sortTimestamp) ? notification.sortTimestamp : 0)
 }
 
 export default function NotificationBell({ notifications, username, enabled }) {
+  useOperationNotificationsRefresh(enabled)
   const [isOpen, setIsOpen] = useState(false)
   const [seen, setSeen] = useState({ key: null, versions: {} })
   const rootRef = useRef(null)
@@ -98,7 +100,8 @@ export default function NotificationBell({ notifications, username, enabled }) {
             <ul className={styles.list}>
               {notifications.map(notification => (
                 <li key={notification.id}>
-                  <Link href="/notifications" onClick={() => setIsOpen(false)}>
+                  <Link href={notification.href || '/notifications'} onClick={() => setIsOpen(false)}>
+                    {notification.title ? <strong className={styles.warningTitle}>⚠ {notification.title}</strong> : null}
                     <span className={styles.meta}>{notification.date} · {notification.work}</span>
                     <p className={styles.note}>{notification.note}</p>
                     <span className={styles.author}>{notification.chef}</span>

@@ -1,0 +1,117 @@
+.summaryGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-auto-rows: 1fr;
+  align-items: stretch;
+  gap: 12px;
+  min-width: 0;
+  margin-top: 0;
+}
+
+.summaryGrid > .summaryCard {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  min-height: 88px;
+  height: 100%;
+  padding: 14px 16px;
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(16, 46, 73, 0.04);
+}
+
+.icon {
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+}
+
+.navy {
+  background: var(--btx-color-navy-soft);
+  color: var(--btx-color-navy);
+}
+
+.success {
+  background: var(--btx-color-success-soft);
+  color: var(--btx-color-success);
+}
+
+.orange {
+  background: var(--btx-color-primary-soft);
+  color: var(--btx-color-primary);
+}
+
+.warning {
+  background: var(--btx-color-warning-soft);
+  color: var(--btx-color-warning);
+}
+
+.copy {
+  display: grid;
+  justify-items: start;
+  align-content: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.value {
+  color: var(--btx-color-text-primary);
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.description {
+  color: var(--btx-color-text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+  overflow-wrap: break-word;
+}
+
+.statusValue {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  padding: 5px 8px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.summaryCard:focus-visible {
+  outline: 2px solid var(--btx-color-primary);
+  outline-offset: 3px;
+}
+
+@media (min-width: 560px) {
+  .summaryGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .summaryGrid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) and (max-width: 1199.98px) {
+  .summaryGrid > .summaryCard {
+    gap: 10px;
+    padding-inline: 12px;
+  }
+
+  .icon {
+    width: 36px;
+    height: 36px;
+  }
+}

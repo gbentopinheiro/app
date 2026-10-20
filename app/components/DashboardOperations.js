@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import DashboardWorksToday from './DashboardWorksToday'
 import styles from './DashboardOperations.module.css'
+import navigation from './DashboardNavigation.module.css'
 
 function Arrow() {
   return (
@@ -24,11 +25,11 @@ export default function DashboardOperations({
     <div className={styles.layout}>
       <DashboardWorksToday date={date} />
       <div className={styles.sideColumn}>
-        <section className={styles.panel} aria-labelledby="operations-calendar-title">
+        <section className={[styles.panel, calendarEnabled ? navigation.surface : ''].filter(Boolean).join(' ')} aria-labelledby="operations-calendar-title">
           <div className={styles.header}>
             <h2 id="operations-calendar-title" className={styles.title}>Calendário</h2>
             {calendarEnabled ? (
-              <Link href="/calendar" className={styles.action} aria-label={`Abrir calendário: ${calendarOverview.unseenEventsCount} eventos por ver`}>
+              <Link href="/calendar" className={`${styles.action} ${navigation.link}`} aria-label={`Abrir calendário: ${calendarOverview.unseenEventsCount} eventos por ver`}>
                 <span className={styles.badge}>{calendarOverview.unseenEventsCount}</span>
                 <Arrow />
               </Link>
@@ -52,11 +53,11 @@ export default function DashboardOperations({
           )}
         </section>
 
-        <section className={styles.panel} aria-labelledby="operations-notifications-title">
+        <section className={[styles.panel, notificationsEnabled ? navigation.surface : ''].filter(Boolean).join(' ')} aria-labelledby="operations-notifications-title">
           <div className={styles.header}>
             <h2 id="operations-notifications-title" className={styles.title}>Central de notificações</h2>
             {notificationsEnabled ? (
-              <Link href="/notifications" className={styles.action} aria-label="Abrir central de notificações" title="Ver todas as notificações">
+              <Link href="/notifications" className={`${styles.action} ${navigation.link}`} aria-label="Abrir central de notificações" title="Ver todas as notificações">
                 <Arrow />
               </Link>
             ) : null}
@@ -65,7 +66,8 @@ export default function DashboardOperations({
             <ul className={styles.notifications}>
               {notifications.map(notification => (
                 <li key={notification.id}>
-                  <Link href="/notifications" className={styles.notification}>
+                  <Link href={notification.href || '/notifications'} className={`${styles.notification} ${navigation.control}`}>
+                    {notification.title ? <span style={{ color: '#b45309', fontWeight: 700 }}>⚠ {notification.title}</span> : null}
                     <span className={styles.meta}>{notification.date} · {notification.chef}</span>
                     <span className={styles.work}>{notification.work}</span>
                     <span className={styles.note}>{notification.note}</span>

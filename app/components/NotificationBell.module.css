@@ -124,6 +124,11 @@
   overflow-wrap: anywhere;
 }
 
+.warningTitle {
+  color: #b45309;
+  font-size: 13px;
+}
+
 .empty {
   margin: 0;
   padding: 18px 16px;

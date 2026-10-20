@@ -54,7 +54,7 @@ export default async function DashboardWorksToday({ date }) {
                   <span className={styles.statusDot} aria-hidden="true" />
                   {statusLabel}
                 </span>
-                <Link href={`/works/${work.id}`} className={styles.openWork} aria-label={`Abrir obra ${work.name}`} title={`Abrir obra ${work.name}`}>
+                <Link href={`/daily-hours?workId=${encodeURIComponent(work.id)}`} className={styles.openWork} aria-label={`Abrir Registo de horas da obra ${work.name}`} title={`Abrir Registo de horas da obra ${work.name}`}>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
                     <path d="M5 12h14m-5-5 5 5-5 5" />
                   </svg>

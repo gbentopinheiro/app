@@ -1,7 +1,9 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import Link from 'next/link'
+import { useEffect, useMemo, useState } from 'react'
 import { deleteNotifications } from '../../frontend/controllers/notifications-controller.js'
+import { useOperationNotificationsRefresh } from '../../frontend/hooks/use-operation-notifications-refresh.js'
 
 const panelStyle = {
   padding: '24px',
@@ -140,10 +142,17 @@ const errorStyle = {
 }
 
 export default function NotificationsClient({ initialNotifications }) {
+  useOperationNotificationsRefresh()
   const [notifications, setNotifications] = useState(initialNotifications)
   const [selectedIds, setSelectedIds] = useState([])
   const [isDeleting, setIsDeleting] = useState(false)
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    setNotifications(initialNotifications)
+    const validIds = new Set(initialNotifications.filter(item => item.deletable).map(item => item.id))
+    setSelectedIds(current => current.filter(id => validIds.has(id)))
+  }, [initialNotifications])
 
   const deletableNotifications = useMemo(
     () => notifications.filter(notification => notification.deletable),
@@ -233,8 +242,8 @@ export default function NotificationsClient({ initialNotifications }) {
             {selectedCount > 0
               ? `${selectedCount} selecionada(s)`
               : deletableNotifications.length > 0
-                ? 'Seleciona notas dos chefes para eliminar. Os avisos de documentos ficam ativos automaticamente.'
-                : 'Os avisos de documentos ficam ativos até atualizares ou removeres o documento na ficha da pessoa.'}
+                ? 'Seleciona notas dos chefes para eliminar. Os restantes avisos atualizam-se automaticamente.'
+                : 'Os avisos atualizam-se automaticamente quando a situação é resolvida.'}
           </p>
           <div style={listStyle}>
             {notifications.map(notification => {
@@ -254,10 +263,15 @@ export default function NotificationsClient({ initialNotifications }) {
                     <span style={checkboxGhostStyle} aria-hidden="true" />
                   )}
                   <div>
+                    {notification.title ? (
+                      <p style={{ margin: '0 0 8px', color: '#b45309', fontWeight: 800 }}>⚠ {notification.title}</p>
+                    ) : null}
                     <p style={metaStyle}>
                       {notification.date} - {notification.chef} - {notification.work}
                     </p>
-                    <p style={noteStyle}>{notification.note}</p>
+                    <p style={noteStyle}>
+                      {notification.href ? <Link href={notification.href} style={{ color: 'inherit' }}>{notification.note}</Link> : notification.note}
+                    </p>
                   </div>
                 </article>
               )

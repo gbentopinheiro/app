@@ -1,4 +1,174 @@
 .sidebar {
+  position: fixed;
+  inset: 0 auto 0 0;
+  z-index: 20;
+  display: none;
+  flex-direction: column;
+  box-sizing: border-box;
+  width: var(--btx-admin-sidebar-width, 72px);
+  height: 100dvh;
+  max-height: none;
+  margin: 0;
+  padding: 32px 12px 20px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--btx-color-navy-strong);
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  color: #c7d3df;
+  scrollbar-width: thin;
+  scrollbar-color: #556c86 transparent;
+  transition: width 160ms ease-out;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 12px;
+  min-height: 48px;
+  min-width: 0;
+  margin: 0 0 36px;
+  padding-inline: 5px;
+  overflow: hidden;
+  color: #ffffff;
+  text-decoration: none;
+  font-size: 23px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  line-height: 1;
+}
+
+.brand img {
+  display: block;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+}
+
+.menu,
+.footer {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  gap: 6px;
+}
+
+.sidebar .item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 14px;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 13px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.5;
+  text-align: left;
+  text-decoration: none;
+  box-shadow: none;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 160ms ease, color 160ms ease;
+}
+
+.icon {
+  display: block;
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+}
+
+.label,
+.logoutButton :global(.btx-button__label) {
+  flex-shrink: 0;
+  opacity: 0;
+  transform: translateX(-4px);
+  white-space: nowrap;
+  pointer-events: none;
+  transition: opacity 160ms ease-out, transform 160ms ease-out;
+}
+
+.sidebar:is(:hover, :has(:focus-visible)) .label,
+.sidebar:is(:hover, :has(:focus-visible)) .logoutButton :global(.btx-button__label) {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.item:hover {
+  background: rgba(255, 255, 255, 0.07);
+  color: #ffffff;
+}
+
+.item:focus-visible,
+.brand:focus-visible {
+  outline: 2px solid #ffb15c;
+  outline-offset: 3px;
+}
+
+.item.active {
+  background: rgba(255, 177, 92, 0.12);
+  color: #ffb15c;
+  font-weight: 600;
+}
+
+.active::before {
+  position: absolute;
+  inset: 13px auto 13px 0;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: #ffb15c;
+  content: '';
+}
+
+.footer {
+  margin-top: auto;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.menu {
+  margin-bottom: 32px;
+}
+
+.logout {
+  position: relative;
+}
+
+.logout > .icon {
+  position: absolute;
+  top: 14px;
+  left: 13px;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.sidebar .logoutButton {
+  --btx-button-current-hover-background: rgba(255, 255, 255, 0.07);
+  --btx-button-current-active-background: rgba(255, 255, 255, 0.1);
+  --btx-button-current-hover-border: transparent;
+  --btx-button-current-active-border: transparent;
+  --btx-button-current-shadow-hover: none;
+}
+
+.logoutButton :global(.btx-button__label) {
+  margin-left: 34px;
+}
+
+.sidebar .logoutButton:hover:not(:disabled):not([aria-disabled='true']) {
+  transform: none;
+}
+
+.mobileToggle {
   display: none;
 }
 
@@ -18,171 +188,19 @@
   }
 
   .sidebar {
-    position: fixed;
-    inset: 0 auto 0 0;
-    z-index: 20;
     display: flex;
-    flex-direction: column;
-    box-sizing: border-box;
-    width: var(--btx-admin-sidebar-width, 72px);
-    height: 100dvh;
-    padding: 32px 12px 20px;
-    overflow-x: hidden;
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    background: var(--btx-color-navy-strong);
-    border-right: 1px solid rgba(255, 255, 255, 0.08);
-    color: #c7d3df;
-    scrollbar-width: thin;
-    scrollbar-color: #556c86 transparent;
-    transition: width 160ms ease-out;
   }
 
-  .brand {
-    display: flex;
-    align-items: center;
-    flex-shrink: 0;
-    gap: 12px;
-    min-height: 48px;
-    min-width: 0;
-    margin: 0 0 36px;
-    padding-inline: 5px;
-    overflow: hidden;
-    color: #ffffff;
-    text-decoration: none;
-    font-size: 23px;
-    font-weight: 800;
-    letter-spacing: 0.12em;
-    line-height: 1;
+  .planning {
+    --btx-planning-content-start: calc(72px + clamp(16px, 3vw, 32px));
   }
 
-  .brand img {
-    display: block;
-    flex-shrink: 0;
-    width: 36px;
-    height: 36px;
+  .planning > .sidebar:is(:hover, :has(:focus-visible)) {
+    width: 232px;
   }
 
-  .menu,
-  .footer {
-    display: flex;
-    flex-direction: column;
-    flex-shrink: 0;
-    gap: 6px;
-  }
-
-  .sidebar .item {
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: flex-start;
-    gap: 14px;
-    box-sizing: border-box;
+  .planning > :global(.vp-page-shell) > :global(.vp-content-frame) {
     width: 100%;
-    min-height: 48px;
-    padding: 12px 13px;
-    overflow: hidden;
-    border: 0;
-    border-radius: 10px;
-    background: transparent;
-    color: inherit;
-    font: inherit;
-    font-size: 14px;
-    font-weight: 500;
-    line-height: 1.5;
-    text-align: left;
-    text-decoration: none;
-    box-shadow: none;
-    cursor: pointer;
-    white-space: nowrap;
-    transition: background-color 160ms ease, color 160ms ease;
-  }
-
-  .icon {
-    display: block;
-    flex-shrink: 0;
-    width: 20px;
-    height: 20px;
-  }
-
-  .label,
-  .logoutButton :global(.btx-button__label) {
-    flex-shrink: 0;
-    opacity: 0;
-    transform: translateX(-4px);
-    white-space: nowrap;
-    pointer-events: none;
-    transition: opacity 160ms ease-out, transform 160ms ease-out;
-  }
-
-  .sidebar:is(:hover, :has(:focus-visible)) .label,
-  .sidebar:is(:hover, :has(:focus-visible)) .logoutButton :global(.btx-button__label) {
-    opacity: 1;
-    transform: translateX(0);
-  }
-
-  .item:hover {
-    background: rgba(255, 255, 255, 0.07);
-    color: #ffffff;
-  }
-
-  .item:focus-visible,
-  .brand:focus-visible {
-    outline: 2px solid #ffb15c;
-    outline-offset: 3px;
-  }
-
-  .item.active {
-    background: rgba(255, 177, 92, 0.12);
-    color: #ffb15c;
-    font-weight: 600;
-  }
-
-  .active::before {
-    position: absolute;
-    inset: 13px auto 13px 0;
-    width: 3px;
-    border-radius: 0 3px 3px 0;
-    background: #ffb15c;
-    content: '';
-  }
-
-  .footer {
-    margin-top: auto;
-    padding-top: 20px;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-  }
-
-  .menu {
-    margin-bottom: 32px;
-  }
-
-  .logout {
-    position: relative;
-  }
-
-  .logout > .icon {
-    position: absolute;
-    top: 14px;
-    left: 13px;
-    z-index: 1;
-    pointer-events: none;
-  }
-
-  .sidebar .logoutButton {
-    --btx-button-current-hover-background: rgba(255, 255, 255, 0.07);
-    --btx-button-current-active-background: rgba(255, 255, 255, 0.1);
-    --btx-button-current-hover-border: transparent;
-    --btx-button-current-active-border: transparent;
-    --btx-button-current-shadow-hover: none;
-  }
-
-  .logoutButton :global(.btx-button__label) {
-    margin-left: 34px;
-  }
-
-  .sidebar .logoutButton:hover:not(:disabled):not([aria-disabled='true']) {
-    transform: none;
   }
 }
 
@@ -192,5 +210,43 @@
   .label,
   .logoutButton :global(.btx-button__label) {
     transition: none;
+  }
+}
+
+@media (max-width: 1023px) {
+  .mobileToggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 44px;
+    margin: 0 0 12px;
+    padding: 8px 12px;
+    border: 1px solid var(--btx-color-border);
+    border-radius: 8px;
+    background: var(--btx-color-surface);
+    color: var(--btx-color-text-primary);
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+  }
+
+  .mobileToggle:focus-visible {
+    outline: 2px solid var(--btx-color-primary);
+    outline-offset: 3px;
+  }
+
+  .sidebar.mobileNavigation:popover-open {
+    display: flex;
+    width: min(280px, calc(100vw - 32px));
+  }
+
+  .mobileNavigation::backdrop {
+    background: rgba(15, 23, 42, 0.2);
+  }
+
+  .mobileNavigation .label,
+  .mobileNavigation .logoutButton :global(.btx-button__label) {
+    opacity: 1;
+    transform: none;
   }
 }

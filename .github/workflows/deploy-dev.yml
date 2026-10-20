@@ -25,6 +25,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Generate Prisma Client
+        env:
+          # Prisma config requires a URL; generation does not connect to a database.
+          DATABASE_URL: mysql://user:password@127.0.0.1:3306/build_dummy
+        run: npm run db:generate
+
       - name: Run critical tests
         run: npm run test:critical
 
