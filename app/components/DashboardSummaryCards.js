@@ -1,11 +1,9 @@
+'use client'
+
 import Link from 'next/link'
+import { useEffect, useState } from 'react'
 import DashboardBillingValue from './DashboardBillingValue'
-import { getAllPeopleData } from '../../lib/people.js'
-import { getAllWorkAssignmentsData } from '../../lib/work-assignments.js'
-import { getAllWorksData, WorkStatus } from '../../lib/works.js'
-import { isChefRole, isWorkerRole, ROLE_ADMIN } from '../../lib/roles.js'
-import { filterAssignmentsForSession } from '../../lib/work-assignment-policy.js'
-import { getApprovedAssignmentTotalCost, isAssignmentApproved } from '../../lib/work-assignment-approval.js'
+import { getDashboardSummary } from '../../frontend/controllers/dashboard-summary-controller.js'
 import styles from './DashboardSummaryCards.module.css'
 import navigation from './DashboardNavigation.module.css'
 
@@ -32,7 +30,7 @@ function SummaryCard({ id, label, value, description, icon, tone, money = false,
         <h2 id={id} className={styles.label}>{label}</h2>
       </div>
       <p className={styles.value + (money ? ' ' + styles.money : '')}>
-        {money ? <DashboardBillingValue value={value} label={label} /> : value}
+        {money && value !== undefined ? <DashboardBillingValue value={value} label={label} /> : value ?? '—'}
       </p>
       <div className={styles.cardFooter}>
         <p className={styles.description}>{description}</p>
@@ -46,36 +44,27 @@ function SummaryCard({ id, label, value, description, icon, tone, money = false,
   )
 }
 
-export default async function DashboardSummaryCards({
+export default function DashboardSummaryCards({
   date,
-  annualBilling,
+  refreshVersion,
 }) {
-  const monthStart = `${date.slice(0, 7)}-01`
-  const monthEnd = new Date(`${monthStart}T12:00:00Z`)
-  monthEnd.setUTCMonth(monthEnd.getUTCMonth() + 1, 0)
-  const [people, assignments, works, monthAssignments] = await Promise.all([
-    getAllPeopleData(),
-    getAllWorkAssignmentsData({ date }),
-    getAllWorksData(),
-    getAllWorkAssignmentsData({ dateFrom: monthStart, dateTo: monthEnd.toISOString().slice(0, 10) }),
-  ])
-  const workers = people.filter(person => isWorkerRole(person.role) || isChefRole(person.role))
-  // Match the entries and approval state used by the Admin's Registo de Horas.
-  const pendingWorkIds = new Set(
-    filterAssignmentsForSession(assignments, { role: ROLE_ADMIN })
-      .filter(assignment => !isAssignmentApproved(assignment))
-      .map(assignment => String(assignment.workId)),
-  )
-  const pendingWorks = works.filter(work =>
-    work.status !== WorkStatus.COMPLETED && pendingWorkIds.has(String(work.id)),
-  ).length
+  const [state, setState] = useState({ date: null, summary: null, error: '' })
+  useEffect(() => {
+    const controller = new AbortController()
+    getDashboardSummary(date, { signal: controller.signal }).then(summary => {
+      if (!controller.signal.aborted) setState({ date, summary, error: '' })
+    }).catch(error => {
+      if (!controller.signal.aborted) setState({ date, summary: null, error: error.message })
+    })
+    return () => controller.abort()
+  }, [date, refreshVersion])
+  const summary = state.date === date ? state.summary : null
   const numberFormat = new Intl.NumberFormat('pt-PT')
   const dateLabel = new Intl.DateTimeFormat('pt-PT', {
     month: 'long',
     year: 'numeric',
     timeZone: 'UTC',
   }).format(new Date(date + 'T12:00:00Z'))
-  const monthlyBilling = monthAssignments.reduce((sum, assignment) => sum + getApprovedAssignmentTotalCost(assignment), 0)
   const currencyFormat = new Intl.NumberFormat('pt-PT', {
     style: 'currency',
     currency: 'EUR',
@@ -87,7 +76,7 @@ export default async function DashboardSummaryCards({
       <SummaryCard
         id="total-workers"
         label="Trabalhadores no total"
-        value={numberFormat.format(workers.length)}
+        value={summary ? numberFormat.format(summary.totalWorkers) : undefined}
         description="Trabalhadores e chefes registados"
         icon="people"
         tone="navy"
@@ -95,8 +84,8 @@ export default async function DashboardSummaryCards({
       <SummaryCard
         id="annual-billing"
         label="Faturação anual"
-        value={annualBilling.value}
-        description={annualBilling.text}
+        value={summary ? currencyFormat.format(summary.annualRevenue) : undefined}
+        description={`janeiro a dezembro de ${date.slice(0, 4)}`}
         icon="billing"
         tone="success"
         money
@@ -104,7 +93,7 @@ export default async function DashboardSummaryCards({
       <SummaryCard
         id="monthly-billing"
         label="Faturação mensal"
-        value={currencyFormat.format(monthlyBilling)}
+        value={summary ? currencyFormat.format(summary.monthlyRevenue) : undefined}
         description={dateLabel}
         icon="billing"
         tone="orange"
@@ -113,12 +102,13 @@ export default async function DashboardSummaryCards({
       <SummaryCard
         id="pending-works"
         label="Obras pendentes"
-        value={numberFormat.format(pendingWorks)}
+        value={summary ? numberFormat.format(summary.pendingWorks) : undefined}
         description="Com horas por aprovar hoje"
         icon="pending"
         tone="warning"
         href="/daily-hours"
       />
+      {state.date === date && state.error ? <p role="alert" style={{ gridColumn: '1 / -1', margin: 0, color: '#b42318' }}>{state.error}</p> : null}
     </section>
   )
 }

@@ -11,10 +11,8 @@ import { BentixLogo } from './login/components/BentixLogo'
 import { isFeatureEnabled } from '../lib/feature-flags.js'
 import { getServerSession } from '../lib/server-session.js'
 import { isChefRole, isResponsavelRole, ROLE_ADMIN } from '../lib/roles.js'
-import { getAllPeopleData } from '../lib/people.js'
 import { getAllWorkAssignmentsData } from '../lib/work-assignments.js'
-import { isAssignmentApproved } from '../lib/work-assignment-approval.js'
-import { getAllWorksData, WorkStatus } from '../lib/works.js'
+import { getAllWorksData } from '../lib/works.js'
 import { buildOperationalWorkStatuses } from '../lib/work-operation-status.js'
 import { getAllDailyWorkNotesData } from '../lib/daily-work-notes.js'
 import { getBelgianHolidays } from '../lib/belgian-holidays.js'
@@ -346,59 +344,6 @@ const dashboardBodyStyle = {
 const responsavelDashboardBodyStyle = {
   gap: '16px',
   alignItems: 'start',
-}
-
-const dashboardCardStyle = {
-  position: 'relative',
-  overflow: 'hidden',
-  minHeight: '112px',
-  padding: '18px',
-  borderRadius: '22px',
-  background: 'var(--vp-stat-surface)',
-  border: '1px solid var(--vp-stat-border)',
-  boxShadow: 'var(--vp-stat-shadow)',
-}
-
-const dashboardCardGlowStyle = color => ({
-  position: 'absolute',
-  right: '-32px',
-  top: '-42px',
-  width: '124px',
-  height: '124px',
-  borderRadius: '50%',
-  background: color,
-  opacity: 0.32,
-  filter: 'blur(10px)',
-  pointerEvents: 'none',
-})
-
-const dashboardCardLabelStyle = {
-  position: 'relative',
-  margin: 0,
-  color: 'var(--vp-text-soft)',
-  fontSize: '12px',
-  fontWeight: 800,
-  letterSpacing: '0.08em',
-  textTransform: 'uppercase',
-}
-
-const dashboardCardValueStyle = {
-  position: 'relative',
-  margin: '12px 0 0',
-  color: 'var(--vp-text)',
-  fontSize: '34px',
-  lineHeight: 1,
-  letterSpacing: '-0.05em',
-  fontWeight: 900,
-}
-
-const dashboardCardTextStyle = {
-  position: 'relative',
-  margin: '8px 0 0',
-  color: 'var(--vp-text-muted)',
-  fontSize: '14px',
-  lineHeight: 1.5,
-  fontWeight: 600,
 }
 
 const workStatusTableStyle = {
@@ -952,16 +897,6 @@ function getTodayDate() {
   return new Intl.DateTimeFormat('sv-SE').format(new Date())
 }
 
-function formatCurrency(value) {
-  const normalizedValue = Number.isFinite(Number(value)) ? Number(value) : 0
-
-  return new Intl.NumberFormat('pt-PT', {
-    style: 'currency',
-    currency: 'EUR',
-    maximumFractionDigits: 0,
-  }).format(normalizedValue)
-}
-
 function getTodayLabel() {
   return new Intl.DateTimeFormat('pt-PT', {
     day: '2-digit',
@@ -1110,42 +1045,6 @@ async function getCalendarOverview(username) {
   }
 }
 
-async function getDashboardStats() {
-  const people = await getAllPeopleData()
-  const currentYear = new Date().getFullYear()
-  const yearAssignments = (await getAllWorkAssignmentsData()).filter(assignment => {
-    const assignmentYear = assignment.date ? new Date(`${assignment.date}T00:00:00`).getFullYear() : null
-    return assignmentYear === currentYear
-  })
-  const approvedBilling = yearAssignments
-    .filter(assignment => isAssignmentApproved(assignment))
-    .reduce((sum, assignment) => {
-      const approvedHours = Number(assignment.approvedHours)
-      const hourlyCost = Number(assignment.hourlyCost)
-
-      if (!Number.isFinite(approvedHours) || !Number.isFinite(hourlyCost)) {
-        return sum
-      }
-
-      return sum + Number((approvedHours * hourlyCost).toFixed(2))
-    }, 0)
-
-  return [
-    {
-      label: 'Pessoas',
-      value: people.length,
-      text: 'recursos registados na aplicação',
-      glow: 'radial-gradient(circle, #ff8c00 0%, transparent 70%)',
-    },
-    {
-      label: 'Faturação anual',
-      value: formatCurrency(approvedBilling),
-      text: `janeiro a dezembro de ${currentYear}`,
-      glow: 'radial-gradient(circle, #fb923c 0%, transparent 70%)',
-    },
-  ]
-}
-
 async function getWorkSubmissionStatus() {
   const works = await getAllWorksData()
   const todayAssignments = await getAllWorkAssignmentsData({ date: getTodayDate() })
@@ -1164,12 +1063,8 @@ export default async function Home() {
     redirect('/daily-hours')
   }
 
-  const dashboardStats = (await getDashboardStats()).filter(item =>
-    !isResponsavelRole(session.role) ||
-    (item.label !== 'Faturação anual' && item.label !== 'Pessoas'),
-  )
   const isResponsavel = isResponsavelRole(session.role)
-  const workSubmissionStatus = await getWorkSubmissionStatus()
+  const workSubmissionStatus = session.role === ROLE_ADMIN ? [] : await getWorkSubmissionStatus()
   const notifications = isResponsavel
     ? await getOperationNotifications({ audience: 'responsavel', limit: 3 })
     : await getRecentNotifications()
@@ -1248,7 +1143,7 @@ export default async function Home() {
 
         {session.role === ROLE_ADMIN ? <DashboardSummaryCards
           date={getTodayDate()}
-          annualBilling={dashboardStats.find(item => item.label === 'Faturação anual')}
+          refreshVersion={Date.now()}
         /> : null}
 
         <div style={{ display: 'grid', gap: '16px' }}>
@@ -1366,14 +1261,6 @@ export default async function Home() {
                 </Link>
               ) : null}
 
-              {dashboardStats.map(item => (
-                <article key={item.label} style={dashboardCardStyle}>
-                  <div style={dashboardCardGlowStyle(item.glow)} />
-                  <p style={dashboardCardLabelStyle}>{item.label}</p>
-                  <p style={dashboardCardValueStyle}>{item.value}</p>
-                  <p style={dashboardCardTextStyle}>{item.text}</p>
-                </article>
-              ))}
             </BentixResponsiveGrid>
 
             <div style={sidePanelStackStyle}>

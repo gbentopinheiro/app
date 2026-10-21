@@ -633,6 +633,109 @@ test('admin edita draft sem publicar e a versao oficial continua vazia', async (
   assert.equal(getAllWorkAssignments({ date: PLANNING_WORKFLOW_DATE }).length, 0)
 })
 
+test('dashboard summary matches all four previous card calculations, preserving legacy approval and rounding', async () => {
+  const { getDashboardSummaryService } = await import('../server/services/dashboard-summary-service.js')
+  const { getAllPeopleData } = await import('../lib/people.js')
+  const { getAllWorkAssignmentsData } = await import('../lib/work-assignments.js')
+  const { getAllWorksData } = await import('../lib/works.js')
+  const { filterAssignmentsForSession } = await import('../lib/work-assignment-policy.js')
+  const { isAssignmentApproved, getApprovedAssignmentTotalCost } = await import('../lib/work-assignment-approval.js')
+  const { isChefRole, isWorkerRole } = await import('../lib/roles.js')
+  const fixtures = buildFixtureData()
+  writeJsonFile('works.json', [fixtures['works.json'][0],
+    { ...fixtures['works.json'][0], id: 2, number: 102, name: 'Obra B' },
+    { ...fixtures['works.json'][0], id: 3, number: 103, name: 'Obra concluída', status: 'completed' }])
+  writeJsonFile('work-plans.json', [
+    { id: 1, companyId: 1, date: '2030-02-10' }, { id: 2, companyId: 1, date: '2030-01-31' },
+    { id: 3, companyId: 1, date: '2029-12-31' }, { id: 4, companyId: 1, date: '2031-01-01' },
+  ])
+  const row = (id, extra = {}) => ({ id, workPlanId: 1, workId: 1, personId: 3, hours: 10, dailyHours: 10,
+    hourlyCost: 12, approvedHours: null, submitted: false, ...extra })
+  writeJsonFile('work-assignments.json', [
+    row(1, { approvedHours: 8, adminApprovedAt: '2030-02-10T12:00:00Z' }),
+    row(2, { personId: 4, approvedHours: 0.5, hourlyCost: 0.03 }),
+    row(3, { workId: 2, approvedHours: 7.5, submittedAt: '2030-02-10T10:00:00Z' }),
+    row(4, { approvedHours: 0 }), row(5, { approvedHours: null, adminApprovedAt: '2030-02-10T12:00:00Z' }),
+    row(6, { workPlanId: 2, approvedHours: 7.5, hourlyCost: 1.23 }),
+    row(7, { workPlanId: 3, approvedHours: 8 }), row(8),
+    row(9, { workId: 3, assignmentPurpose: 'access' }), row(10, { workId: 3 }),
+    row(11, { workId: 2, planningVisible: false, hours: 0, dailyHours: 0 }),
+    row(12, { workId: 2, planningVisible: false, submitted: true }),
+    row(13, { workPlanId: 4, approvedHours: 8 }),
+  ])
+  const [people, all, today, month, works] = await Promise.all([
+    getAllPeopleData(), getAllWorkAssignmentsData(), getAllWorkAssignmentsData({ date: '2030-02-10' }),
+    getAllWorkAssignmentsData({ dateFrom: '2030-02-01', dateTo: '2030-02-28' }), getAllWorksData(),
+  ])
+  const ids = new Set(filterAssignmentsForSession(today, ADMIN_SESSION).filter(a => !isAssignmentApproved(a)).map(a => String(a.workId)))
+  const before = {
+    totalWorkers: people.filter(p => isWorkerRole(p.role) || isChefRole(p.role)).length,
+    annualRevenue: all.filter(a => a.date.startsWith('2030-') && isAssignmentApproved(a))
+      .reduce((sum, a) => sum + Number((Number(a.approvedHours) * Number(a.hourlyCost)).toFixed(2)), 0),
+    monthlyRevenue: month.reduce((sum, a) => sum + getApprovedAssignmentTotalCost(a), 0),
+    pendingWorks: works.filter(w => w.status !== 'completed' && ids.has(String(w.id))).length,
+  }
+  const saved = readFileSync(join(dataDir, 'work-assignments.json'), 'utf8')
+  const actual = await getDashboardSummaryService(ADMIN_SESSION, createSearchParams({ date: '2030-02-10' }))
+  assert.deepEqual(actual, before)
+  assert.equal(actual.totalWorkers, 3)
+  assert.equal(actual.pendingWorks, 2)
+  assert.deepEqual(Object.keys(actual).sort(), ['annualRevenue', 'monthlyRevenue', 'pendingWorks', 'totalWorkers'])
+  assert.equal(readFileSync(join(dataDir, 'work-assignments.json'), 'utf8'), saved, 'historical rows must not be rewritten')
+})
+
+test('dashboard summary enforces Admin and dashboard.read, validates dates and returns real empty totals', async () => {
+  const { getDashboardSummaryService } = await import('../server/services/dashboard-summary-service.js')
+  const { canAccessPathByPermission, shouldUsePermissionPathGuard } = await import('../lib/auth.js')
+  for (const [session, status] of [[null, 401], [CHEF_SESSION, 403],
+    [{ ...ADMIN_SESSION, role: 'responsavel', accessProfile: 'responsavel' }, 403],
+    [{ ...ADMIN_SESSION, role: 'developer', accessProfile: 'developer' }, 403],
+    [{ ...ADMIN_SESSION, accessProfile: 'worker_no_access', permissionKeys: [] }, 403]]) {
+    await assert.rejects(() => getDashboardSummaryService(session), error => error.status === status)
+  }
+  assert.equal(shouldUsePermissionPathGuard({ ...ADMIN_SESSION, permissionKeys: ['dashboard.read'] }, '/api/dashboard/summary'), true)
+  assert.equal(canAccessPathByPermission({ ...ADMIN_SESSION, accessProfile: 'worker_no_access', permissionKeys: [] }, '/api/dashboard/summary'), false)
+  for (const date of ['', 'invalid', '2026-02-30', '2026-10-21T00:00:00Z']) {
+    await assert.rejects(() => getDashboardSummaryService(ADMIN_SESSION, createSearchParams({ date: date || ' ' })), error => error.status === 400)
+  }
+  writeJsonFile('people.json', [])
+  writeJsonFile('works.json', [])
+  assert.deepEqual(await getDashboardSummaryService(ADMIN_SESSION, createSearchParams({ date: '2030-02-10' })), {
+    totalWorkers: 0, annualRevenue: 0, monthlyRevenue: 0, pendingWorks: 0,
+  })
+  writeFileSync(join(dataDir, 'people.json'), 'invalid JSON')
+  await assert.rejects(() => getDashboardSummaryService(ADMIN_SESSION), SyntaxError, 'storage failures must not become zero totals')
+})
+
+test('dashboard summary returns 400 for unsupported years and impossible calendar dates', async () => {
+  const { getDashboardSummaryService } = await import('../server/services/dashboard-summary-service.js')
+  for (const date of ['0999-12-31', '10000-01-01', '0001-01-01', '0000-01-01', '0099-01-01',
+    '1000-02-29', '1900-02-29', '2026-02-29', '2100-02-29', '9999-02-29', '2026-04-31', '2026-13-01']) {
+    await assert.rejects(() => getDashboardSummaryService(ADMIN_SESSION, createSearchParams({ date })), error => error.status === 400, date)
+  }
+})
+
+test('dashboard summary includes December 31 at both supported limits and separates consecutive calendar years', async () => {
+  const { getDashboardSummaryService } = await import('../server/services/dashboard-summary-service.js')
+  const dates = ['1000-01-01', '1000-12-31', '9999-01-01', '9999-12-31', '2026-12-31', '2027-01-01']
+  writeJsonFile('work-plans.json', dates.map((date, index) => ({ id: index + 1, companyId: 1, date })))
+  writeJsonFile('work-assignments.json', dates.map((date, index) => ({
+    id: index + 1, workPlanId: index + 1, workId: 1, personId: 3,
+    hours: 1, dailyHours: 1, approvedHours: 1, hourlyCost: index + 1,
+  })))
+  const expected = [
+    ['1000-01-01', 3, 1], ['1000-12-31', 3, 2],
+    ['9999-01-01', 7, 3], ['9999-12-31', 7, 4],
+    ['2026-12-31', 5, 5], ['2027-01-01', 6, 6],
+  ]
+  for (const [date, annualRevenue, monthlyRevenue] of expected) {
+    const result = await getDashboardSummaryService(ADMIN_SESSION, createSearchParams({ date }))
+    assert.equal(result.annualRevenue, annualRevenue, date)
+    assert.equal(result.monthlyRevenue, monthlyRevenue, date)
+    assert.equal(result.pendingWorks, 0, date)
+  }
+})
+
 test('planning conflicts join existing notifications once, track Draft edits and disappear without changing Published', async () => {
   const { getOperationNotifications } = await import('../lib/operation-notifications.js')
   const workB = await createWorkService(ADMIN_SESSION, { number: 102, name: 'Obra B', clientId: 1, defaultHourlyCost: 12 })

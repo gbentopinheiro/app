@@ -43,6 +43,7 @@ export const openApiPhase1 = {
   tags: [
     { name: 'Auth' },
     { name: 'Account' },
+    { name: 'Dashboard' },
     { name: 'Clients' },
     { name: 'People' },
     { name: 'People Documents' },
@@ -63,6 +64,30 @@ export const openApiPhase1 = {
     { name: 'Legacy Compatibility' },
   ],
   paths: {
+    '/api/dashboard/summary': {
+      get: {
+        tags: ['Dashboard'],
+        summary: 'Indicadores agregados do Home',
+        description: 'Apenas Admin com dashboard.read. Totais globais iguais aos cartões atuais. Sem listas nem dados pessoais. Valores monetários em EUR; a faturação usa horas aprovadas × preço/hora, com o arredondamento histórico por afetação. Resposta privada sem cache.',
+        parameters: [{ name: 'date', in: 'query', required: false, description: 'Dia de referência entre 1000-01-01 e 9999-12-31 (limites MySQL DATE); por defeito a data atual da aplicação. Determina o ano, mês e pendências do dia. Datas inválidas ou fora do intervalo devolvem 400.', schema: { type: 'string', format: 'date' } }],
+        responses: {
+          '200': { description: 'Apenas os quatro indicadores', content: jsonContent({
+            type: 'object', additionalProperties: false,
+            required: ['totalWorkers', 'annualRevenue', 'monthlyRevenue', 'pendingWorks'],
+            properties: {
+              totalWorkers: { type: 'integer', minimum: 0 },
+              annualRevenue: { type: 'number' },
+              monthlyRevenue: { type: 'number' },
+              pendingWorks: { type: 'integer', minimum: 0 },
+            },
+          }) },
+          '400': { description: 'Data inválida' },
+          '401': { description: 'Sessão obrigatória' },
+          '403': { description: 'Sem autorização para os indicadores financeiros' },
+          '500': { description: 'Erro ao obter os indicadores; sem detalhes internos' },
+        },
+      },
+    },
     '/api/auth/session': {
       get: {
         tags: ['Auth'],

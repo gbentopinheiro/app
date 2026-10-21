@@ -65,6 +65,7 @@ const testProcess = spawnSync(
     'tests/planning-board-view.test.mjs',
     'tests/planning-message-changes.test.mjs',
     'tests/planning-conflicts.test.mjs',
+    'tests/dashboard-summary.test.mjs',
     'tests/cors-proxy.test.mjs',
     'tests/db-setup-mysql.test.mjs',
     'tests/demo-summary-cleanup.test.mjs',
