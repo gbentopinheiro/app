@@ -45,6 +45,7 @@ test('one stable notification per person/day/company, preserving work names, dat
   assert.deepEqual(buildPlanningConflictNotifications([workspace], items), first, 'refresh cannot duplicate or change the notice')
   assert.equal(first[0].id, 'planning-conflict-1-2026-10-21-1')
   assert.equal(first[0].deletable, false)
+  assert.equal(first[0].dismissible, true)
   assert.equal(first[0].title, 'Conflito de afetação')
   assert.match(first[0].note, /Pessoa 1.*21\/10\/2026.*Obra A, Obra B, Obra C/)
   assert.equal(first[0].href, '/daily-plan?date=2026-10-21#planning-conflicts')

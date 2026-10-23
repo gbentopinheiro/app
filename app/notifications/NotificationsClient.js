@@ -3,7 +3,9 @@
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { deleteNotifications } from '../../frontend/controllers/notifications-controller.js'
-import { useOperationNotificationsRefresh } from '../../frontend/hooks/use-operation-notifications-refresh.js'
+import { useOperationNotificationState } from '../../frontend/hooks/use-operation-notification-state.js'
+import { canRemoveNotification, getNotificationDeleteSourceIds } from '../../lib/operation-notification-state.js'
+import TrashBinIcon from '../components/TrashBinIcon'
 
 const panelStyle = {
   padding: '24px',
@@ -79,7 +81,7 @@ const listStyle = {
 
 const itemStyle = isSelected => ({
   display: 'grid',
-  gridTemplateColumns: 'auto 1fr',
+  gridTemplateColumns: 'auto minmax(0, 1fr) auto',
   gap: '14px',
   alignItems: 'start',
   padding: '16px',
@@ -141,21 +143,19 @@ const errorStyle = {
   fontWeight: 800,
 }
 
-export default function NotificationsClient({ initialNotifications }) {
-  useOperationNotificationsRefresh()
-  const [notifications, setNotifications] = useState(initialNotifications)
+export default function NotificationsClient({ initialNotifications, username }) {
+  const { notifications, dismissNotifications, ready } = useOperationNotificationState(initialNotifications, username)
   const [selectedIds, setSelectedIds] = useState([])
   const [isDeleting, setIsDeleting] = useState(false)
   const [error, setError] = useState('')
 
   useEffect(() => {
-    setNotifications(initialNotifications)
-    const validIds = new Set(initialNotifications.filter(item => item.deletable).map(item => item.id))
+    const validIds = new Set(notifications.filter(canRemoveNotification).map(item => item.id))
     setSelectedIds(current => current.filter(id => validIds.has(id)))
-  }, [initialNotifications])
+  }, [notifications])
 
   const deletableNotifications = useMemo(
-    () => notifications.filter(notification => notification.deletable),
+    () => notifications.filter(canRemoveNotification),
     [notifications],
   )
   const deletableIds = useMemo(
@@ -166,10 +166,6 @@ export default function NotificationsClient({ initialNotifications }) {
   const selectedNotifications = useMemo(
     () => notifications.filter(notification => selectedIdSet.has(notification.id)),
     [notifications, selectedIdSet],
-  )
-  const selectedDeleteIds = useMemo(
-    () => selectedNotifications.map(notification => notification.sourceId),
-    [selectedNotifications],
   )
   const selectedCount = selectedIds.length
   const allSelected = deletableIds.length > 0 && selectedCount === deletableIds.length
@@ -186,16 +182,16 @@ export default function NotificationsClient({ initialNotifications }) {
     setSelectedIds(current => (current.length === deletableIds.length ? [] : deletableIds))
   }
 
-  async function handleDeleteSelected() {
-    if (selectedIds.length === 0 || isDeleting) return
+  async function handleDelete(targets) {
+    if (targets.length === 0 || isDeleting) return
 
     setError('')
     setIsDeleting(true)
 
     try {
-      await deleteNotifications(selectedDeleteIds, 'Não foi possível remover as notificações.')
-
-      setNotifications(current => current.filter(item => !selectedIdSet.has(item.id)))
+      const sourceIds = getNotificationDeleteSourceIds(targets)
+      if (sourceIds.length > 0) await deleteNotifications(sourceIds, 'Não foi possível remover as notificações.')
+      dismissNotifications(targets)
       setSelectedIds([])
     } catch (deleteError) {
       setError(deleteError.message)
@@ -223,26 +219,26 @@ export default function NotificationsClient({ initialNotifications }) {
           <button
             type="button"
             style={deleteButtonStyle(selectedCount === 0 || isDeleting)}
-            onClick={handleDeleteSelected}
+            onClick={event => { event.preventDefault(); event.stopPropagation(); handleDelete(selectedNotifications) }}
             aria-label="Eliminar notificações selecionadas"
             title="Eliminar notificações selecionadas"
             disabled={selectedCount === 0 || isDeleting}
           >
             🗑
           </button>
-          <span style={badgeStyle}>{notifications.length}</span>
+          <span style={badgeStyle} aria-label="Total de notificações ativas" aria-live="polite">{ready ? notifications.length : '—'}</span>
         </div>
       </div>
 
       {error ? <p style={errorStyle}>{error}</p> : null}
 
-      {notifications.length > 0 ? (
+      {!ready ? <p style={emptyStyle}>A carregar notificações...</p> : notifications.length > 0 ? (
         <>
           <p style={{ ...helperTextStyle, marginBottom: '14px' }}>
             {selectedCount > 0
               ? `${selectedCount} selecionada(s)`
               : deletableNotifications.length > 0
-                ? 'Seleciona notas dos chefes para eliminar. Os restantes avisos atualizam-se automaticamente.'
+                ? 'Usa o lixo para remover um aviso ou seleciona vários. Dispensar um conflito não altera o planeamento.'
                 : 'Os avisos atualizam-se automaticamente quando a situação é resolvida.'}
           </p>
           <div style={listStyle}>
@@ -250,12 +246,14 @@ export default function NotificationsClient({ initialNotifications }) {
               const isSelected = selectedIdSet.has(notification.id)
 
               return (
-                <article key={notification.id} style={itemStyle(isSelected)}>
-                  {notification.deletable ? (
+                <article key={notification.id} data-notification-id={notification.id} style={itemStyle(isSelected)}>
+                  {canRemoveNotification(notification) ? (
                     <input
                       type="checkbox"
                       checked={isSelected}
                       onChange={() => toggleSelection(notification.id)}
+                      onClick={event => event.stopPropagation()}
+                      disabled={isDeleting}
                       style={checkboxStyle}
                       aria-label={`Selecionar notificação ${notification.chef} - ${notification.work}`}
                     />
@@ -273,6 +271,18 @@ export default function NotificationsClient({ initialNotifications }) {
                       {notification.href ? <Link href={notification.href} style={{ color: 'inherit' }}>{notification.note}</Link> : notification.note}
                     </p>
                   </div>
+                  {canRemoveNotification(notification) ? (
+                    <button
+                      type="button"
+                      style={deleteButtonStyle(isDeleting)}
+                      disabled={isDeleting}
+                      aria-label={`${notification.deletable ? 'Eliminar' : 'Dispensar'} notificação de ${notification.chef} - ${notification.work}`}
+                      title={notification.deletable ? 'Eliminar notificação' : 'Dispensar este aviso de conflito'}
+                      onClick={event => { event.preventDefault(); event.stopPropagation(); handleDelete([notification]) }}
+                    >
+                      <TrashBinIcon size={18} />
+                    </button>
+                  ) : null}
                 </article>
               )
             })}

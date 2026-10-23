@@ -15,12 +15,13 @@ export function notifyOperationNotificationsChanged() {
   }
 }
 
-export function useOperationNotificationsRefresh(enabled = true) {
+export function useOperationNotificationsRefresh(enabled = true, onChange) {
   const router = useRouter()
 
   useEffect(() => {
     if (!enabled) return
     const refresh = () => {
+      onChange?.()
       if (document.visibilityState === 'visible') router.refresh()
     }
     const channel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel(planningChangedEvent) : null
@@ -36,5 +37,5 @@ export function useOperationNotificationsRefresh(enabled = true) {
       document.removeEventListener('visibilitychange', refresh)
       window.clearInterval(interval)
     }
-  }, [enabled, router])
+  }, [enabled, onChange, router])
 }

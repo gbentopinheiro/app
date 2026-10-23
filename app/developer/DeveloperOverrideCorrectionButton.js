@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { DAILY_HOURS_INPUT_PROPS, DAILY_HOURS_INPUT_ERROR, isValidDailyHours } from '../../lib/daily-hours-validation.js'
 import {
   deleteDeveloperDailyPlanOverrideWorkAssignment,
   fetchDeveloperDailyPlanOverrideWorkAssignment,
@@ -455,8 +456,8 @@ export default function DeveloperOverrideCorrectionButton({ peopleOptions = [], 
       return
     }
 
-    if ((quickAction === 'assignment' || quickAction === 'hours') && String(hours).trim() === '') {
-      setSubmitMessage({ type: 'error', text: 'As horas sao obrigatorias.' })
+    if ((quickAction === 'assignment' || quickAction === 'hours') && !isValidDailyHours(hours)) {
+      setSubmitMessage({ type: 'error', text: DAILY_HOURS_INPUT_ERROR })
       return
     }
 
@@ -727,8 +728,7 @@ export default function DeveloperOverrideCorrectionButton({ peopleOptions = [], 
                       <input
                         id="developer-override-hours"
                         type="number"
-                        min="0"
-                        step="0.25"
+                        {...DAILY_HOURS_INPUT_PROPS}
                         value={hours}
                         onChange={event => {
                           setHours(event.target.value)

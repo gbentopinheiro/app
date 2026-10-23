@@ -18,6 +18,8 @@ const viewportLayoutSource = readFileSync(join(repoRoot, 'app', 'components', 'V
 const globalCssSource = readFileSync(join(repoRoot, 'app', 'globals.css'), 'utf8')
 const homePageSource = readFileSync(join(repoRoot, 'app', 'page.js'), 'utf8')
 const peoplePageSource = readFileSync(join(repoRoot, 'app', 'people', 'page.js'), 'utf8')
+const peopleWorkspaceSource = readFileSync(join(repoRoot, 'app', 'people', 'PeopleWorkspace.js'), 'utf8')
+const peopleWorkspaceCss = readFileSync(join(repoRoot, 'app', 'people', 'PeopleWorkspace.module.css'), 'utf8')
 const clientsPageSource = readFileSync(join(repoRoot, 'app', 'clients', 'page.js'), 'utf8')
 const worksPageSource = readFileSync(join(repoRoot, 'app', 'works', 'page.js'), 'utf8')
 const workDetailPageSource = readFileSync(join(repoRoot, 'app', 'works', '[id]', 'page.js'), 'utf8')
@@ -219,10 +221,17 @@ const { createPersonService, updatePersonService } = await import('../server/ser
 const { createWorkService, deleteWorkService } = await import('../server/services/works-service.js')
 const {
   createWorkAssignment,
+  createWorkAssignmentData,
   getAllWorkAssignments,
   submitWorkAssignment,
   updateWorkAssignment,
+  updateWorkAssignmentData,
+  updateWorkAssignmentPlanningData,
 } = await import('../lib/work-assignments.js')
+const {
+  createDeveloperOverrideWorkAssignmentService,
+  updateDeveloperOverrideWorkAssignmentService,
+} = await import('../server/services/developer-work-assignments-overrides-service.js')
 const { getAllWorkPlans, getWorkPlanByDate } = await import('../lib/work-plans.js')
 const {
   approveWorkAssignmentsBatchService,
@@ -463,14 +472,8 @@ test('pÃƒÆ’Ã‚Â¡ginas principais migradas usam primitivas adaptativas s
   assert.match(homePageSource, /<BentixResponsiveGrid preset="dashboard-main"/)
   assert.match(homePageSource, /className="btx-dashboard-responsavel-calendar"/)
   assert.match(peoplePageSource, /<BentixContent width="app"/)
-  assert.match(peoplePageSource, /<BentixSection style=\{panelStyle\}>/)
-  assert.match(peoplePageSource, /<BentixResponsiveGrid[\s\S]*preset=\{canManagePeople \? 'split' : 'cards'\}/)
-  assert.match(peoplePageSource, /className="btx-people-toolbar"/)
-  assert.match(globalCssSource, /\.btx-people-toolbar\s*\{/)
-  assert.match(
-    peoplePageSource,
-    /const peopleListStyle = \{\s*display: 'grid',\s*gap: '12px',\s*\}/,
-  )
+  assert.match(peoplePageSource, /<PeopleWorkspace/)
+  assert.doesNotMatch(peopleWorkspaceCss, /height:\s*\d+(?:vh|dvh)/)
   assert.match(clientsPageSource, /<BentixResponsiveGrid as="section" preset="split"/)
   assert.match(clientsPageSource, /<BentixSection as="div"/)
   assert.match(dailyHoursPageSource, /<BentixPage style=\{pageStyle\}>/)
@@ -736,6 +739,49 @@ test('dashboard summary includes December 31 at both supported limits and separa
   }
 })
 
+test('deleting a daily-note notification persists only its numeric source ID and updates the active count', async () => {
+  const { getOperationNotifications } = await import('../lib/operation-notifications.js')
+  const { deleteDailyWorkNotesService } = await import('../server/services/daily-work-notes-service.js')
+  const { getNotificationDeleteSourceIds } = await import('../lib/operation-notification-state.js')
+  writeJsonFile('daily-work-notes.json', [1, 2].map(id => ({
+    id, date: `2030-02-${10 + id}`, workId: 1, note: `Nota ${id}`,
+    authorName: 'Chefe Teste', updatedAt: '2030-02-10T10:00:00Z',
+  })))
+  const notices = () => getOperationNotifications({ audience: 'admin' })
+  const before = await notices()
+  assert.equal(before.length, 2)
+  const target = before.find(item => item.id === 'daily-note-1')
+  assert.ok(target)
+  const result = await deleteDailyWorkNotesService(ADMIN_SESSION, { ids: getNotificationDeleteSourceIds([target]) })
+  assert.equal(result.removedCount, 1)
+  assert.deepEqual((await notices()).map(item => item.id), ['daily-note-2'])
+  assert.deepEqual(JSON.parse(readFileSync(join(dataDir, 'daily-work-notes.json'), 'utf8')).map(item => item.id), [2])
+  assert.equal((await notices()).length, 1, 'successive refreshes cannot restore the removed note')
+  await assert.rejects(() => deleteDailyWorkNotesService(CHEF_SESSION, { ids: [2] }), error => error.status === 403)
+  assert.equal((await notices()).length, 1, 'a rejected deletion leaves count and records unchanged')
+})
+
+test('bulk notification deletion preserves unselected notes and repeated deletion cannot change the count', async () => {
+  const { getOperationNotifications } = await import('../lib/operation-notifications.js')
+  const { deleteDailyWorkNotesService } = await import('../server/services/daily-work-notes-service.js')
+  const { getNotificationDeleteSourceIds } = await import('../lib/operation-notification-state.js')
+  const rows = [1, 2, 3].map(id => ({ id, date: `2030-02-${10 + id}`, workId: 1,
+    note: `Nota ${id}`, authorName: 'Chefe Teste', updatedAt: '2030-02-10T10:00:00Z' }))
+  writeJsonFile('daily-work-notes.json', rows)
+  const notices = await getOperationNotifications({ audience: 'admin' })
+  const selected = notices.filter(item => item.sourceId !== 2)
+  const ids = getNotificationDeleteSourceIds([...selected, selected[0]])
+  assert.equal((await deleteDailyWorkNotesService(ADMIN_SESSION, { ids })).removedCount, 2)
+  const saved = JSON.parse(readFileSync(join(dataDir, 'daily-work-notes.json'), 'utf8'))
+  assert.deepEqual(saved.map(item => item.id), [2])
+  assert.equal(saved[0].note, rows[1].note)
+  assert.equal(saved[0].updatedAt, rows[1].updatedAt)
+  assert.equal((await deleteDailyWorkNotesService(ADMIN_SESSION, { ids })).removedCount, 0)
+  for (let refresh = 0; refresh < 3; refresh += 1) {
+    assert.deepEqual((await getOperationNotifications({ audience: 'admin' })).map(item => item.id), ['daily-note-2'])
+  }
+})
+
 test('planning conflicts join existing notifications once, track Draft edits and disappear without changing Published', async () => {
   const { getOperationNotifications } = await import('../lib/operation-notifications.js')
   const workB = await createWorkService(ADMIN_SESSION, { number: 102, name: 'Obra B', clientId: 1, defaultHourlyCost: 12 })
@@ -857,6 +903,32 @@ test('daily comparison prefers the previous day Published over its edited Draft 
   await publishPlanningWorkspaceService(ADMIN_SESSION, previous.workspace.id)
   const updatedReference = await getView()
   assert.equal(compare(updatedReference).changedPersonIds.size, 0, 'republishing the previous day refreshes its reference')
+})
+
+test('switching selected dates loads each immediately preceding calendar day, independently of today', async () => {
+  const pairs = [
+    ['2026-10-20', '2026-10-19'], ['2026-10-21', '2026-10-20'],
+    ['2026-10-22', '2026-10-21'], ['2026-10-25', '2026-10-24'], ['2026-11-01', '2026-10-31'],
+    ['2027-01-01', '2026-12-31'],
+  ]
+  const dates = [...new Set(pairs.flat())]
+  writeJsonFile('work-plans.json', dates.map((date, index) => ({ id: index + 1, companyId: 1, date })))
+  writeJsonFile('work-assignments.json', dates.map((date, index) => ({
+    id: index + 1, workPlanId: index + 1, workId: 1, personId: 3, hours: 8,
+  })))
+  for (const [date, referenceDate] of [...pairs, ...pairs.toReversed()]) {
+    const view = await getPlanningWorkspaceViewService(ADMIN_SESSION, createSearchParams({ date }))
+    assert.equal(view.workspace.date, date)
+    assert.equal(view.previousDaySnapshot.date, referenceDate)
+    assert.equal(view.previousDaySnapshot.state, 'published')
+    assert.equal(view.previousDaySnapshot.workPlanId, dates.indexOf(referenceDate) + 1)
+    const changes = comparePlanningMessageAssignments({
+      planningDate: date, assignments: view.items, previousDaySnapshot: view.previousDaySnapshot,
+    })
+    assert.equal(changes.changedPersonIds.size + changes.newPersonIds.size + changes.removedAssignments.length, 0)
+  }
+  const missing = await getPlanningWorkspaceViewService(ADMIN_SESSION, createSearchParams({ date: '2026-10-28' }))
+  assert.equal(missing.previousDaySnapshot, null, 'a gap cannot fall back to today or the last available plan')
 })
 
 test('daily comparison uses the previous day Draft only when no publication exists, without mutating it', async () => {
@@ -1753,9 +1825,9 @@ test('correcao com multiplas afetacoes invalida apenas a relacao substituida', a
   assert.equal(approvedTotal, 4)
 })
 
-test('registo de horas aceita apenas valores entre 0 e 24', async () => {
-  const validHours = [0, 0.5, 23.5, 24]
-  const invalidHours = [-1, 24.5, 25, 'valor-invalido']
+test('registo, edição e aprovação aceitam apenas incrementos de 0,5 h entre 0 e 24', async () => {
+  const validHours = [0, 0.5, 1, 1.5, 7.5, 8, 23.5, 24]
+  const invalidHours = [-1, 0.1, 0.91, 0.92, 1.25, 7.2, 7.75, 23.9, 24.5, 25, 'valor-invalido']
 
   for (const [index, hours] of validHours.entries()) {
     const assignment = await createWorkAssignmentService(ADMIN_SESSION, {
@@ -1815,6 +1887,120 @@ test('registo de horas aceita apenas valores entre 0 e 24', async () => {
 
     assert.equal(approvedAssignment.approvedHours, approvedHours)
   }
+})
+
+test('submissão aceita todos os incrementos válidos, incluindo zero e 24 horas', async () => {
+  for (const [index, hours] of [0, 0.5, 1, 1.5, 7.5, 8, 23.5, 24].entries()) {
+    const assignment = createWorkAssignment({ date: `2030-05-0${index + 1}`, workId: 1, personId: 3, hours })
+    const submitted = await submitWorkAssignmentService(CHEF_SESSION, assignment.id)
+    assert.equal(submitted.hours, hours)
+    assert.equal(submitted.dailyHours, hours)
+    assert.equal(submitted.submitted, true)
+  }
+})
+
+test('submissão rejeita horas históricas fora do incremento sem gravar ou arredondar', async () => {
+  const assignment = createWorkAssignment({ date: '2030-05-10', workId: 1, personId: 3, hours: 8 })
+  const file = join(dataDir, 'work-assignments.json')
+  for (const hours of [0.1, 0.91, 0.92, 1.25, 7.2, 7.75, 23.9, 24.5]) {
+    const records = JSON.parse(readFileSync(file, 'utf8'))
+    records[0].hours = hours
+    records[0].dailyHours = hours
+    writeJsonFile('work-assignments.json', records)
+    const before = readFileSync(file, 'utf8')
+    await assert.rejects(() => submitWorkAssignmentService(CHEF_SESSION, assignment.id), error =>
+      error.status === 400 && /incrementos de 0,5/.test(error.message),
+    )
+    assert.throws(() => submitWorkAssignment(assignment.id, 'Chefe Teste'), /incrementos de 0,5/)
+    assert.equal(readFileSync(file, 'utf8'), before)
+  }
+})
+
+test('aprovação em lote valida cada valor e deixa intactas as entradas rejeitadas', async () => {
+  const valid = [0, 0.5, 1, 1.5, 7.5, 8, 23.5, 24]
+  const invalid = [0.1, 0.91, 0.92, 1.25, 7.2, 7.75, 23.9, 24.5]
+  const items = [...valid, ...invalid].map((approvedHours, index) => {
+    const assignment = createWorkAssignment({ date: `2030-06-${String(index + 1).padStart(2, '0')}`, workId: 1, personId: 3, hours: 8 })
+    return { assignmentId: assignment.id, approvedHours }
+  })
+  const file = join(dataDir, 'work-assignments.json')
+  const before = JSON.parse(readFileSync(file, 'utf8'))
+  const result = await approveWorkAssignmentsBatchService(ADMIN_SESSION, { items })
+  assert.equal(result.approvedCount, valid.length)
+  assert.equal(result.failedCount, invalid.length)
+  assert.equal(result.skippedCount, 0)
+  assert.ok(result.failed.every(item => /incrementos de 0,5/.test(item.message)))
+  const after = JSON.parse(readFileSync(file, 'utf8'))
+  valid.forEach((value, index) => assert.equal(after[index].approvedHours, value))
+  assert.deepEqual(after.slice(valid.length), before.slice(valid.length))
+})
+
+test('decimais próximos dos limites devolvem 400 sem criar planos ou alterar horas', async () => {
+  const assignment = createWorkAssignment({ date: '2030-05-14', workId: 1, personId: 3, hours: 8 })
+  const files = ['work-plans.json', 'work-assignments.json']
+  const before = files.map(file => readFileSync(join(dataDir, file), 'utf8'))
+  for (const hours of [-Number.EPSILON, Number.MIN_VALUE, 0.5 - Number.EPSILON,
+    0.5 + Number.EPSILON, 24 - Number.EPSILON * 16, 24 + Number.EPSILON * 16, '0.91', '7.2']) {
+    const isValidationError = error => error.status === 400 && /incrementos de 0,5/.test(error.message)
+    await assert.rejects(() => createWorkAssignmentService(ADMIN_SESSION, {
+      date: '2030-05-15', workId: 1, personId: 3, hours,
+    }), isValidationError)
+    await assert.rejects(() => updateWorkAssignmentService(ADMIN_SESSION, assignment.id, { hours }), isValidationError)
+    await assert.rejects(() => approveWorkAssignmentService(ADMIN_SESSION, assignment.id, { approvedHours: hours }), isValidationError)
+  }
+  files.forEach((file, index) => assert.equal(readFileSync(join(dataDir, file), 'utf8'), before[index]))
+})
+
+test('serviços de dados rejeitam horas inválidas antes de criar planos ou gravar campos de horas', async () => {
+  const payload = { date: '2030-05-11', workId: 1, personId: 3, hours: 7.75 }
+  assert.throws(() => createWorkAssignment(payload), /incrementos de 0,5/)
+  await assert.rejects(() => createWorkAssignmentData(payload), /incrementos de 0,5/)
+  assert.equal(getWorkPlanByDate(payload.date, 1), null)
+  const assignment = createWorkAssignment({ ...payload, hours: 8 })
+  const file = join(dataDir, 'work-assignments.json')
+  const before = readFileSync(file, 'utf8')
+  for (const field of ['hours', 'dailyHours', 'approvedHours']) {
+    assert.throws(() => updateWorkAssignment(assignment.id, { [field]: 7.75 }), /incrementos de 0,5/)
+    await assert.rejects(() => updateWorkAssignmentData(assignment.id, { [field]: 7.75 }), /incrementos de 0,5/)
+  }
+  assert.equal(readFileSync(file, 'utf8'), before)
+})
+
+test('leitura e alterações de planeamento preservam horas históricas sem as normalizar', async () => {
+  const assignment = createWorkAssignment({ date: '2030-05-12', workId: 1, personId: 3, hours: 8 })
+  const file = join(dataDir, 'work-assignments.json')
+  const records = JSON.parse(readFileSync(file, 'utf8'))
+  Object.assign(records[0], { hours: 7.75, dailyHours: 7.2, approvedHours: 1.25, submitted: true })
+  writeJsonFile('work-assignments.json', records)
+  const before = readFileSync(file, 'utf8')
+  const historical = await getWorkAssignmentsListService(ADMIN_SESSION, createSearchParams({ date: '2030-05-12' }))
+  assert.equal(historical[0].hours, 7.75)
+  assert.equal(historical[0].dailyHours, 7.2)
+  assert.equal(historical[0].approvedHours, 1.25)
+  assert.equal(readFileSync(file, 'utf8'), before)
+  await updateWorkAssignmentPlanningData(assignment.id, { notes: 'Nota sem alteração de horas' })
+  const after = JSON.parse(readFileSync(file, 'utf8'))[0]
+  assert.equal(after.hours, 7.75)
+  assert.equal(after.dailyHours, 7.2)
+  assert.equal(after.approvedHours, 1.25)
+})
+
+test('override técnico usa a mesma validação de horas na criação e edição', async () => {
+  const session = { role: 'developer', accountType: 'developer', accessProfile: 'developer', permissionKeys: ['developer.work_assignments.override_lock'] }
+  const assignment = createWorkAssignment({ date: '2030-05-13', workId: 1, personId: 3, hours: 8 })
+  for (const hours of [0.1, 0.91, 1.25, 7.75, 23.9, 24.5]) {
+    const payload = { workPlanId: assignment.workPlanId, workId: 1, personId: 4, hours }
+    await assert.rejects(() => createDeveloperOverrideWorkAssignmentService(session, payload, { reason: 'Teste de validação' }), error =>
+      error.status === 400 && /incrementos de 0,5/.test(error.message),
+    )
+    await assert.rejects(() => updateDeveloperOverrideWorkAssignmentService(session, assignment.id, { hours }, { reason: 'Teste de validação' }), error =>
+      error.status === 400 && /incrementos de 0,5/.test(error.message),
+    )
+  }
+  const created = await createDeveloperOverrideWorkAssignmentService(session, { workPlanId: assignment.workPlanId, workId: 1, personId: 4, hours: 0.5 }, { reason: 'Teste de validação' })
+  assert.equal(created.hours, 0.5)
+  const updated = await updateDeveloperOverrideWorkAssignmentService(session, assignment.id, { hours: 7.5 }, { reason: 'Teste de validação' })
+  assert.equal(updated.hours, 7.5)
 })
 
 test('propoe automaticamente o proximo numero de obra', () => {
@@ -2124,12 +2310,14 @@ test('Registo diÃƒÆ’Ã‚Â¡rio do admin usa batch approval, confirmaÃƒ�
   assert.doesNotMatch(dailyHoursPageSource, /const approvePromises = selectedWorkEntries\.map/)
 })
 
-test('People page aplica a split grid adaptativa e headers internos responsivos', () => {
-  assert.match(peoplePageSource, /className=\{canManagePeople \? 'btx-people-main-grid' : ''\}/)
-  assert.match(peoplePageSource, /className="btx-people-detail-header"/)
-  assert.match(peoplePageSource, /className="btx-people-list-row-head"/)
-  assert.match(globalCssSource, /\.btx-people-detail-actions\s*\{/)
-  assert.match(globalCssSource, /\.btx-people-list-row-head\s*\{/)
+test('People page reuses the global sidebar, responsive master/detail and the real documents panel', () => {
+  assert.match(peoplePageSource, /<AdminSidebar activePath="\/people" mobileNavigation/)
+  assert.match(peoplePageSource, /sidebarStyles\.dashboard/)
+  assert.match(peopleWorkspaceCss, /@media \(max-width: 899px\)/)
+  assert.match(peopleWorkspaceSource, /<PersonDocumentsPanel/)
+  assert.match(peopleWorkspaceSource, /onDoubleClick=\{\(\) => onOpenPerson\(item\.id\)\}/)
+  assert.match(peopleWorkspaceSource, /role="tablist"/)
+  assert.doesNotMatch(peopleWorkspaceSource, /type="file"/)
 })
 
 test('Dashboard usa branding Bentix e adota a linguagem visual nova', () => {

@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react'
 import LogoutButton from '../../components/LogoutButton'
 import { ViewportPage, ViewportScrollArea, ViewportShell } from '../../components/ViewportLayout.js'
 import { buildLoginRedirectPath } from '../../../lib/safe-redirect.js'
+import { DAILY_HOURS_INPUT_PROPS, DAILY_HOURS_STEP } from '../../../lib/daily-hours-validation.js'
 import {
   fetchChefDailyHoursData,
   fetchChefWorkNotes,
@@ -802,21 +803,9 @@ export default function ChefMobileDailyHoursClient({ initialSession, previewMode
       return
     }
 
-    const nextRowErrors = {}
-    let hasErrors = false
-
-    for (const entry of pendingEntries) {
-      const rawValue = entryHours[String(entry.id)]
-      const numericValue = Number(rawValue)
-
-      if (rawValue === '' || Number.isNaN(numericValue) || numericValue < 0 || numericValue > 24) {
-        nextRowErrors[String(entry.id)] = 'Indica horas entre 0 e 24.'
-        hasErrors = true
-      }
-    }
-
-    if (hasErrors) {
-      setRowErrors(nextRowErrors)
+    const validation = validateChefEntryHours(pendingEntries, entryHours)
+    if (validation.hasErrors) {
+      setRowErrors(validation.rowErrors)
       return
     }
 
@@ -1233,7 +1222,7 @@ export default function ChefMobileDailyHoursClient({ initialSession, previewMode
                     <div style={stepperRowStyle}>
                       <button
                         type="button"
-                        onClick={() => adjustEntryHours(entry.id, -1)}
+                        onClick={() => adjustEntryHours(entry.id, -DAILY_HOURS_STEP)}
                         disabled={isSubmitted || previewMode}
                         style={stepperButtonStyle(isSubmitted || previewMode)}
                         aria-label={`Diminuir horas de ${entry.person?.name || `Pessoa ${entry.personId}`}`}
@@ -1242,9 +1231,7 @@ export default function ChefMobileDailyHoursClient({ initialSession, previewMode
                       </button>
                       <input
                         type="number"
-                        min="0"
-                        max="24"
-                        step="0.01"
+                        {...DAILY_HOURS_INPUT_PROPS}
                         inputMode="decimal"
                         value={entryHours[String(entry.id)] ?? ''}
                         onChange={event => handleHoursChange(entry.id, event.target.value)}
@@ -1253,7 +1240,7 @@ export default function ChefMobileDailyHoursClient({ initialSession, previewMode
                       />
                       <button
                         type="button"
-                        onClick={() => adjustEntryHours(entry.id, 1)}
+                        onClick={() => adjustEntryHours(entry.id, DAILY_HOURS_STEP)}
                         disabled={isSubmitted || previewMode}
                         style={stepperButtonStyle(isSubmitted || previewMode)}
                         aria-label={`Aumentar horas de ${entry.person?.name || `Pessoa ${entry.personId}`}`}

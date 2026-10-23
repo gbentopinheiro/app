@@ -11,11 +11,7 @@ import {
 } from '../../frontend/controllers/work-assignments-controller.js'
 import { getDefaultHoursForDate } from '../../lib/default-hours.js'
 import { getEntityRoleLabel } from '../../lib/roles.js'
-
-const DURATION_OPTIONS = [
-  0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5, 6,
-  6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10, 10.5, 11, 11.5, 12,
-]
+import { DAILY_HOURS_INPUT_PROPS, DAILY_HOURS_INPUT_ERROR, isValidDailyHours } from '../../lib/daily-hours-validation.js'
 
 const pageStyle = {
   minHeight: '100vh',
@@ -299,8 +295,8 @@ export default function WorkAssignmentsPage() {
       nextErrors.date = 'Data inválida.'
     }
 
-    if (!form.hours || Number(form.hours) <= 0) {
-      nextErrors.hours = 'A duração tem de ser maior que 0.'
+    if (!isValidDailyHours(form.hours)) {
+      nextErrors.hours = DAILY_HOURS_INPUT_ERROR
     }
 
     if (form.hourlyCost === '' || Number(form.hourlyCost) < 0) {
@@ -499,13 +495,7 @@ export default function WorkAssignmentsPage() {
 
                   <label style={labelStyle}>
                     Duração
-                    <select name="hours" value={form.hours} onChange={handleChange} style={inputStyle}>
-                      {DURATION_OPTIONS.map(option => (
-                        <option key={option} value={option}>
-                          {option} horas
-                        </option>
-                      ))}
-                    </select>
+                    <input type="number" name="hours" {...DAILY_HOURS_INPUT_PROPS} value={form.hours} onChange={handleChange} style={inputStyle} />
                     {formErrors.hours && <span style={{ color: '#b42318', fontSize: '13px' }}>{formErrors.hours}</span>}
                   </label>
 

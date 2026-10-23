@@ -77,7 +77,7 @@ export default async function NotificationsPage() {
         </section>
 
         <ViewportScrollArea style={{ '--vp-page-scroll-gap': '22px' }}>
-          <NotificationsClient initialNotifications={notifications} />
+          <NotificationsClient initialNotifications={notifications} username={session.username} />
         </ViewportScrollArea>
       </ViewportShell>
     </ViewportPage>

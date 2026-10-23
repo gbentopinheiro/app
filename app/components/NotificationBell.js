@@ -3,14 +3,11 @@
 import Link from 'next/link'
 import { useEffect, useId, useRef, useState } from 'react'
 import styles from './NotificationBell.module.css'
-import { useOperationNotificationsRefresh } from '../../frontend/hooks/use-operation-notifications-refresh.js'
+import { useOperationNotificationState } from '../../frontend/hooks/use-operation-notification-state.js'
+import { getNotificationVersion } from '../../lib/operation-notification-state.js'
 
-function notificationVersion(notification) {
-  return String(Number.isFinite(notification.sortTimestamp) ? notification.sortTimestamp : 0)
-}
-
-export default function NotificationBell({ notifications, username, enabled }) {
-  useOperationNotificationsRefresh(enabled)
+export default function NotificationBell({ notifications: initialNotifications, username, enabled }) {
+  const { notifications } = useOperationNotificationState(initialNotifications, username, { enabled })
   const [isOpen, setIsOpen] = useState(false)
   const [seen, setSeen] = useState({ key: null, versions: {} })
   const rootRef = useRef(null)
@@ -18,7 +15,7 @@ export default function NotificationBell({ notifications, username, enabled }) {
   const panelId = useId()
   const storageKey = `bentix:notifications:seen:v1:${String(username).trim().toLowerCase()}`
   const hasUnread = enabled && seen.key === storageKey && notifications.some(notification =>
-    seen.versions[notification.id] !== notificationVersion(notification),
+    seen.versions[notification.id] !== getNotificationVersion(notification),
   )
 
   useEffect(() => {
@@ -61,7 +58,7 @@ export default function NotificationBell({ notifications, username, enabled }) {
 
   function togglePanel() {
     if (!isOpen && enabled) {
-      const versions = Object.fromEntries(notifications.map(notification => [notification.id, notificationVersion(notification)]))
+      const versions = Object.fromEntries(notifications.map(notification => [notification.id, getNotificationVersion(notification)]))
       setSeen({ key: storageKey, versions })
       try {
         window.localStorage.setItem(storageKey, JSON.stringify(versions))

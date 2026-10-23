@@ -7,6 +7,7 @@ import {
   listWorkAssignments,
 } from '../../frontend/controllers/work-assignments-controller.js'
 import { isAssignmentApproved } from '../../lib/work-assignment-approval.js'
+import { DAILY_HOURS_INPUT_PROPS, normalizeDailyHoursValue } from '../../lib/daily-hours-validation.js'
 import {
   BentixContent,
   BentixPage,
@@ -164,13 +165,7 @@ export default function HoursApprovalPage() {
     setApprovingId(assignmentId)
 
     try {
-      const hoursValue = Number(approvalValues[assignmentId])
-
-      if (Number.isNaN(hoursValue) || hoursValue < 0 || hoursValue > 24) {
-        setError('Horas têm de estar entre 0 e 24.')
-        setApprovingId(null)
-        return
-      }
+      const hoursValue = normalizeDailyHoursValue(approvalValues[assignmentId], 'Horas aprovadas')
 
       await approveWorkAssignment(
         assignmentId,
@@ -227,9 +222,7 @@ export default function HoursApprovalPage() {
             Horas Aprovadas
             <input
               type="number"
-              min="0"
-              max="24"
-              step="0.01"
+              {...DAILY_HOURS_INPUT_PROPS}
               value={approvalValues[assignment.id] ?? ''}
               onChange={(event) => handleApprovalChange(assignment.id, event.target.value)}
               style={inputStyle}

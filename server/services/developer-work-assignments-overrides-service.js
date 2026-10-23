@@ -19,6 +19,16 @@ import {
   updateWorkAssignmentData,
 } from '../../lib/work-assignments.js'
 import { HttpError } from '../errors/http-error.js'
+import { DailyHoursValidationError, normalizeDailyHoursValue } from '../../lib/daily-hours-validation.js'
+
+function validateOverrideHours(hours) {
+  try {
+    normalizeDailyHoursValue(hours)
+  } catch (error) {
+    if (error instanceof DailyHoursValidationError) throw new HttpError(400, error.message)
+    throw error
+  }
+}
 
 export function normalizeDeveloperWorkAssignmentOverrideReason(value) {
   return normalizeDeveloperOverrideReason(value)
@@ -63,9 +73,7 @@ function validateCreateOverridePayload(body) {
     throw new HttpError(400, 'date tem de ser uma data valida')
   }
 
-  if (hours === undefined || Number(hours) < 0) {
-    throw new HttpError(400, 'hours tem de ser 0 ou maior')
-  }
+  validateOverrideHours(hours)
 
   if (hourlyCost !== undefined && Number(hourlyCost) < 0) {
     throw new HttpError(400, 'hourlyCost nao pode ser negativo')
@@ -79,9 +87,7 @@ function validateUpdateOverridePayload(body) {
     throw new HttpError(400, 'date tem de ser uma data valida')
   }
 
-  if (hours !== undefined && Number(hours) < 0) {
-    throw new HttpError(400, 'hours tem de ser 0 ou maior')
-  }
+  if (hours !== undefined) validateOverrideHours(hours)
 
   if (hourlyCost !== undefined && Number(hourlyCost) < 0) {
     throw new HttpError(400, 'hourlyCost nao pode ser negativo')

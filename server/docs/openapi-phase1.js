@@ -1,3 +1,5 @@
+import { DAILY_HOURS_MIN, DAILY_HOURS_MAX, DAILY_HOURS_STEP } from '../../lib/daily-hours-validation.js'
+
 const ref = name => ({ $ref: `#/components/schemas/${name}` })
 
 const jsonContent = schema => ({
@@ -2440,7 +2442,7 @@ export const openApiPhase1 = {
           workId: { type: 'integer' },
           personId: { type: 'integer' },
           date: { type: 'string', format: 'date' },
-          hours: { type: 'number' },
+          hours: { type: 'number', minimum: DAILY_HOURS_MIN, maximum: DAILY_HOURS_MAX, multipleOf: DAILY_HOURS_STEP },
           hourlyCost: { type: 'number' },
           manualHourlyCost: { type: 'boolean' },
           notes: { type: 'string' },
@@ -2454,7 +2456,7 @@ export const openApiPhase1 = {
           workId: { type: 'integer' },
           personId: { type: 'integer' },
           date: { type: 'string', format: 'date' },
-          hours: { type: 'number' },
+          hours: { type: 'number', minimum: DAILY_HOURS_MIN, maximum: DAILY_HOURS_MAX, multipleOf: DAILY_HOURS_STEP },
           hourlyCost: { type: 'number' },
           manualHourlyCost: { type: 'boolean' },
           notes: { type: 'string' },
@@ -2466,7 +2468,7 @@ export const openApiPhase1 = {
         type: 'object',
         required: ['approvedHours'],
         properties: {
-          approvedHours: { type: 'number', minimum: 0 },
+          approvedHours: { type: 'number', minimum: DAILY_HOURS_MIN, maximum: DAILY_HOURS_MAX, multipleOf: DAILY_HOURS_STEP },
         },
       },
       WorkAssignmentListWithDefaults: {

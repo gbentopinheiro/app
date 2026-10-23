@@ -1019,7 +1019,7 @@ async function getResponsavelCalendarAgenda() {
 }
 
 async function getRecentNotifications() {
-  const notifications = await getOperationNotifications({ audience: 'admin', limit: 3 })
+  const notifications = await getOperationNotifications({ audience: 'admin' })
   return notifications.map(notification => ({
     ...notification,
     note: notification.sourceType === 'daily-note' && notification.note.length > 92
@@ -1155,6 +1155,7 @@ export default async function Home() {
             smallCalendar={smallCalendar}
             calendarOverview={calendarOverview}
             notifications={notifications}
+            username={session.username}
             calendarEnabled={calendarManagementEnabled}
             notificationsEnabled={notificationsCenterEnabled}
           />

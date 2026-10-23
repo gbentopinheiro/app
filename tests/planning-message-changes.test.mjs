@@ -2,6 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { buildPlanningMessagePreview, comparePlanningMessageAssignments, getPlanningPersonChangeStatus, PLANNING_CHANGE_LABELS } from '../lib/planning-message.js'
 import { getPreviousPlanningDateValue } from '../lib/planning-date.js'
+import { getAdjacentPlanningDate } from '../app/daily-plan/planning-board-view.js'
 
 const date = '2030-02-10'
 const previousDate = '2030-02-09'
@@ -18,6 +19,97 @@ test('previous calendar date handles month/year boundaries, leap years and dayli
     ['2030-01-01', '2029-12-31'], ['2028-03-01', '2028-02-29'], ['2026-03-30', '2026-03-29'],
     ['2026-10-26', '2026-10-25'], ['invalid', ''], ['2030-02-30', ''],
   ]) assert.equal(getPreviousPlanningDateValue(input), expected)
+})
+
+for (const [selectedDate, referenceDate] of [
+  ['2026-10-20', '2026-10-19'],
+  ['2026-10-21', '2026-10-20'],
+  ['2026-10-22', '2026-10-21'],
+  ['2026-10-25', '2026-10-24'],
+  ['2026-11-01', '2026-10-31'],
+  ['2027-01-01', '2026-12-31'],
+]) {
+  test(`selected ${selectedDate} compares only with ${referenceDate}, including visual and copied indicators`, () => {
+    assert.equal(getPreviousPlanningDateValue(selectedDate), referenceDate)
+    const current = [row(1, 20), row(2, 10), row(3, 20)]
+    const changes = comparePlanningMessageAssignments({
+      planningDate: selectedDate, assignments: current,
+      previousDaySnapshot: { date: referenceDate, assignments: [row(1, 10), row(2, 10), row(4, 10)] },
+    })
+    assert.equal(getPlanningPersonChangeStatus(changes, 1), 'changed')
+    assert.equal(getPlanningPersonChangeStatus(changes, 2), '')
+    assert.equal(getPlanningPersonChangeStatus(changes, 3), 'new')
+    assert.deepEqual(changes.removedAssignments.map(a => a.personId), [1, 4])
+    const copied = buildPlanningMessagePreview({
+      planningDate: selectedDate,
+      groupedAssignments: [{ workId: 20, workName: 'Obra 20', assignments: current }],
+      selectedWorkIds: ['20'], changes,
+    })
+    assert.match(copied, /Pessoa 1 \[ALTERADO\]/)
+    assert.match(copied, /Pessoa 3 \[NOVO\]/)
+    assert.match(copied, /Pessoa 4 \[REMOVIDO\]/)
+    assert.ok(copied.split('\n').includes('- Pessoa 2'))
+    assert.ok(copied.startsWith(`Plano do dia ${selectedDate}\n`))
+    const staleReference = comparePlanningMessageAssignments({
+      planningDate: selectedDate, assignments: current,
+      previousDaySnapshot: { date: selectedDate, assignments: [] },
+    })
+    assert.equal(staleReference.changedPersonIds.size + staleReference.newPersonIds.size + staleReference.removedAssignments.length, 0)
+  })
+}
+
+test('reference date never reads the current clock', () => {
+  const RealDate = globalThis.Date
+  try {
+    globalThis.Date = class extends RealDate {
+      constructor(...args) {
+        assert.notEqual(args.length, 0, 'comparison must not construct today')
+        super(...args)
+      }
+      static now() { throw new Error('comparison must not read today') }
+    }
+    for (const [selectedDate, referenceDate] of [
+      ['2026-10-21', '2026-10-20'], ['2026-10-22', '2026-10-21'],
+      ['2026-10-25', '2026-10-24'], ['2026-11-01', '2026-10-31'],
+      ['2027-01-01', '2026-12-31'],
+    ]) {
+      assert.equal(getPreviousPlanningDateValue(selectedDate), referenceDate)
+      const changes = comparePlanningMessageAssignments({
+        planningDate: selectedDate, assignments: [row(1, 20)],
+        previousDaySnapshot: { date: referenceDate, assignments: [row(1, 10)] },
+      })
+      assert.deepEqual([...changes.changedPersonIds], ['1'])
+    }
+  } finally {
+    globalThis.Date = RealDate
+  }
+})
+
+test('previous/next navigation replaces the comparison rather than retaining the prior selected day', () => {
+  const plans = new Map([
+    ['2026-10-20', [row(1, 10), row(2, 10)]],
+    ['2026-10-21', [row(1, 20), row(2, 10), row(3, 20)]],
+    ['2026-10-22', [row(1, 20), row(2, 10)]],
+  ])
+  const inspect = selectedDate => comparePlanningMessageAssignments({
+    planningDate: selectedDate, assignments: plans.get(selectedDate),
+    previousDaySnapshot: { date: getPreviousPlanningDateValue(selectedDate), assignments: plans.get(getPreviousPlanningDateValue(selectedDate)) },
+  })
+  const selected = '2026-10-21'
+  const next = getAdjacentPlanningDate(selected, 1)
+  assert.equal(next, '2026-10-22')
+  assert.deepEqual([...inspect(selected).changedPersonIds], ['1'])
+  assert.deepEqual([...inspect(selected).newPersonIds], ['3'])
+  const changes = inspect(next)
+  assert.equal(changes.changedPersonIds.size + changes.newPersonIds.size, 0)
+  assert.deepEqual(changes.removedAssignments.map(item => item.personId), [3])
+  const text = buildPlanningMessagePreview({ planningDate: next, changes,
+    groupedAssignments: [{ workId: 20, workName: 'Obra 20', assignments: plans.get(next) }], selectedWorkIds: ['20'] })
+  assert.doesNotMatch(text, /\[ALTERADO\]|\[NOVO\]/)
+  assert.match(text, /Pessoa 3 \[REMOVIDO\]/)
+  assert.deepEqual(inspect(getAdjacentPlanningDate(next, -1)), inspect(selected))
+  assert.equal(getPreviousPlanningDateValue(getAdjacentPlanningDate('2026-10-31', 1)), '2026-10-31')
+  assert.equal(getPreviousPlanningDateValue(getAdjacentPlanningDate('2026-12-31', 1)), '2026-12-31')
 })
 
 test('no previous-day plan means no highlights; same-day and older plans must not be used', () => {

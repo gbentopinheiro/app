@@ -41,6 +41,7 @@ import {
 } from '../../lib/daily-hours-approval.js'
 import { isChefRole } from '../../lib/roles.js'
 import { isAssignmentApproved } from '../../lib/work-assignment-approval.js'
+import { DAILY_HOURS_INPUT_PROPS, DAILY_HOURS_STEP, normalizeDailyHoursValue } from '../../lib/daily-hours-validation.js'
 import LogoutButton from '../components/LogoutButton'
 
 const pageStyle = {
@@ -808,10 +809,6 @@ export default function DailyHoursPage() {
     return entries.map(entry => {
       const approvedHours = resolveApprovedHoursForEntry(entry)
 
-      if (Number.isNaN(approvedHours) || approvedHours < 0 || approvedHours > 24) {
-        throw new Error('Horas aprovadas têm de estar entre 0 e 24.')
-      }
-
       return {
         assignmentId: entry.id,
         approvedHours,
@@ -970,22 +967,9 @@ export default function DailyHoursPage() {
   async function handleSaveAllHours(entriesToSave = selectedWorkEntries) {
     setError('')
     setSuccess('')
-    const nextRowErrors = {}
-    let hasErrors = false
-
-    // Validate all entries first
-    for (const entry of entriesToSave) {
-      const hoursValue = entryHours[String(entry.id)]
-      const numericHours = Number(hoursValue)
-
-      if (hoursValue === '' || Number.isNaN(numericHours) || numericHours < 0 || numericHours > 24) {
-        nextRowErrors[String(entry.id)] = 'Indica horas entre 0 e 24.'
-        hasErrors = true
-      }
-    }
-
-    if (hasErrors) {
-      setRowErrors(nextRowErrors)
+    const validation = validateChefEntryHours(entriesToSave, entryHours)
+    if (validation.hasErrors) {
+      setRowErrors(validation.rowErrors)
       return
     }
 
@@ -1025,13 +1009,7 @@ export default function DailyHoursPage() {
     setApprovingId(entryId)
 
     try {
-      const approvedHours = Number(approvalValues[entryId])
-
-      if (Number.isNaN(approvedHours) || approvedHours < 0 || approvedHours > 24) {
-        setError('Horas têm de estar entre 0 e 24.')
-        setApprovingId(null)
-        return
-      }
+      const approvedHours = normalizeDailyHoursValue(approvalValues[entryId], 'Horas aprovadas')
 
       await approveWorkAssignment(entryId, { approvedHours }, 'Erro ao aprovar horas')
 
@@ -1061,12 +1039,7 @@ export default function DailyHoursPage() {
     setSuccess('')
 
     try {
-      const newHours = Number(editedChefHours[entryId])
-
-      if (Number.isNaN(newHours) || newHours < 0 || newHours > 24) {
-        setError('Horas têm de estar entre 0 e 24.')
-        return
-      }
+      const newHours = normalizeDailyHoursValue(editedChefHours[entryId], 'Horas')
 
       await saveWorkAssignment(entryId, { hours: newHours }, 'Erro ao atualizar horas')
 
@@ -1080,7 +1053,7 @@ export default function DailyHoursPage() {
 
   function handleEditApprovedHours(entryId, currentApprovedHours) {
     setEditingApprovedHours(entryId)
-    setEditedApprovedHours({ [entryId]: String(currentApprovedHours || '') })
+    setEditedApprovedHours({ [entryId]: String(currentApprovedHours ?? '') })
   }
 
   function cancelApprovedHoursEdit(entryId) {
@@ -1106,10 +1079,8 @@ export default function DailyHoursPage() {
       entry.dailyHours ??
       0
     const rawValue =
-      editingValue !== undefined && editingValue !== '' ? editingValue : fallbackValue
-    const numericValue = Number(rawValue)
-
-    return Number.isNaN(numericValue) ? NaN : numericValue
+      editingValue !== undefined ? editingValue : fallbackValue
+    return normalizeDailyHoursValue(rawValue, 'Horas aprovadas')
   }
 
   async function handleSaveApprovedHoursEdit(entryId) {
@@ -1117,12 +1088,7 @@ export default function DailyHoursPage() {
     setSuccess('')
 
     try {
-      const newApprovedHours = Number(editedApprovedHours[entryId])
-
-      if (Number.isNaN(newApprovedHours) || newApprovedHours < 0 || newApprovedHours > 24) {
-        setError('Horas têm de estar entre 0 e 24.')
-        return
-      }
+      const newApprovedHours = normalizeDailyHoursValue(editedApprovedHours[entryId], 'Horas aprovadas')
 
       await approveWorkAssignment(
         entryId,
@@ -1660,7 +1626,7 @@ export default function DailyHoursPage() {
                                 <div style={chefHoursStepperStyle}>
                                   <button
                                     type="button"
-                                    onClick={() => adjustEntryHours(entry.id, -1)}
+                                    onClick={() => adjustEntryHours(entry.id, -DAILY_HOURS_STEP)}
                                     disabled={savingAll}
                                     style={chefHoursStepperButtonStyle(savingAll)}
                                     aria-label={`Diminuir horas de ${entry.person?.name || `Pessoa ${entry.personId}`}`}
@@ -1669,9 +1635,7 @@ export default function DailyHoursPage() {
                                   </button>
                                   <input
                                     type="number"
-                                    min="0"
-                                    max="24"
-                                    step="0.01"
+                                    {...DAILY_HOURS_INPUT_PROPS}
                                     inputMode="decimal"
                                     value={entryHours[String(entry.id)] ?? ''}
                                     onChange={(event) => handleHoursChange(entry.id, event.target.value)}
@@ -1680,7 +1644,7 @@ export default function DailyHoursPage() {
                                   />
                                   <button
                                     type="button"
-                                    onClick={() => adjustEntryHours(entry.id, 1)}
+                                    onClick={() => adjustEntryHours(entry.id, DAILY_HOURS_STEP)}
                                     disabled={savingAll}
                                     style={chefHoursStepperButtonStyle(savingAll)}
                                     aria-label={`Aumentar horas de ${entry.person?.name || `Pessoa ${entry.personId}`}`}
@@ -1795,9 +1759,7 @@ export default function DailyHoursPage() {
                           <>
                             <input
                               type="number"
-                              min="0"
-                              max="24"
-                              step="0.01"
+                              {...DAILY_HOURS_INPUT_PROPS}
                               value={entryHours[String(entry.id)] ?? ''}
                               onChange={(event) => handleHoursChange(entry.id, event.target.value)}
                               style={{ ...inputStyle, marginTop: 0 }}
@@ -1828,9 +1790,7 @@ export default function DailyHoursPage() {
                           <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: '8px', alignItems: 'center' }}>
                             <input
                               type="number"
-                              min="0"
-                              max="24"
-                              step="0.01"
+                              {...DAILY_HOURS_INPUT_PROPS}
                               value={editedChefHours[entry.id] ?? ''}
                               onChange={(event) => setEditedChefHours(curr => ({ ...curr, [entry.id]: event.target.value }))}
                               style={{ ...inputStyle, marginTop: 0, fontSize: '12px', padding: '8px 10px' }}
@@ -1881,9 +1841,7 @@ export default function DailyHoursPage() {
                           <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: '8px', alignItems: 'center' }}>
                             <input
                               type="number"
-                              min="0"
-                              max="24"
-                              step="0.01"
+                              {...DAILY_HOURS_INPUT_PROPS}
                               value={editedApprovedHours[entry.id] ?? ''}
                               onChange={(event) => setEditedApprovedHours(curr => ({ ...curr, [entry.id]: event.target.value }))}
                               style={{ ...inputStyle, marginTop: 0, fontSize: '12px', padding: '8px 10px' }}

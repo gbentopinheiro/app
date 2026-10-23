@@ -1,4 +1,5 @@
 import { apiFetchJson } from '../api/api-client.js'
+import { normalizeDailyHoursValue } from '../../lib/daily-hours-validation.js'
 import { saveWorkAssignment, submitWorkAssignment } from './work-assignments-controller.js'
 import {
   fetchDailyWorkNotes,
@@ -115,18 +116,23 @@ export async function submitChefEntries({
   updateErrorMessage = 'Não foi possível atualizar as horas.',
   submitErrorMessage = 'Não foi possível submeter as horas.',
 }) {
+  const normalizedEntries = entries.filter(entry => !entry.submitted).map(entry => ({
+    entry,
+    hours: normalizeDailyHoursValue(entryHours[String(entry.id)]),
+  }))
+
   await Promise.all(
-    entries.map(entry =>
+    normalizedEntries.map(({ entry, hours }) =>
       saveWorkAssignment(
         entry.id,
-        { hours: Number(entryHours[String(entry.id)]) },
+        { hours },
         updateErrorMessage,
       ),
     ),
   )
 
   await Promise.all(
-    entries.map(entry =>
+    normalizedEntries.map(({ entry }) =>
       submitWorkAssignment(entry.id, undefined, submitErrorMessage),
     ),
   )

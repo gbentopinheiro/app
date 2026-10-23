@@ -1,11 +1,13 @@
 'use client'
 
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 import * as XLSX from 'xlsx'
-import EditPencilIcon, { editPencilButtonStyle } from '../components/EditPencilIcon'
-import { BentixContent, BentixPage, BentixResponsiveGrid, BentixSection } from '../components/ViewportLayout.js'
+import AdminSidebar from '../components/AdminSidebar'
+import sidebarStyles from '../components/AdminSidebar.module.css'
+import PeopleWorkspace from './PeopleWorkspace'
+import workspaceStyles from './PeopleWorkspace.module.css'
+import { BentixContent, BentixPage } from '../components/ViewportLayout.js'
 import {
   deletePerson,
   listPeople,
@@ -30,11 +32,9 @@ import {
   ROLE_RESPONSAVEL,
   ROLE_TROLHA,
   getRoleDisplayLabel,
-  isWorkerRole,
   roleCanHaveAppAccess,
   roleRequiresAppAccess,
   roleSupportsChefCategory,
-  roleUsesWorkScope,
 } from '../../lib/roles.js'
 
 const pageStyle = {
@@ -47,51 +47,11 @@ const shellStyle = {
   '--btx-content-gap': '24px',
 }
 
-const contentFlowStyle = {
-  display: 'grid',
-  gap: '24px',
-  minWidth: 0,
-}
 
-const heroStyle = {
-  position: 'relative',
-  overflow: 'hidden',
-  background: 'var(--vp-module-hero)',
-  border: '1px solid var(--vp-module-hero-border)',
-  borderRadius: '32px',
-  padding: '28px',
-  boxShadow: 'var(--vp-hero-shadow-strong)',
-  color: '#ffffff',
-  '--vp-text-muted': 'var(--vp-hero-text-muted)',
-  '--vp-text-soft': 'var(--vp-hero-text-soft)',
-  '--vp-surface': 'var(--vp-hero-surface)',
-  '--vp-border': 'var(--vp-hero-border)',
-}
 
-const topBarStyle = {
-  display: 'grid',
-  gap: '16px',
-  alignItems: 'start',
-}
 
-const statGridStyle = {
-  gap: '14px',
-  flex: 1,
-}
 
-const statCardStyle = {
-  borderRadius: '20px',
-  padding: '18px',
-  background: 'var(--vp-stat-surface)',
-  border: '1px solid var(--vp-stat-border)',
-  boxShadow: 'var(--vp-stat-shadow)',
-}
 
-const layoutStyle = {
-  gap: '24px',
-  alignItems: 'start',
-  minWidth: 0,
-}
 
 const panelStyle = {
   background: 'var(--vp-surface-soft)',
@@ -125,77 +85,14 @@ const modalCardStyle = {
   boxShadow: 'var(--vp-shadow-modal)',
 }
 
-const searchInputStyle = {
-  width: '100%',
-  padding: '12px 14px',
-  borderRadius: '14px',
-  border: '1px solid var(--vp-border)',
-  background: 'var(--vp-surface-muted)',
-  fontSize: '14px',
-  marginBottom: '16px',
-}
 
-const peopleListStyle = {
-  display: 'grid',
-  gap: '12px',
-}
 
-const responsavelPeopleListStyle = {
-  ...peopleListStyle,
-  justifyItems: 'start',
-}
 
-const responsavelPersonRowStyle = {
-  display: 'block',
-  width: '100%',
-  boxSizing: 'border-box',
-  textAlign: 'left',
-  padding: '14px 16px',
-  borderRadius: '16px',
-  border: '1px solid var(--vp-border)',
-  background: 'var(--vp-surface)',
-  color: 'inherit',
-  textDecoration: 'none',
-  cursor: 'pointer',
-}
 
-const responsavelAlertListWrapStyle = {
-  display: 'grid',
-  gap: '10px',
-  marginTop: '10px',
-  marginBottom: '16px',
-  padding: '14px',
-  borderRadius: '18px',
-  background: 'rgba(180, 35, 24, 0.08)',
-  border: '1px solid rgba(180, 35, 24, 0.16)',
-}
 
-const responsavelAlertListStyle = {
-  display: 'grid',
-  gap: '8px',
-}
 
-const responsavelAlertLinkStyle = {
-  padding: '10px 12px',
-  borderRadius: '14px',
-  border: '1px solid rgba(180, 35, 24, 0.18)',
-  background: 'rgba(255, 255, 255, 0.88)',
-  color: '#b42318',
-  textDecoration: 'none',
-}
 
-const responsavelAlertNameStyle = {
-  margin: 0,
-  fontSize: '14px',
-  fontWeight: 800,
-}
 
-const responsavelAlertMetaStyle = {
-  margin: '4px 0 0',
-  fontSize: '12px',
-  lineHeight: 1.4,
-  color: '#9f1f14',
-}
 
 const inputStyle = {
   width: '100%',
@@ -287,22 +184,8 @@ const dangerButtonStyle = {
   cursor: 'pointer',
 }
 
-const iconButtonStyle = editPencilButtonStyle
 
-const iconDangerButtonStyle = {
-  ...dangerButtonStyle,
-  width: '34px',
-  height: '34px',
-  padding: 0,
-  fontSize: '14px',
-}
 
-const buttonGroupStyle = {
-  display: 'flex',
-  gap: '10px',
-  flexWrap: 'wrap',
-  justifyContent: 'flex-start',
-}
 
 const mutedButtonStyle = {
   border: '1px solid var(--vp-border)',
@@ -329,13 +212,6 @@ const closeButtonStyle = {
   cursor: 'pointer',
 }
 
-const responsavelListHeaderStyle = {
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  gap: '12px',
-  flexWrap: 'wrap',
-}
 
 const responsavelCreateFormStyle = {
   display: 'grid',
@@ -2386,337 +2262,23 @@ export default function PeoplePage() {
     setSuccess('')
   }
 
-  function renderPersonRow(person) {
-    if (isResponsavelView) {
-      return (
-        <Link
-          href={`/people/${person.id}`}
-          key={person.id}
-          style={responsavelPersonRowStyle}
-        >
-          <strong>{person.name}</strong>
-        </Link>
-      )
-    }
-
-    const selected = Number(selectedPerson?.id) === Number(person.id)
-
-    return (
-      <button
-        key={person.id}
-        type="button"
-        onClick={() => setSelectedPersonId(person.id)}
-        onDoubleClick={() => router.push(`/people/${person.id}`)}
-        title="Clique para selecionar. Faz duplo clique para abrir a página da pessoa."
-        style={{
-          width: '100%',
-          textAlign: 'left',
-          padding: '16px',
-          borderRadius: '16px',
-          border: selected ? '1px solid var(--vp-accent)' : '1px solid var(--vp-border)',
-          background: selected ? 'var(--vp-highlight)' : 'var(--vp-surface)',
-          cursor: 'pointer',
-        }}
-        >
-        <div
-          className="btx-people-list-row-head"
-          style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'flex-start' }}
-        >
-          <strong style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{person.name}</strong>
-          {!isWorkerRole(person.role) && (
-            <span
-              style={{
-                padding: '4px 10px',
-                borderRadius: '999px',
-                background: 'var(--vp-accent)',
-                color: '#fff',
-                fontSize: '12px',
-                fontWeight: 700,
-              }}
-            >
-              {getPersonRoleLabel(person)}
-            </span>
-          )}
-        </div>
-        {person.isMonthlyBilling ? (
-          <p style={{ margin: '6px 0 0', color: 'var(--vp-text-muted)' }}>Mensal: {person.monthlyPrice || 0}</p>
-        ) : (
-          <p style={{ margin: '6px 0 0', color: 'var(--vp-text-muted)' }}>Preço hora: {person.price || 0}/h</p>
-        )}
-      </button>
-    )
-  }
-
   return (
-    <BentixPage style={pageStyle}>
-      <BentixContent width="app" gap="lg" style={shellStyle}>
-        <section style={heroStyle}>
-          <Link href="/" style={{ color: 'var(--vp-accent)', textDecoration: 'none', fontWeight: 700 }}>
-            Voltar ao menu
-          </Link>
-          {canManagePeople && (
-            <p style={{ margin: '18px 0 0', textTransform: 'uppercase', letterSpacing: '0.12em', fontSize: '12px', color: 'var(--vp-text-soft)' }}>
-              Gestão de pessoas
-            </p>
-          )}
-          <h1 style={{ margin: '10px 0 12px', fontSize: '46px', lineHeight: 1.05 }}>
-            {viewerRole === null ? 'Gestão de pessoas' : isResponsavelView ? 'Lista de pessoas' : 'Gestão e manutenção de pessoas'}
-          </h1>
-        </section>
-
-        <div style={contentFlowStyle}>
-        {canManagePeople && (
-          <section style={topBarStyle} className="btx-people-toolbar">
-            <BentixResponsiveGrid preset="stats" style={statGridStyle}>
-              <article style={statCardStyle}>
-                <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>Pessoas totais</div>
-                <div style={{ marginTop: '8px', fontSize: '32px', fontWeight: 700 }}>{people.length}</div>
-              </article>
-              <article style={statCardStyle}>
-                <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>Mensais</div>
-                <div style={{ marginTop: '8px', fontSize: '32px', fontWeight: 700 }}>{monthlyPeople.length}</div>
-              </article>
-              <article style={statCardStyle}>
-                <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>Horárias</div>
-                <div style={{ marginTop: '8px', fontSize: '32px', fontWeight: 700 }}>{hourlyPeople.length}</div>
-              </article>
-            </BentixResponsiveGrid>
-
-            <div style={buttonGroupStyle} className="btx-people-toolbar-actions">
-              <label style={{ display: 'none', gap: '6px', fontSize: '12px', color: 'var(--vp-text-soft)' }}>
-                Mês da exportação
-                <input
-                  type="month"
-                  value={exportMonthKey}
-                  onChange={event => setExportMonthKey(event.target.value || getCurrentMonthKey())}
-                  onClick={openNativeMonthPicker}
-                  style={{ ...inputStyle, marginTop: 0, minWidth: '170px' }}
-                />
-              </label>
-              <button type="button" onClick={openExportModal} style={secondaryButtonStyle}>
-                Exportar
-              </button>
-              <button type="button" onClick={startCreate} style={primaryButtonStyle}>
-                Adicionar pessoa
-              </button>
-            </div>
-          </section>
-        )}
-
-        {!showForm && error && <p style={{ margin: 0, color: '#b42318' }}>{error}</p>}
-        {!showForm && success && <p style={{ margin: 0, color: '#1f7a45' }}>{success}</p>}
-
-        <BentixResponsiveGrid
-          preset={canManagePeople ? 'split' : 'cards'}
-          className={canManagePeople ? 'btx-people-main-grid' : ''}
-          style={canManagePeople ? layoutStyle : { display: 'grid', gap: '24px', minWidth: 0 }}
-        >
-          <BentixSection style={panelStyle}>
-            <div style={isResponsavelView ? responsavelListHeaderStyle : {}}>
-              <h2 style={{ marginTop: 0, marginBottom: isResponsavelView ? 0 : undefined }}>Lista de pessoas</h2>
-            </div>
-
-            {loading && <p>A carregar pessoas...</p>}
-            {!loading && error && !(isResponsavelView && showForm) && <p style={{ color: '#b42318' }}>{error}</p>}
-            {!loading && (!error || (isResponsavelView && showForm)) && people.length === 0 && <p>Sem pessoas registadas.</p>}
-            {!loading && (!error || (isResponsavelView && showForm)) && people.length > 0 && (
-              <>
-                {isResponsavelView && responsavelDocumentAlertPeople.length > 0 && (
-                  <div style={responsavelAlertListWrapStyle}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-                      <div style={{ fontSize: '12px', fontWeight: 900, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#b42318' }}>
-                        Documentos a rever
-                      </div>
-                      <button type="button" onClick={handlePrintResponsavelDocumentAlerts} style={dangerButtonStyle}>
-                        Imprimir folha
-                      </button>
-                    </div>
-                    <div style={responsavelAlertListStyle}>
-                      {responsavelDocumentAlertPeople.map(person => (
-                        <Link key={`alert-${person.id}`} href={`/people/${person.id}`} style={responsavelAlertLinkStyle}>
-                          <p style={responsavelAlertNameStyle}>{person.name}</p>
-                          <p style={responsavelAlertMetaStyle}>
-                            {person.documentAlertLabel}
-                            {person.documentAlertCount > 1 ? ` · ${person.documentAlertCount} documentos` : ''}
-                          </p>
-                        </Link>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                <input
-                  type="search"
-                  value={searchTerm}
-                  onChange={event => setSearchTerm(event.target.value)}
-                  placeholder="Pesquisar pessoa pelo nome"
-                  style={searchInputStyle}
-                />
-
-                {filteredPeople.length === 0 ? (
-                  <p style={{ margin: 0, color: 'var(--vp-text-muted)' }}>Nenhuma pessoa encontrada com esse nome.</p>
-                ) : (
-                  <div
-                    style={{
-                      ...(isResponsavelView ? responsavelPeopleListStyle : peopleListStyle),
-                      minWidth: 0,
-                    }}
-                  >
-                    {filteredPeople.map(renderPersonRow)}
-                  </div>
-                )}
-              </>
-            )}
-          </BentixSection>
-
-          {canManagePeople && (
-            <BentixSection style={panelStyle}>
-              <h2 style={{ marginTop: 0 }}>Detalhe da pessoa</h2>
-              {!selectedPerson && <p>Seleciona uma pessoa para veres o detalhe.</p>}
-              {selectedPerson && (
-                <div style={{ display: 'grid', gap: '16px' }}>
-                  <div
-                    className="btx-people-detail-header"
-                    style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'flex-start' }}
-                  >
-                    <div style={{ minWidth: 0 }}>
-                      <h3 style={{ margin: 0, fontSize: '30px', overflowWrap: 'anywhere' }}>{selectedPerson.name}</h3>
-                    </div>
-                    <div
-                      className="btx-people-detail-actions"
-                      style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', justifyContent: 'flex-end' }}
-                    >
-                      <button
-                        type="button"
-                        onClick={() => startEdit(selectedPerson)}
-                        style={iconButtonStyle}
-                        title="Editar pessoa"
-                        aria-label="Editar pessoa"
-                    >
-                        <EditPencilIcon />
-                      </button>
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
-                    <article style={statCardStyle}>
-                      <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>Tipo</div>
-                      <div style={{ marginTop: '8px', fontSize: '28px', fontWeight: 700 }}>
-                        {selectedPerson.isMonthlyBilling ? 'Mensal' : 'Horária'}
-                      </div>
-                    </article>
-                    {!selectedPerson.isMonthlyBilling && (
-                      <article style={statCardStyle}>
-                        <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>Preço hora</div>
-                        <div style={{ marginTop: '8px', fontSize: '28px', fontWeight: 700 }}>{selectedPerson.price || 0}/h</div>
-                      </article>
-                    )}
-                    {selectedPerson.isMonthlyBilling && (
-                      <article style={statCardStyle}>
-                        <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>Preço mensal</div>
-                        <div style={{ marginTop: '8px', fontSize: '28px', fontWeight: 700 }}>
-                          {selectedPerson.monthlyPrice || 0}
-                        </div>
-                      </article>
-                    )}
-                    <article style={statCardStyle}>
-                      <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>Função</div>
-                      <div style={{ marginTop: '8px', fontSize: '28px', fontWeight: 700 }}>
-                        {getPersonRoleLabel(selectedPerson)}
-                      </div>
-                    </article>
-                  </div>
-
-                  {(roleCanHaveAppAccess(selectedPerson.role) || selectedAccessIdentity) && (
-                    <article style={statCardStyle}>
-                      <div style={{ fontSize: '12px', color: 'var(--vp-text-soft)', textTransform: 'uppercase' }}>Acesso à aplicação</div>
-                      <div style={{ marginTop: '8px', display: 'grid', gap: '8px' }}>
-                        <div>
-                          <strong>Nome de utilizador:</strong> {selectedAccessIdentity?.username || 'Sem acesso configurado'}
-                        </div>
-                        {roleUsesWorkScope(selectedPerson.role) && (
-                          <div>
-                            <strong>Obras:</strong>{' '}
-                            {selectedAccessIdentity?.works?.length
-                              ? selectedAccessIdentity.works.map(work => work.name || `Obra ${work.id}`).join(', ')
-                              : 'Sem obras atribuídas'}
-                          </div>
-                        )}
-                      </div>
-                    </article>
-                  )}
-
-                  <div style={{ display: 'grid', gap: '12px' }}>
-                    <div>
-                      <h3 style={{ margin: 0, fontSize: '24px' }}>Histórico mensal</h3>
-                    </div>
-
-                    {monthlyAssignmentSummary.length === 0 && (
-                      <p style={{ margin: 0, color: 'var(--vp-text-muted)' }}>
-                        Sem afetações registadas para esta pessoa.
-                      </p>
-                    )}
-
-                    {monthlyAssignmentSummary.map(month => (
-                      <details
-                        key={month.monthKey}
-                        style={{
-                          border: '1px solid var(--vp-border)',
-                          borderRadius: '18px',
-                          background: 'var(--vp-surface)',
-                          padding: '16px',
-                        }}
-                      >
-                        <summary style={{ cursor: 'pointer', fontWeight: 700 }}>
-                          {month.label} | {month.totalHours}h
-                        </summary>
-
-                        <div style={{ display: 'grid', gap: '12px', marginTop: '14px' }}>
-                          {month.days.map(day => (
-                            <article
-                              key={day.date}
-                              style={{
-                                border: '1px solid var(--vp-border)',
-                                borderRadius: '14px',
-                                padding: '14px',
-                                background: 'var(--vp-surface-muted)',
-                              }}
-                            >
-                              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
-                                <strong>{formatDateLabel(day.date)}</strong>
-                                <span style={{ color: 'var(--vp-text-muted)' }}>{day.totalHours}h</span>
-                              </div>
-
-                              <div style={{ display: 'grid', gap: '8px', marginTop: '12px' }}>
-                                {day.works.map(work => (
-                                  <div
-                                    key={`${day.date}-${work.name}`}
-                                    style={{
-                                      display: 'flex',
-                                      justifyContent: 'space-between',
-                                      gap: '12px',
-                                      padding: '10px 12px',
-                                      borderRadius: '12px',
-                                      background: 'var(--vp-surface)',
-                                    }}
-                                  >
-                                    <span>{work.name}</span>
-                                    <strong>{work.hours}h</strong>
-                                  </div>
-                                ))}
-                              </div>
-                            </article>
-                          ))}
-                        </div>
-                      </details>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </BentixSection>
-          )}
-        </BentixResponsiveGrid>
-        </div>
+    <BentixPage style={pageStyle} className={`${workspaceStyles.page} ${viewerRole === ROLE_ADMIN ? sidebarStyles.dashboard : ''}`}>
+      {viewerRole === ROLE_ADMIN ? <AdminSidebar activePath="/people" mobileNavigation /> : null}
+      <BentixContent width="app" gap="lg" className={workspaceStyles.content} style={shellStyle}>
+        <PeopleWorkspace
+          people={people} filteredPeople={filteredPeople} selectedPerson={selectedPerson}
+          selectedAccessIdentity={selectedAccessIdentity}
+          monthlyCount={monthlyPeople.length} hourlyCount={hourlyPeople.length}
+          searchTerm={searchTerm} onSearch={setSearchTerm} onSelect={setSelectedPersonId}
+          onOpenPerson={id => router.push(`/people/${id}`)}
+          onCreate={startCreate} onEdit={startEdit} onExport={openExportModal}
+          canManagePeople={canManagePeople} isResponsavelView={isResponsavelView}
+          loading={loading} error={error} success={success} showForm={showForm}
+          documentAlerts={responsavelDocumentAlertPeople} onPrintAlerts={handlePrintResponsavelDocumentAlerts}
+          monthlyAssignmentSummary={monthlyAssignmentSummary}
+          formatDateLabel={formatDateLabel} getPersonRoleLabel={getPersonRoleLabel} formatCurrency={formatCurrency}
+        />
       </BentixContent>
 
       {showForm && (

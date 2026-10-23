@@ -4,6 +4,7 @@ import { isFeatureEnabled } from '../../lib/feature-flags.js'
 import { hasPermission } from '../../lib/permissions.js'
 import { isChefRole } from '../../lib/roles.js'
 import { isAssignmentApproved } from '../../lib/work-assignment-approval.js'
+import { DailyHoursValidationError, normalizeDailyHoursValue as normalizeHours } from '../../lib/daily-hours-validation.js'
 import { getWorkByIdData } from '../../lib/works.js'
 import {
   canAccessAssignment,
@@ -41,27 +42,13 @@ async function ensureHoursApprovalAvailable(session) {
   ensurePermission(session, 'work_assignments.approve', 'Apenas administradores podem aprovar horas.')
 }
 
-const DAILY_HOURS_MIN = 0
-const DAILY_HOURS_MAX = 24
-
 function normalizeDailyHoursValue(value, fieldName = 'hours') {
-  const valueType = typeof value
-  const isBlankString = typeof value === 'string' && value.trim() === ''
-  const normalizedValue = Number(value)
-
-  if (
-    value === undefined ||
-    value === null ||
-    (valueType !== 'number' && valueType !== 'string') ||
-    isBlankString ||
-    !Number.isFinite(normalizedValue) ||
-    normalizedValue < DAILY_HOURS_MIN ||
-    normalizedValue > DAILY_HOURS_MAX
-  ) {
-    throw new HttpError(400, `${fieldName} tem de estar entre 0 e 24`)
+  try {
+    return normalizeHours(value, fieldName)
+  } catch (error) {
+    if (error instanceof DailyHoursValidationError) throw new HttpError(400, error.message)
+    throw error
   }
-
-  return normalizedValue
 }
 
 function normalizeWorkedHoursValue(hours) {
@@ -103,7 +90,7 @@ async function approveWorkAssignmentWithCurrentState(session, currentAssignment,
 
 function toAssignmentMutationError(error, fallbackMessage) {
   const message = String(error?.message || fallbackMessage).trim() || fallbackMessage
-  const status = message.includes('nao encontrado') ? 404 : 500
+  const status = error instanceof DailyHoursValidationError ? 400 : message.includes('nao encontrado') ? 404 : 500
   return new HttpError(status, message)
 }
 
