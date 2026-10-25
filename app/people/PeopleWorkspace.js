@@ -52,7 +52,7 @@ export default function PeopleWorkspace({
   people, filteredPeople, selectedPerson, selectedAccessIdentity, monthlyCount, hourlyCount,
   searchTerm, onSearch, onSelect, onOpenPerson, onCreate, onEdit, onExport,
   canManagePeople, isResponsavelView, loading, error, success, showForm,
-  documentAlerts, onPrintAlerts, monthlyAssignmentSummary, formatDateLabel, getPersonRoleLabel, formatCurrency,
+  documentAlerts, onPrintAlerts, monthlyAssignmentSummary, assignmentsLoading, formatDateLabel, getPersonRoleLabel, formatCurrency,
 }) {
   const [tab, setTab] = useState('summary')
   const detailRef = useRef(null)
@@ -139,7 +139,8 @@ export default function PeopleWorkspace({
                 <div><dt>{person.isMonthlyBilling ? 'Preço mensal' : 'Preço hora'}</dt><dd>{person.isMonthlyBilling ? formatCurrency(person.monthlyPrice) : `${formatCurrency(person.price)}/h`}</dd></div>
               </dl></> : null}
               {tab === 'hours' ? <><h3>Horas e obras</h3><p className={styles.secondary}>Histórico mensal</p>
-                {monthlyAssignmentSummary.length === 0 ? <p className={styles.empty}>Sem afetações registadas para esta pessoa.</p> : null}
+                {assignmentsLoading ? <p className={styles.empty} role="status">A carregar afetações...</p> : null}
+                {!assignmentsLoading && monthlyAssignmentSummary.length === 0 ? <p className={styles.empty}>Sem afetações registadas para esta pessoa.</p> : null}
                 {monthlyAssignmentSummary.map(month => <details className={styles.month} key={month.monthKey}>
                   <summary>{month.label}<span>{month.totalHours}h</span></summary>
                   {month.days.map(day => <div className={styles.day} key={day.date}><div><strong>{formatDateLabel(day.date)}</strong><span>{day.totalHours}h</span></div>{day.works.map(work => <div key={work.name}><span>{work.name}</span><strong>{work.hours}h</strong></div>)}</div>)}

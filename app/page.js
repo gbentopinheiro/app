@@ -19,6 +19,8 @@ import { getBelgianHolidays } from '../lib/belgian-holidays.js'
 import { getAllCalendarEvents } from '../lib/calendar-events.js'
 import { getCalendarNotificationState } from '../lib/calendar-notifications.js'
 import { getOperationNotifications } from '../lib/operation-notifications.js'
+import { toCompactOperationNotifications } from '../lib/operation-notification-state.js'
+import { OperationNotificationsProvider } from '../frontend/hooks/use-operation-notification-state.js'
 
 const modules = [
   {
@@ -1018,16 +1020,6 @@ async function getResponsavelCalendarAgenda() {
   }
 }
 
-async function getRecentNotifications() {
-  const notifications = await getOperationNotifications({ audience: 'admin' })
-  return notifications.map(notification => ({
-    ...notification,
-    note: notification.sourceType === 'daily-note' && notification.note.length > 92
-      ? `${notification.note.slice(0, 92)}...`
-      : notification.note,
-  }))
-}
-
 async function getCalendarOverview(username) {
   const today = new Date()
   const year = today.getFullYear()
@@ -1065,9 +1057,6 @@ export default async function Home() {
 
   const isResponsavel = isResponsavelRole(session.role)
   const workSubmissionStatus = session.role === ROLE_ADMIN ? [] : await getWorkSubmissionStatus()
-  const notifications = isResponsavel
-    ? await getOperationNotifications({ audience: 'responsavel', limit: 3 })
-    : await getRecentNotifications()
   const smallCalendar = getSmallCalendarSummary()
   const responsavelCalendarAgenda = await getResponsavelCalendarAgenda()
   const calendarOverview = await getCalendarOverview(session.username)
@@ -1075,6 +1064,13 @@ export default async function Home() {
     isFeatureEnabled('notificationsCenter'),
     isFeatureEnabled('calendarManagement'),
   ])
+  const notificationSnapshot = notificationsCenterEnabled ? await getOperationNotifications({
+    audience: isResponsavel ? 'responsavel' : 'admin',
+    withYear: true,
+    includeShortDate: true,
+    ...(isResponsavel ? { limit: 3 } : {}),
+  }) : []
+  const notifications = toCompactOperationNotifications(notificationSnapshot)
   const visibleModules = isResponsavelRole(session.role)
     ? modules.filter(module => module.href === '/people')
     : modules
@@ -1082,6 +1078,7 @@ export default async function Home() {
   return (
     <BentixPage style={pageStyle} className={session.role === ROLE_ADMIN ? adminSidebarStyles.dashboard : ''}>
       {session.role === ROLE_ADMIN ? <AdminSidebar /> : null}
+      <OperationNotificationsProvider initialNotifications={notificationSnapshot} username={session.username} enabled={session.role === ROLE_ADMIN && notificationsCenterEnabled}>
       <BentixContent width="app" gap="lg" style={containerStyle}>
         {session.role === ROLE_ADMIN ? (
           <DashboardHero userName={session.name || session.username} notificationUsername={session.username} notificationsEnabled={notificationsCenterEnabled} />
@@ -1143,7 +1140,6 @@ export default async function Home() {
 
         {session.role === ROLE_ADMIN ? <DashboardSummaryCards
           date={getTodayDate()}
-          refreshVersion={Date.now()}
         /> : null}
 
         <div style={{ display: 'grid', gap: '16px' }}>
@@ -1154,8 +1150,6 @@ export default async function Home() {
             todayLabel={getTodayLabel()}
             smallCalendar={smallCalendar}
             calendarOverview={calendarOverview}
-            notifications={notifications}
-            username={session.username}
             calendarEnabled={calendarManagementEnabled}
             notificationsEnabled={notificationsCenterEnabled}
           />
@@ -1377,6 +1371,7 @@ export default async function Home() {
         ) : null}
         </div>
       </BentixContent>
+      </OperationNotificationsProvider>
     </BentixPage>
   )
 }

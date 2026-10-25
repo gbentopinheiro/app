@@ -1675,6 +1675,8 @@ export default function PeoplePage() {
   const router = useRouter()
   const [people, setPeople] = useState([])
   const [assignments, setAssignments] = useState([])
+  const [assignmentsLoading, setAssignmentsLoading] = useState(false)
+  const [assignmentsRevision, setAssignmentsRevision] = useState(0)
   const [accessIdentities, setAccessIdentities] = useState([])
   const [viewerRole, setViewerRole] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -1708,6 +1710,23 @@ export default function PeoplePage() {
     () => people.find(person => Number(person.id) === Number(selectedPersonId)) || people[0] || null,
     [people, selectedPersonId],
   )
+  useEffect(() => {
+    let active = true
+    setAssignments([])
+    if (!selectedPerson?.id || !canManagePeople) {
+      setAssignmentsLoading(false)
+      return
+    }
+
+    setAssignmentsLoading(true)
+    listWorkAssignments({ personId: selectedPerson.id }, 'Erro ao carregar afetações')
+      .then(data => { if (active) setAssignments(data) })
+      .catch(err => { if (active) setError(err.message) })
+      .finally(() => { if (active) setAssignmentsLoading(false) })
+
+    // A slower response for the previous selection must not replace this person's history.
+    return () => { active = false }
+  }, [selectedPerson?.id, canManagePeople, assignmentsRevision])
   const selectedAccessIdentity = useMemo(
     () => accessIdentities.find(identity => Number(identity.personId) === Number(selectedPerson?.id)) || null,
     [accessIdentities, selectedPerson],
@@ -1864,6 +1883,7 @@ export default function PeoplePage() {
       const peopleData = await listPeople('Erro ao carregar pessoas')
 
       setPeople(peopleData)
+      setAssignmentsRevision(current => current + 1)
 
       if (responsavelView) {
         setAssignments([])
@@ -1873,12 +1893,7 @@ export default function PeoplePage() {
         return
       }
 
-      const [assignmentsData, accessIdentitiesData] = await Promise.all([
-        listWorkAssignments({}, 'Erro ao carregar afetações'),
-        listAccessIdentities({}, 'Erro ao carregar acessos'),
-      ])
-
-      setAssignments(assignmentsData)
+      const accessIdentitiesData = await listAccessIdentities({}, 'Erro ao carregar acessos')
       setAccessIdentities(Array.isArray(accessIdentitiesData) ? accessIdentitiesData : accessIdentitiesData.items || [])
     } catch (err) {
       setError(err.message)
@@ -2098,7 +2113,7 @@ export default function PeoplePage() {
     }))
   }
 
-  function handleExportExcel() {
+  async function handleExportExcel() {
     const rows = getPeopleExportRows(exportPeople)
 
     if (exportSelectionMode === 'selected' && exportPeople.length === 0) {
@@ -2118,7 +2133,8 @@ export default function PeoplePage() {
     setExporting(true)
 
     try {
-      const hoursGrid = buildPeopleHoursGrid(exportMonthKey, exportPeople, assignments)
+      const exportAssignments = await listWorkAssignments({}, 'Erro ao carregar afetações para exportar')
+      const hoursGrid = buildPeopleHoursGrid(exportMonthKey, exportPeople, exportAssignments)
       const workbook = buildPeopleExcelWorkbook(
         rows,
         exportSummary,
@@ -2151,7 +2167,7 @@ export default function PeoplePage() {
     }
   }
 
-  function handleExportPdf() {
+  async function handleExportPdf() {
     const rows = getPeopleExportRows(exportPeople)
 
     if (exportSelectionMode === 'selected' && exportPeople.length === 0) {
@@ -2171,7 +2187,8 @@ export default function PeoplePage() {
     setExporting(true)
 
     try {
-      const hoursGrid = buildPeopleHoursGrid(exportMonthKey, exportPeople, assignments)
+      const exportAssignments = await listWorkAssignments({}, 'Erro ao carregar afetações para exportar')
+      const hoursGrid = buildPeopleHoursGrid(exportMonthKey, exportPeople, exportAssignments)
       const pdfBytes = buildPeoplePdfDocument(
         rows,
         exportSummary,
@@ -2277,6 +2294,7 @@ export default function PeoplePage() {
           loading={loading} error={error} success={success} showForm={showForm}
           documentAlerts={responsavelDocumentAlertPeople} onPrintAlerts={handlePrintResponsavelDocumentAlerts}
           monthlyAssignmentSummary={monthlyAssignmentSummary}
+          assignmentsLoading={assignmentsLoading}
           formatDateLabel={formatDateLabel} getPersonRoleLabel={getPersonRoleLabel} formatCurrency={formatCurrency}
         />
       </BentixContent>

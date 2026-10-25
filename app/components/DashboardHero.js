@@ -1,9 +1,8 @@
 import Image from 'next/image'
 import NotificationBell from './NotificationBell'
-import { getOperationNotifications } from '../../lib/operation-notifications.js'
 import styles from './DashboardHero.module.css'
 
-export default async function DashboardHero({ userName, notificationUsername, notificationsEnabled }) {
+export default function DashboardHero({ userName, notificationUsername, notificationsEnabled }) {
   const firstName = String(userName || '').trim().split(/\s+/u)[0]
   const today = new Date()
   const dateLabel = new Intl.DateTimeFormat('pt-PT', {
@@ -12,9 +11,6 @@ export default async function DashboardHero({ userName, notificationUsername, no
     year: 'numeric',
     timeZone: 'UTC',
   }).format(today)
-  const notifications = notificationsEnabled
-    ? await getOperationNotifications({ audience: 'admin', withYear: true })
-    : []
 
   return (
     <header className={`${styles.hero} btx-dashboard-hero`}>
@@ -30,7 +26,7 @@ export default async function DashboardHero({ userName, notificationUsername, no
       <div className={styles.scrim} aria-hidden="true" />
 
       <div className={styles.topbar}>
-        <NotificationBell notifications={notifications} username={notificationUsername} enabled={notificationsEnabled} />
+        <NotificationBell username={notificationUsername} enabled={notificationsEnabled} />
         <div className={styles.userControls}>
           <span className={styles.userName}>{userName}</span>
         </div>

@@ -6,8 +6,8 @@ import styles from './NotificationBell.module.css'
 import { useOperationNotificationState } from '../../frontend/hooks/use-operation-notification-state.js'
 import { getNotificationVersion } from '../../lib/operation-notification-state.js'
 
-export default function NotificationBell({ notifications: initialNotifications, username, enabled }) {
-  const { notifications } = useOperationNotificationState(initialNotifications, username, { enabled })
+export default function NotificationBell({ username, enabled }) {
+  const { notifications } = useOperationNotificationState({ enabled })
   const [isOpen, setIsOpen] = useState(false)
   const [seen, setSeen] = useState({ key: null, versions: {} })
   const rootRef = useRef(null)

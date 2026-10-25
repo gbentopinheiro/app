@@ -5,8 +5,8 @@ import { useOperationNotificationState } from '../../frontend/hooks/use-operatio
 import styles from './DashboardOperations.module.css'
 import navigation from './DashboardNavigation.module.css'
 
-export default function DashboardNotifications({ notifications: initialNotifications, username, enabled, actionIcon }) {
-  const { notifications, ready } = useOperationNotificationState(initialNotifications, username, { enabled, limit: 3 })
+export default function DashboardNotifications({ enabled, actionIcon }) {
+  const { notifications, ready } = useOperationNotificationState({ enabled, limit: 3, compact: true })
 
   return (
     <section className={[styles.panel, enabled ? navigation.surface : ''].filter(Boolean).join(' ')} aria-labelledby="operations-notifications-title">

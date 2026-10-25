@@ -46,18 +46,31 @@ function SummaryCard({ id, label, value, description, icon, tone, money = false,
 
 export default function DashboardSummaryCards({
   date,
-  refreshVersion,
 }) {
   const [state, setState] = useState({ date: null, summary: null, error: '' })
   useEffect(() => {
-    const controller = new AbortController()
-    getDashboardSummary(date, { signal: controller.signal }).then(summary => {
-      if (!controller.signal.aborted) setState({ date, summary, error: '' })
-    }).catch(error => {
-      if (!controller.signal.aborted) setState({ date, summary: null, error: error.message })
-    })
-    return () => controller.abort()
-  }, [date, refreshVersion])
+    let controller
+    let inFlight = false
+    const refresh = () => {
+      if (document.visibilityState !== 'visible' || inFlight) return
+      inFlight = true
+      controller = new AbortController()
+      const request = controller
+      getDashboardSummary(date, { signal: request.signal }).then(summary => {
+        if (!request.signal.aborted) setState({ date, summary, error: '' })
+      }).catch(error => {
+        if (!request.signal.aborted) setState({ date, summary: null, error: error.message })
+      }).finally(() => { inFlight = false })
+    }
+    refresh()
+    window.addEventListener('focus', refresh)
+    document.addEventListener('visibilitychange', refresh)
+    return () => {
+      controller?.abort()
+      window.removeEventListener('focus', refresh)
+      document.removeEventListener('visibilitychange', refresh)
+    }
+  }, [date])
   const summary = state.date === date ? state.summary : null
   const numberFormat = new Intl.NumberFormat('pt-PT')
   const dateLabel = new Intl.DateTimeFormat('pt-PT', {

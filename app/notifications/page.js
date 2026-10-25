@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import NotificationsClient from './NotificationsClient'
 import { isFeatureEnabled } from '../../lib/feature-flags.js'
 import { getOperationNotifications } from '../../lib/operation-notifications.js'
+import { OperationNotificationsProvider } from '../../frontend/hooks/use-operation-notification-state.js'
 import { hasPermission } from '../../lib/permissions.js'
 import { isResponsavelRole } from '../../lib/roles.js'
 import { getServerSession } from '../../lib/server-session.js'
@@ -64,6 +65,7 @@ export default async function NotificationsPage() {
   const notifications = await getOperationNotifications({
     audience: isResponsavelRole(session.role) ? 'responsavel' : 'admin',
     withYear: true,
+    includeShortDate: true,
   })
 
   return (
@@ -77,7 +79,9 @@ export default async function NotificationsPage() {
         </section>
 
         <ViewportScrollArea style={{ '--vp-page-scroll-gap': '22px' }}>
-          <NotificationsClient initialNotifications={notifications} username={session.username} />
+          <OperationNotificationsProvider initialNotifications={notifications} username={session.username}>
+            <NotificationsClient />
+          </OperationNotificationsProvider>
         </ViewportScrollArea>
       </ViewportShell>
     </ViewportPage>

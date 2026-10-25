@@ -18,8 +18,6 @@ export default function DashboardOperations({
   todayLabel,
   smallCalendar,
   calendarOverview,
-  notifications,
-  username,
   calendarEnabled,
   notificationsEnabled,
 }) {
@@ -55,7 +53,7 @@ export default function DashboardOperations({
           )}
         </section>
 
-        <DashboardNotifications notifications={notifications} username={username} enabled={notificationsEnabled} actionIcon={<Arrow />} />
+        <DashboardNotifications enabled={notificationsEnabled} actionIcon={<Arrow />} />
       </div>
     </div>
   )

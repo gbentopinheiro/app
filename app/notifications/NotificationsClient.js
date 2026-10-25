@@ -143,8 +143,8 @@ const errorStyle = {
   fontWeight: 800,
 }
 
-export default function NotificationsClient({ initialNotifications, username }) {
-  const { notifications, dismissNotifications, ready } = useOperationNotificationState(initialNotifications, username)
+export default function NotificationsClient() {
+  const { notifications, dismissNotifications, ready } = useOperationNotificationState()
   const [selectedIds, setSelectedIds] = useState([])
   const [isDeleting, setIsDeleting] = useState(false)
   const [error, setError] = useState('')

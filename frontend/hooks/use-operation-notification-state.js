@@ -1,17 +1,20 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import {
   addNotificationDismissals,
   filterDismissedNotifications,
   getNotificationDismissalStorageKey,
   readNotificationDismissals,
+  toCompactOperationNotifications,
 } from '../../lib/operation-notification-state.js'
+import { createNotificationsRefresh, listNotifications } from '../controllers/notifications-controller.js'
 import { notifyOperationNotificationsChanged, useOperationNotificationsRefresh } from './use-operation-notifications-refresh.js'
 
 // Matches the bell's existing per-user browser state. Keep this visit usable
 // when browser persistence is unavailable, without creating server records.
 const sessionDismissals = new Map()
+const NotificationContext = createContext(null)
 
 function readDismissals(key) {
   let stored = {}
@@ -19,11 +22,24 @@ function readDismissals(key) {
   return { ...stored, ...sessionDismissals.get(key) }
 }
 
-export function useOperationNotificationState(initialNotifications, username, { enabled = true, limit } = {}) {
+export function OperationNotificationsProvider({ initialNotifications, username, enabled = true, children }) {
   const key = getNotificationDismissalStorageKey(username)
   const [state, setState] = useState({ key: null, dismissed: {} })
+  const [snapshot, setSnapshot] = useState(initialNotifications)
   const load = useCallback(() => setState({ key, dismissed: readDismissals(key) }), [key])
-  useOperationNotificationsRefresh(enabled, load)
+  const refresher = useMemo(() => createNotificationsRefresh(listNotifications, data => {
+    setSnapshot(current => JSON.stringify(current) === JSON.stringify(data) ? current : data)
+  }, error => {
+    if (error.status === 401) window.location.assign('/login')
+    if (error.status === 403 || error.status === 503) setSnapshot([])
+  }), [key])
+  useOperationNotificationsRefresh(enabled, refresher.refresh, load)
+
+  useEffect(() => {
+    refresher.cancel()
+    setSnapshot(initialNotifications)
+  }, [initialNotifications, refresher])
+  useEffect(() => () => refresher.cancel(), [refresher, enabled])
 
   useEffect(() => {
     load()
@@ -37,9 +53,8 @@ export function useOperationNotificationState(initialNotifications, username, { 
   const ready = state.key === key
   const notifications = useMemo(() => {
     if (!ready) return []
-    const visible = filterDismissedNotifications(initialNotifications, state.dismissed)
-    return typeof limit === 'number' ? visible.slice(0, limit) : visible
-  }, [initialNotifications, limit, ready, state.dismissed])
+    return filterDismissedNotifications(snapshot, state.dismissed)
+  }, [snapshot, ready, state.dismissed])
 
   const dismissNotifications = useCallback(items => {
     const dismissed = addNotificationDismissals(readDismissals(key), items)
@@ -50,8 +65,20 @@ export function useOperationNotificationState(initialNotifications, username, { 
       sessionDismissals.set(key, dismissed)
     }
     setState({ key, dismissed })
-    notifyOperationNotificationsChanged()
+    notifyOperationNotificationsChanged('dismiss')
   }, [key])
 
-  return { notifications, dismissNotifications, ready }
+  const value = useMemo(() => ({ notifications, dismissNotifications, ready }), [notifications, dismissNotifications, ready])
+  return <NotificationContext.Provider value={value}>{children}</NotificationContext.Provider>
+}
+
+export function useOperationNotificationState({ enabled = true, limit, compact = false } = {}) {
+  const context = useContext(NotificationContext)
+  if (!context) throw new Error('Notification provider is required.')
+  const notifications = useMemo(() => {
+    const items = enabled ? context.notifications : []
+    const visible = typeof limit === 'number' ? items.slice(0, limit) : items
+    return compact ? toCompactOperationNotifications(visible) : visible
+  }, [context.notifications, enabled, limit, compact])
+  return { ...context, notifications }
 }
